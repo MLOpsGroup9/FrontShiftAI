@@ -225,14 +225,14 @@ Results: delays, policy confusion, missed deadlines, disengagement.
 ---
 
 ## 📂 Repository Structure (planned)
-
+,,,bash
 ├── data/ # Raw and processed handbook data
 ├── notebooks/ # Exploration & preprocessing
 ├── src/ # RAG + agentic pipeline
 ├── infra/ # Deployment configs (GCP/Azure/Docker)
 ├── docs/ # Diagrams, reports, presentations
 ├── README.md # Project overview
-
+,,,
 
 
 ---
