@@ -1,4 +1,4 @@
-# MDesklessAI - AI Copilot for Deskless Workers
+# FrontshiftAI - AI Copilot for Deskless Workers
 
 
 # AI Copilot for Deskless Workers 
