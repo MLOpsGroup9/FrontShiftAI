@@ -1,5 +1,4 @@
-# FrontshiftAI - AI Copilot for Deskless Workers
-
+# Project Scoping - FrontShiftAI: AI Copilot for Deskless Workers
 
 **Team Members**  
 - Harshitkumar Brahmbhatt  
@@ -12,234 +11,175 @@
 ---
 
 ## 1. Introduction
+Deskless workers face limited access to HR systems due to **irregular schedules, lack of computer access, and fragmented communication**.  
 
-Despite making up **70–80% of the workforce**, deskless workers remain underserved by traditional HR and knowledge systems due to structural and communication barriers:
+These challenges lead to:  
+- Lower benefits enrollment/utilization  
+- Poor training adoption  
+- High attrition and disengagement  
 
-- Limited computer access during work hours (62%)  
-- Irregular schedules (56%)  
-- Lack of face-to-face communication (55%)  
-
-These gaps result in **low benefits enrollment**, **weak training adoption**, **reduced engagement**, and **higher attrition**.  
-
-### Proposed Solution  
-We propose an **AI Copilot** powered by **Retrieval-Augmented Generation (RAG)** with an **agentic orchestration layer**:
-
-- **RAG foundation** → Retrieves policy/training content from handbooks, LMS, HR portals.  
-- **Agentic layer** → Executes follow-up tasks (schedule training, check compliance, escalate to HR).  
-- **Voice interaction (future work)** → Accessibility in hands-busy, on-the-move environments.  
+**Proposed Solution:**  
+- **RAG core** → Retrieves grounded answers from HR docs and policies.  
+- **Agentic layer** → Executes actions like scheduling, compliance checks, escalation.  
+- **Voice interaction (planned)** → Enables hands-free access for frontline roles.  
 
 ---
 
 ## 2. Dataset Information
 
-### Dataset Introduction
-A **Deskless Worker Handbook Q&A Dataset** generated from diverse employee handbooks across industries.
-
-- Purpose: Make HR/policy content accessible via natural queries.  
-- Scope: 200–20,000 Q&A pairs (manual + synthetic).  
-
-### Data Card
-
+### 2.1 Dataset Card
 | Attribute      | Description |
 |----------------|-------------|
 | **Name**       | Deskless Worker Handbook Q&A Dataset |
-| **Sources**    | Employee handbooks (healthcare, retail, logistics, hospitality, finance, etc.) |
-| **Formats**    | CSV (exploration), JSONL (fine-tuning), PDF/TXT (retrieval) |
-| **Types**      | Q&A pairs, metadata (industry, policy type, source) |
+| **Size**       | 200–20,000 Q&A pairs |
+| **Sources**    | Publicly available employee handbooks (healthcare, retail, logistics, hospitality, finance, construction, etc.) |
+| **Formats**    | CSV (exploration), JSONL (fine-tuning), PDF/TXT (retrieval embedding) |
+| **Data Types** | Natural language questions, concise answers, metadata (source, industry, section) |
 
-### Example Sources
-- Healthcare: *Crouse Medical Handbook (2019)*  
-- Cleaning & Maintenance: *CleanSpace Handbook (2024)*  
-- Retail: *Lunds & Byerlys Handbook (2019)*  
-- Hospitality: *Alta Peruvian Lodge Handbook (2016)*  
-- Finance: *Old National Bank Handbook*  
-- Automobile: *Lowe Auto Handbook (2023)*  
+### 2.2 Example Sources
+- Healthcare: [Crouse Medical Handbook (2019)](https://crousemed.com/media/1449/cmp-employee-handbook.pdf)  
+- Retail: [Lunds & Byerlys Handbook (2019)](https://corporate.lundsandbyerlys.com/wp-content/uploads/2024/05/EmployeeHandbook_20190926.pdf)  
+- Manufacturing: [BG Foods Handbook (2022)](https://bgfood.com/wp-content/uploads/2022/01/BG-Employee-Handbook-2022.pdf)  
+- Construction: [TNT Construction Handbook (2018)](https://www.tntconstructionmn.com/wp-content/uploads/2018/05/TNT-Construction-Inc-Handbook_Final-2018.pdf)  
+- Hospitality: [Alta Peruvian Lodge Handbook (2016)](https://www.altaperuvian.com/wp-content/uploads/2017/01/APL-Empl-Manual-Revised-12-22-16-fixed.pdf)  
+- Finance: [Old National Bank Handbook](https://www.oldnational.com/globalassets/onb-site/onb-documents/onb-about-us/onb-team-member-handbook/team-member-handbook.pdf)  
 
-### Rights & Privacy
-- All handbooks are **publicly available PDFs**.  
-- **No personal/employee-identifiable data**.  
-- Dataset used **strictly for research/educational purposes**.  
+### 2.3 Rights & Privacy
+- **Source Material**: All handbooks are public PDFs.  
+- **Usage**: Research/educational only.  
+- **Privacy**: No personal data; only policy text.  
+- **Compliance**: GDPR/CCPA principles respected.  
 
 ---
 
 ## 3. Data Planning and Splits
 
-### Preprocessing
-1. **Extract text** from PDFs (PyMuPDF, PDFMiner).  
-2. **Clean/normalize** (remove headers, footers, duplicates).  
-3. **Chunk** into policy sections.  
-4. **Generate Q&A pairs** (manual + synthetic).  
-5. **Normalize format** (JSONL schema).  
+### 3.1 Preprocessing Steps
+- Extract text from PDFs (PyMuPDF, PDFMiner)  
+- Clean headers/footers, remove duplicates  
+- Chunk into policy sections  
+- Generate Q&A pairs (manual + synthetic)  
+- Normalize into JSONL schema  
 
-### Splitting Strategy
-- **Train (70%)**: Main Q&A set.  
-- **Validation (15%)**: Hyperparameter tuning.  
-- **Test (15%)**: Final evaluation.  
-- Stratified by industry.  
-- Deduplication to avoid leakage.  
+### 3.2 Splitting Strategy
+- **Train (70%)** → Q&A pairs for fine-tuning  
+- **Validation (15%)** → Hyperparameter tuning  
+- **Test (15%)** → Final evaluation  
+- Stratified by industry, deduplicated  
 
 ---
 
-## 4. Problems & Limitations of Current Solutions
-
-- **HCM Suites (Workday, SAP)** → Vendor-locked, admin-focused.  
-- **Digital Assistants (Oracle DA)** → Rigid, schema-bound.  
-- **LMS (Docebo, Cornerstone)** → Static, no real-time retrieval.  
-- **Generic Chatbots (Leena AI, Talla)** → FAQ-only, no policy grounding.  
-- **Self-Service Portals** → Desktop-centric, no natural query support.  
-- **Internal Comms (Slack, Teams)** → Transient, not retrievable.  
+## 4. Problems & Current Solutions
+- **HCM Suites** (Workday, SAP) → Admin-focused, vendor-locked  
+- **Enterprise Assistants** (Oracle DA) → Rigid, schema-bound  
+- **LMS Microlearning** (Docebo, Cornerstone) → Static, non-queryable  
+- **Generic Chatbots** (Leena AI, Talla) → FAQ-only, no grounding  
+- **Self-Service Portals** → Desktop-centric, not conversational  
+- **Slack/Teams** → Transient, non-retrievable  
 
 ---
 
 ## 5. Proposed Solution
-
-### Core Features
-1. **RAG: Grounded Q&A** → Accurate answers with citations.  
-2. **Agentic Layer** → Orchestrates actions (schedule training, escalate to HR).  
-3. **Personalization & Memory** → Contextual follow-ups, history-aware.  
-4. **System Integration** → Connect to LMS, HRIS, calendars, docs.  
-5. **Voice Interaction** → STT/TTS for hands-free environments.  
-6. **Safe Fallbacks** → Escalate to HR if confidence is low.  
+- **RAG for grounded answers** (cited, accurate)  
+- **Agentic orchestration** for HR workflows (scheduling, compliance, escalation)  
+- **Personalization & memory** for context-aware Q&A  
+- **System integration** with HRIS, LMS, calendars  
+- **Safe fallback** when confidence is low  
+- **Voice accessibility** for frontline workers  
 
 ---
 
 ## 6. Current Flow & Bottlenecks
-
-Traditional HR workflow →  
-
-- **HR Overload** (all queries bottlenecked).  
-- **Fragmented Systems** (LMS, HRIS, docs are siloed).  
-- **Limited Worker Access** (no real-time retrieval).  
-
-Results: delays, policy confusion, missed deadlines, disengagement.  
+Traditional HR flow → **HR overload, fragmented systems, limited access**.  
+**AI Copilot improves** with:  
+- Automated retrieval (RAG)  
+- Unified query interface  
+- Mobile/voice accessibility  
+- 24/7 availability  
+- Analytics feedback loop  
 
 ---
 
 ## 7. Metrics, Objectives, and Business Goals
-
-### Objectives
-- Build **RAG-based copilot** for grounded policy Q&A.  
-- Enable **agentic action execution**.  
-- Provide **voice-enabled conversational access**.  
-- Ensure **compliance, auditability, and safe fallback**.  
-
-### Business Alignment
-| Goal | Support |
-|------|----------|
-| HR efficiency | Automates queries, reduces HR workload. |
-| Training compliance | Timely scheduling/reminders. |
-| Employee engagement | Conversational, mobile-first interface. |
-| Risk reduction | Grounded answers, audit logs. |
-| Scalability | AI handles query growth without HR scaling. |
+- **Objectives:** Build RAG system, enable agentic actions, provide voice interface, ensure compliance.  
+- **Business Alignment:** HR efficiency, training compliance, engagement, reduced risk, scalable support.  
 
 ---
 
 ## 8. Key Metrics
-
-### RAG
-- Recall@5 > 90%  
-- Factuality/Citation Match > 85%  
-- EM > 70%  
-- F1 > 80%  
-- ROUGE-L > 0.6  
-- Hallucination Rate < 5%  
-- User Helpfulness Rating > 4/5  
-
-### Agentic Layer
-- Tool Accuracy > 90%  
-- Task Success > 85%  
-- Safe Fallback > 95%  
-- Completion Time < 5s  
-- 100% logging & user confirmations  
-
-### Voice Interaction
-- WER < 10%  
-- Latency < 3s  
-- TTS Clarity > 4/5  
-- Voice Task Success > 80%  
+- **RAG** → Recall@5 > 90%, Factuality > 85%, F1 > 80%, Hallucination < 5%  
+- **Agentic** → Tool accuracy > 90%, Task success > 85%, Fallback > 95%  
+- **Voice** → WER < 10%, Latency < 3s, Voice success > 80%  
 
 ---
 
-## 9. Failure Analysis (Planned)
-
-- **RAG Failure**: Missing policy chunk → mitigation: improve chunking + hybrid search.  
-- **Agent Misuse**: Wrong tool/action → mitigation: confirmation prompts + strict guardrails.  
-- **Voice Errors**: Noisy environment → mitigation: fallback to text + retry logic.  
-- **Data Drift**: Outdated handbook policies → mitigation: scheduled re-indexing.  
-
----
-
-## 10. Deployment Infrastructure (Planned)
-
-- **Backend**: Python, FastAPI, LangChain, ChromaDB/Pinecone.  
-- **LLMs**: LLaMA-3, SciBERT (fine-tuned).  
-- **Cloud**: Azure ML / GCP AI Platform.  
-- **Integrations**: LMS, HRIS APIs, calendars.  
-- **Frontend**: Streamlit / React (mobile-first).  
-- **Voice**: Coqui TTS, Whisper STT.  
-
-(Diagram to be added in repo)
+## 9. Failure Analysis
+- **Data ingestion** → corrupted PDFs → multi-parser fallback  
+- **Retrieval** → poor recall → hybrid retrieval, eval thresholds  
+- **LLM gen** → hallucination → context-only guardrails  
+- **Agents** → wrong tool → JSON schema validation, confirmations  
+- **Infra** → latency spikes → autoscaling, caching, fallback modes  
 
 ---
 
-## 11. Monitoring Plan (Planned)
+## 10. Deployment Infrastructure
+- **Backend**: FastAPI on GKE  
+- **RAG**: Hugging Face embeddings + ChromaDB (GKE)  
+- **LLM**: LLaMA-3 8B (Vertex AI endpoint)  
+- **Agents**: LangChain/LangGraph on GKE  
+- **Voice**: Google Cloud STT/TTS  
+- **Data**: GCS (docs), Cloud SQL (metadata), JSONL/CSV  
+- **Monitoring**: Cloud Monitoring, Prometheus/Grafana, Vertex AI drift detection  
 
-- **LLM Metrics**: retrieval recall, factuality, hallucination.  
-- **Agent Metrics**: tool accuracy, task success, escalation rate.  
-- **Voice Metrics**: WER, latency, fallback rate.  
-- **Usage Logs**: all queries + actions auditable.  
-- **User Feedback**: rating after each session.  
+---
+
+## 11. Monitoring Plan
+- Track retrieval recall, hallucination, tool accuracy, fallback rate, WER, latency  
+- GCP Cloud Monitoring alerts + Grafana dashboards  
+- Future: drift detection, detailed audit logs  
 
 ---
 
 ## 12. Success & Acceptance Criteria
-
-- RAG accuracy (Recall@5 > 90%, Hallucination < 5%).  
-- Agentic tasks > 85% success rate.  
-- Voice interaction end-to-end success > 80%.  
-- HR workload reduction > 30%.  
-- Positive user satisfaction (avg > 4/5).  
+- **RAG**: Recall@5 ≥ 90%, Hallucination ≤ 5%  
+- **Agentic**: Task success ≥ 85%  
+- **Voice**: WER ≤ 10%, latency ≤ 3s  
+- **Pilot Study**: ≥ 80% accuracy, ≥ 4/5 satisfaction  
 
 ---
 
-## 13. Timeline (Preliminary)
-
-| Phase | Duration | Milestones |
-|-------|----------|------------|
-| Data Collection & Preprocessing | 2 weeks | Build Q&A dataset |
-| Prototype RAG System | 3 weeks | Basic handbook Q&A |
-| Agentic Layer Dev | 3 weeks | Tool integrations |
-| Voice Interaction | 2 weeks | STT/TTS integration |
-| Deployment Infra Setup | 2 weeks | Cloud, APIs, monitoring |
-| Testing & Validation | 2 weeks | Metrics evaluation |
-| Final Demo & Report | 1 week | End-to-end system |
+## 13. Timeline (10 weeks)
+1. **Dataset & Retrieval MVP (Weeks 1–2)**  
+2. **Agentic Layer MVP (Weeks 3–4)**  
+3. **Voice Prototype (Weeks 5–6)**  
+4. **Monitoring & Hardening (Weeks 7–8)**  
+5. **Pilot & Acceptance (Weeks 9–10)**  
 
 ---
 
 ## 14. Additional Information
-
-- Strictly **research/educational use only**.  
-- Potential for **enterprise adoption** via APIs + HRIS integration.  
-- Long-term: **multi-lingual support**, **offline mobile app**, **real-time compliance monitoring**.  
+The stack may evolve (embedding models, vector DBs, orchestration libs), but changes will be **incremental and non-disruptive**.  
+Core principles (RAG core, agentic orchestration, GCP deployment, voice accessibility) remain unchanged.  
 
 ---
 
-## 📂 Repository Structure (planned)
-```
+## 15. Repository Structure
+```bash
 ├── data/ # Raw and processed handbook data
-├── notebooks/ # Exploration & preprocessing
-├── src/ # RAG + agentic pipeline
-├── infra/ # Deployment configs (GCP/Azure/Docker)
-├── docs/ # Diagrams, reports, presentations
-├── README.md # Project overview
+├── notebooks/ # Exploration & preprocessing notebooks
+├── src/ # Core RAG + agentic pipeline
+│ ├── rag/ # Retrieval-Augmented Generation components
+│ ├── agents/ # Agentic orchestration layer
+│ ├── voice/ # STT/TTS integrations
+│ └── api/ # FastAPI service
+├── infra/ # Deployment configs (Docker, GCP, Kubernetes, Vertex AI)
+├── docs/ # Diagrams, reports, scoping docs
+│ └── Project_Scoping.md
+├── tests/ # Unit and integration tests
+└── README.md # High-level project overview
 ```
 
-
 ---
 
-## 🔑 License & Usage
-
-This project is intended for **academic and research use only**.  
-All employee handbook content is sourced from **publicly available PDFs**. Redistribution of proprietary content is not permitted.  
-
----
+## 🔗 Repository
+👉 [FrontShiftAI GitHub](https://github.com/MLOpsGroup9/FrontShiftAI)
