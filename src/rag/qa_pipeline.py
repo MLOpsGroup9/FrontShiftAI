@@ -1,10 +1,10 @@
 import os
-from langchain_community.llms import LlamaCpp
-from langchain.prompts import PromptTemplate
-from langchain.chains import RetrievalQA
-import chromadb
-from langchain.vectorstores import Chroma
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_community.llms import LlamaCpp # type: ignore
+from langchain.prompts import PromptTemplate # type: ignore
+from langchain.chains import RetrievalQA # type: ignore
+import chromadb # type: ignore
+from langchain.vectorstores import Chroma # type: ignore
+from langchain.embeddings import HuggingFaceEmbeddings # type: ignore
 
 # Paths
 CHROMA_PATH = "data/chroma_db"
