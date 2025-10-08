@@ -1,8 +1,8 @@
 import json
 import os
-from tqdm import tqdm
-import chromadb
-from sentence_transformers import SentenceTransformer
+from tqdm import tqdm # type: ignore
+import chromadb # type: ignore
+from sentence_transformers import SentenceTransformer # type: ignore
 
 DATA_PATH = "data/qna/qa.jsonl"
 CHROMA_PATH = "data/chroma_db"
@@ -52,4 +52,3 @@ def build_chroma():
 
 if __name__ == "__main__":
     build_chroma()
-    
