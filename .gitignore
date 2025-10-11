@@ -18,11 +18,6 @@ env/
 .DS_Store
 Thumbs.db
 
-# Data (don’t upload raw/processed/chroma_db)
-data/raw/
-data/processed/
-data/chroma_db/
-
 # QnA dataset (keep small JSONL, ignore large variants)
 data/qna/*.csv
 data/qna/*.parquet
@@ -34,11 +29,7 @@ models/*.safetensors
 models/*.gguf
 models/*-finetuned-*/
 
-# Training outputs
-outputs/
-logs/
-wandb/
-runs/
+
 
 # Infrastructure / Docker
 *.env
