@@ -1,0 +1,4 @@
+1. if we train the doc on multiple documents, will it hallucinate? cause each doc might have diffrent info
+    a. if so, solution: fine tune one 1 docs' of each type  we have to test
+2. are we combining all the tetx extracted into one or keeping them seperate for metadata, and if so, how is it helpful
+3. why name the docs with the domains? how is it helpful? yes for meta data, but why, just the name suffices?
