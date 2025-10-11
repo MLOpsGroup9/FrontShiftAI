@@ -1,0 +1,12 @@
+LlamaParse
+Unstructured
+pymupdf -> fitx
+PaddleOR
+LLMsherpa
+LLMWhisperer
+RAGflow
+camelot
+Docling
+Surya/Marker 
+VertexAI
+
