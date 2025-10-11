@@ -44,3 +44,5 @@ runs/
 *.env
 .env.*
 docker-data/
+
+Mydocs/ ß
