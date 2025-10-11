@@ -1,6 +1,6 @@
 LlamaParse
 Unstructured
-pymupdf -> fitx
+pymupdf -> fitz
 PaddleOR
 LLMsherpa
 LLMWhisperer
@@ -9,4 +9,4 @@ camelot
 Docling
 Surya/Marker 
 VertexAI
-
+langchain - pdfloader with camelot
