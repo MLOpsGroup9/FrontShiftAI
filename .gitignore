@@ -36,4 +36,6 @@ models/*-finetuned-*/
 .env.*
 docker-data/
 
-Mydocs/
+MyResources/
+
+data/qna/
