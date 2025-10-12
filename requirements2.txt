@@ -1,6 +1,0 @@
-docling>=1.16.0
-easyocr
-pillow
-pandas
-tabulate
-tqdm
