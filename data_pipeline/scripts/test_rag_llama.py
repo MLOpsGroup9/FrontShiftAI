@@ -4,11 +4,13 @@ from chromadb.utils import embedding_functions
 from llama_cpp import Llama
 
 
+# --- Dynamic Path Setup ---
 BASE_DIR = Path(__file__).resolve().parents[1]
-CHROMA_DIR = BASE_DIR / "data" / "vector_db"
-MODEL_PATH = BASE_DIR / "models" / "Meta-Llama-3-8B-Instruct.Q4_K_M.gguf"
+DATA_DIR = BASE_DIR / "data"
+CHROMA_DIR = DATA_DIR / "vector_db"
+MODEL_PATH = BASE_DIR.parent / "models" / "Meta-Llama-3-8B-Instruct.Q4_K_M.gguf"
 
-
+# --- Load Model ---
 print("🦙 Loading LLaMA 3 model...")
 llm = Llama(
     model_path=str(MODEL_PATH),
@@ -20,17 +22,25 @@ llm = Llama(
     stop=[],
     verbose=False
 )
-print("✅ Model loaded")
+print("✅ Model loaded successfully")
 
-
+# --- Load Vector DB ---
 client = chromadb.PersistentClient(path=str(CHROMA_DIR))
 embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
     model_name="all-MiniLM-L6-v2"
 )
-collection = client.get_collection("frontshift_policies", embedding_function=embedding_fn)
-print(f"✅ Loaded ChromaDB collection with {collection.count()} chunks")
 
+collection_name = "frontshift_policies"
+try:
+    collection = client.get_collection(collection_name, embedding_function=embedding_fn)
+    print(f"✅ Loaded ChromaDB collection '{collection_name}' with {collection.count()} chunks")
+except Exception as e:
+    raise RuntimeError(
+        f"❌ Could not find Chroma collection '{collection_name}'. "
+        f"Please run 'store_in_chromadb.py' first.\nError: {e}"
+    )
 
+# --- System Prompt ---
 system_prompt = """
 This is FrontShiftAI — an intelligent HR assistant built to help employees understand company
 policies, leave entitlements, benefits, and workplace procedures.
@@ -57,6 +67,7 @@ FrontShiftAI’s mission is to provide grounded, accurate, and empathetic HR gui
 """
 
 
+# --- Generate Full Response ---
 def generate_full_response(prompt, max_tokens=2048, continue_if_cut=True):
     """Ensures complete output even if the model stops early."""
     full_output = ""
@@ -85,8 +96,9 @@ def generate_full_response(prompt, max_tokens=2048, continue_if_cut=True):
     return full_output
 
 
-
+# --- RAG Query Function ---
 def rag_query(user_query: str, company_name: str = None, top_k: int = 4):
+    """Retrieve top chunks from Chroma and query the LLM."""
     query_args = {"query_texts": [user_query], "n_results": top_k}
     if company_name:
         query_args["where"] = {"company": company_name}
@@ -120,6 +132,7 @@ FINAL ANSWER:
     return answer, metadatas
 
 
+# --- Interactive CLI ---
 if __name__ == "__main__":
     print("\n💬 FrontShiftAI HR Assistant — type 'exit' to quit.\n")
     company_name = input("🏢 Enter company name (e.g., Crouse, Jacob, Alta Peruvian): ").strip()
