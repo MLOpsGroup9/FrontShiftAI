@@ -11,16 +11,9 @@ env/
 .conda/
 .frontshiftai/
 
-# Jupyter
-.ipynb_checkpoints/
-
 # OS
 .DS_Store
 Thumbs.db
-
-# QnA dataset (keep small JSONL, ignore large variants)
-data/qna/*.csv
-data/qna/*.parquet
 
 # Models (do not push heavy GGUF/finetuned weights)
 models/*.bin
@@ -29,8 +22,6 @@ models/*.safetensors
 models/*.gguf
 models/*-finetuned-*/
 
-
-
 # Infrastructure / Docker
 *.env
 .env.*
@@ -38,4 +29,3 @@ docker-data/
 
 # Local resources
 MyResources/
-data/qna/
