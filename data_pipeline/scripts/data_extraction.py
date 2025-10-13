@@ -6,13 +6,13 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 
 def main():
-    # --- Directory setup ---
-    data_dir = Path(__file__).resolve().parents[1] / "data"
+    project_root = Path(__file__).resolve().parents[1]
+    data_dir = project_root / "data"
     raw_dir = data_dir / "raw"
     output_dir = data_dir / "extracted"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # --- Chunk configuration ---
+    # Chunk configuration
     chunk_size = 1024
     chunk_overlap = 64
     splitter = RecursiveCharacterTextSplitter(

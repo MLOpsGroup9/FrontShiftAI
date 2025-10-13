@@ -3,15 +3,19 @@ import pandas as pd
 from pathlib import Path
 
 
-def load_extracted_data(extracted_dir="data/extracted"):
-    """Load JSON outputs from extraction step."""
+def load_extracted_data(extracted_dir=None):
+    """Load JSON outputs from the extraction step."""
+    project_root = Path(__file__).resolve().parents[1]
+    data_dir = project_root / "data"
+    extracted_dir = extracted_dir or (data_dir / "extracted")
+
     combined_path = Path(extracted_dir) / "combined_chunks.json"
     tables_path = Path(extracted_dir) / "table_chunks.json"
 
     if not combined_path.exists():
-        raise FileNotFoundError("combined_chunks.json not found in extracted directory.")
+        raise FileNotFoundError(f"{combined_path} not found.")
     if not tables_path.exists():
-        raise FileNotFoundError("table_chunks.json not found in extracted directory.")
+        raise FileNotFoundError(f"{tables_path} not found.")
 
     with open(combined_path, "r") as f:
         combined = json.load(f)
@@ -50,8 +54,12 @@ def convert_to_dataframe(cleaned_chunks):
     return df
 
 
-def save_cleaned(df, out_dir="data/cleaned"):
+def save_cleaned(df, out_dir=None):
     """Save cleaned and structured data to CSV."""
+    project_root = Path(__file__).resolve().parents[1]
+    data_dir = project_root / "data"
+    out_dir = out_dir or (data_dir / "cleaned")
+
     Path(out_dir).mkdir(parents=True, exist_ok=True)
     output_path = Path(out_dir) / "cleaned_chunks.csv"
     df.to_csv(output_path, index=False)
