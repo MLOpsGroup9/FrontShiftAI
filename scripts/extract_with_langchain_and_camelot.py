@@ -30,14 +30,16 @@ def main():
         print(f"📘 Processing {pdf_path.name} ...")
 
         try:
+            # Derive company name from filename
+            company_name = pdf_path.stem.strip().replace("_", " ")
+
             # --- TEXT EXTRACTION (LangChain Loader) ---
             loader = PyPDFLoader(str(pdf_path))
-            pages = loader.load_and_split()  # returns list of LangChain Documents
+            pages = loader.load_and_split()
 
             combined_text = "\n".join([page.page_content for page in pages if page.page_content.strip()])
 
             # --- TABLE EXTRACTION (Camelot) ---
-            tables = []
             try:
                 tables = camelot.read_pdf(str(pdf_path), pages="all")
                 for i, table in enumerate(tables, start=1):
@@ -49,7 +51,6 @@ def main():
                         "data": df.to_dict(orient="records"),
                         "markdown": table_text
                     })
-                    # Append table text to overall content (for embedding context)
                     combined_text += f"\n\n### Table {i}\n{table_text}\n"
             except Exception as e:
                 print(f"⚠️ Table extraction failed for {pdf_path.name}: {e}")
@@ -63,7 +64,8 @@ def main():
                     "metadata": {
                         "filename": pdf_path.name,
                         "document_name": pdf_path.stem,
-                        "chunk_id": i + 1
+                        "chunk_id": i + 1,
+                        "company": company_name   # ✅ added company metadata
                     }
                 })
 
@@ -79,7 +81,6 @@ def main():
     print(f"\n✅ Done! Extracted {len(all_chunks)} total chunks from {len(pdf_files)} PDFs.")
     print(f"📄 Output saved at: {output_dir / 'combined_chunks.json'}")
     print(f"📊 Table data saved at: {output_dir / 'table_chunks.json'}")
-
 
 if __name__ == "__main__":
     main()
