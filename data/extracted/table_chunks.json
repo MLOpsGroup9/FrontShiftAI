@@ -1,6 +1,194 @@
 [
   {
-    "filename": "8.-Employee-Handbook-v4.8.pdf",
+    "filename": "Jacob.pdf",
+    "table_index": 1,
+    "data": [
+      {
+        "0": "Months of Eligible \nService Completed",
+        "1": "PTO Hours Accrued \nPer Week",
+        "2": "Annual Rate of PTO \nAccrual (Hours)",
+        "3": "Maximum PTO \nBalance (Hours)"
+      },
+      {
+        "0": "0",
+        "1": "0",
+        "2": "0",
+        "3": "0"
+      },
+      {
+        "0": "3",
+        "1": "1.54",
+        "2": "80",
+        "3": "80"
+      },
+      {
+        "0": "36",
+        "1": "2.00",
+        "2": "104",
+        "3": "104"
+      },
+      {
+        "0": "120",
+        "1": "2.31",
+        "2": "120",
+        "3": "120"
+      },
+      {
+        "0": "180",
+        "1": "2.62",
+        "2": "136",
+        "3": "136"
+      },
+      {
+        "0": "240",
+        "1": "3.38",
+        "2": "176",
+        "3": "176"
+      },
+      {
+        "0": "300",
+        "1": "4.15",
+        "2": "216",
+        "3": "216"
+      }
+    ],
+    "markdown": "| 0                   | 1                  | 2                   | 3               |\n|:--------------------|:-------------------|:--------------------|:----------------|\n| Months of Eligible  | PTO Hours Accrued  | Annual Rate of PTO  | Maximum PTO     |\n| Service Completed   | Per Week           | Accrual (Hours)     | Balance (Hours) |\n| 0                   | 0                  | 0                   | 0               |\n| 3                   | 1.54               | 80                  | 80              |\n| 36                  | 2.00               | 104                 | 104             |\n| 120                 | 2.31               | 120                 | 120             |\n| 180                 | 2.62               | 136                 | 136             |\n| 240                 | 3.38               | 176                 | 176             |\n| 300                 | 4.15               | 216                 | 216             |"
+  },
+  {
+    "filename": " Alta Peruvian.pdf",
+    "table_index": 1,
+    "data": [
+      {
+        "0": "Years of Service*",
+        "1": ""
+      },
+      {
+        "0": "(1) One",
+        "1": "Five (5) days; maximum 40 hours"
+      },
+      {
+        "0": "(2) Two – (6) Six",
+        "1": "Ten (10) days; maximum 80 hours"
+      },
+      {
+        "0": "(7) Seven",
+        "1": "Fifteen (15) days; maximum 120 hours"
+      }
+    ],
+    "markdown": "| 0                 | 1                                    |\n|:------------------|:-------------------------------------|\n| Years of Service* |                                      |\n| (1) One           | Five (5) days; maximum 40 hours      |\n| (2) Two – (6) Six | Ten (10) days; maximum 80 hours      |\n| (7) Seven         | Fifteen (15) days; maximum 120 hours |"
+  },
+  {
+    "filename": "Lunds_and_Byerlys.pdf",
+    "table_index": 1,
+    "data": [
+      {
+        "0": "Did You Know? \n \n \nIf you haven’t been trained on how to use a piece of equipment, a chemical or how to \ncomplete a task, don’t proceed — ask your manager for assistance.",
+        "1": "",
+        "2": ""
+      },
+      {
+        "0": "",
+        "1": "",
+        "2": ""
+      },
+      {
+        "0": "",
+        "1": "",
+        "2": ""
+      }
+    ],
+    "markdown": "| 0                                                                                     | 1   | 2   |\n|:--------------------------------------------------------------------------------------|:----|:----|\n| Did You Know?                                                                         |     |     |\n|                                                                                       |     |     |\n|                                                                                      |     |     |\n| If you haven’t been trained on how to use a piece of equipment, a chemical or how to  |     |     |\n| complete a task, don’t proceed — ask your manager for assistance.                     |     |     |"
+  },
+  {
+    "filename": "Lunds_and_Byerlys.pdf",
+    "table_index": 2,
+    "data": [
+      {
+        "0": "Did You Know? \n \nYour personal safety and the safety of others is far more important than any amount of \nmoney or property. \n \nDon’t become a statistic. Work safe, play safe, have fun!",
+        "1": ""
+      },
+      {
+        "0": "",
+        "1": ""
+      }
+    ],
+    "markdown": "| 0                                                                                       | 1   |\n|:----------------------------------------------------------------------------------------|:----|\n| Did You Know?                                                                           |     |\n|                                                                                        |     |\n| Your personal safety and the safety of others is far more important than any amount of  |     |\n| money or property.                                                                      |     |\n|                                                                                        |     |\n| Don’t become a statistic. Work safe, play safe, have fun!                               |     |"
+  },
+  {
+    "filename": "Lunds_and_Byerlys.pdf",
+    "table_index": 3,
+    "data": [
+      {
+        "0": "Did You Know? \n \nSlip-and-fall accidents can be prevented by following good housekeeping practices and being \nobservant. \n \nWe’re all responsible for safety. Work safe, play safe, have fun!",
+        "1": "",
+        "2": ""
+      },
+      {
+        "0": "",
+        "1": "",
+        "2": ""
+      },
+      {
+        "0": "",
+        "1": "",
+        "2": ""
+      }
+    ],
+    "markdown": "| 0                                                                                            | 1   | 2   |\n|:---------------------------------------------------------------------------------------------|:----|:----|\n| Did You Know?                                                                                |     |     |\n|                                                                                             |     |     |\n| Slip-and-fall accidents can be prevented by following good housekeeping practices and being  |     |     |\n| observant.                                                                                   |     |     |\n|                                                                                             |     |     |\n| We’re all responsible for safety. Work safe, play safe, have fun!                            |     |     |"
+  },
+  {
+    "filename": "Lunds_and_Byerlys.pdf",
+    "table_index": 4,
+    "data": [
+      {
+        "0": "Did You Know? \n \nNever remove a tag or lock from equipment unless you’re authorized to do so.  \n \nAlways check to see that equipment and tools are working properly. \n \nApply lockout/tagout before cleaning or servicing powered equipment. \n \nNever put hands, fingers or other body parts into running equipment.",
+        "1": ""
+      },
+      {
+        "0": "",
+        "1": ""
+      },
+      {
+        "0": "",
+        "1": ""
+      }
+    ],
+    "markdown": "| 0                                                                              | 1   |\n|:-------------------------------------------------------------------------------|:----|\n| Did You Know?                                                                  |     |\n|                                                                               |     |\n| Never remove a tag or lock from equipment unless you’re authorized to do so.   |     |\n|                                                                               |     |\n| Always check to see that equipment and tools are working properly.             |     |\n|                                                                               |     |\n| Apply lockout/tagout before cleaning or servicing powered equipment.           |     |\n|                                                                               |     |\n| Never put hands, fingers or other body parts into running equipment.           |     |"
+  },
+  {
+    "filename": "Lunds_and_Byerlys.pdf",
+    "table_index": 5,
+    "data": [
+      {
+        "0": "Did You Know? \n \nIt’s everyone’s responsibility — from the president to the deli clerk to the cleaning staff — to \nmake sure the food we sell is safe and wholesome for our customers.",
+        "1": ""
+      },
+      {
+        "0": "",
+        "1": ""
+      }
+    ],
+    "markdown": "| 0                                                                                                 | 1   |\n|:--------------------------------------------------------------------------------------------------|:----|\n| Did You Know?                                                                                     |     |\n|                                                                                                  |     |\n| It’s everyone’s responsibility — from the president to the deli clerk to the cleaning staff — to  |     |\n| make sure the food we sell is safe and wholesome for our customers.                               |     |"
+  },
+  {
+    "filename": "Lunds_and_Byerlys.pdf",
+    "table_index": 6,
+    "data": [
+      {
+        "0": "Did You Know? \n \nThe most common injury is a back injury due to improper lifting. Take care to follow safe \nlifting techniques.",
+        "1": "",
+        "2": ""
+      },
+      {
+        "0": "",
+        "1": "",
+        "2": ""
+      }
+    ],
+    "markdown": "| 0                                                                                          | 1   | 2   |\n|:-------------------------------------------------------------------------------------------|:----|:----|\n| Did You Know?                                                                              |     |     |\n|                                                                                           |     |     |\n| The most common injury is a back injury due to improper lifting. Take care to follow safe  |     |     |\n| lifting techniques.                                                                        |     |     |"
+  },
+  {
+    "filename": "The_Clean_Space.pdf",
     "table_index": 1,
     "data": [
       {
@@ -10,7 +198,7 @@
     "markdown": "| 0   |\n|:----|\n|     |"
   },
   {
-    "filename": "8.-Employee-Handbook-v4.8.pdf",
+    "filename": "The_Clean_Space.pdf",
     "table_index": 2,
     "data": [
       {
@@ -53,7 +241,7 @@
     "markdown": "| 0   | 1                                                                                                                                     | 2                                                  | 3                                        |\n|:----|:--------------------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------|:-----------------------------------------|\n|     |                                                                                                                                       |                                                    | ospital?          Clinic?        Doctor? |\n|     | P                                                                                                                                     |                                                    |                                          |\n|     |   E                                                                                                                                   |                                                    |                                          |\n|     |   J                                                                                                                                   |                                                    |                                          |\n|     |   D                                                                                                                                   |                                                    |                                          |\n|     |     F                                                                                                                                 |                                                    |                                          |\n|     |   N                                                                                                                                   |                                                    |                                          |\n|     | ART A.                      Employee to complete sections A, B, and C                                                                 |                                                    |                                          |\n|     |                                                                                                                                       |                                                    |                                          |\n|     | mployee Name:                                                                                                                         |                                                    |                                          |\n|     | ob Title:                                                                                                               Payroll No:   |                                                    |                                          |\n|     |                                                                                                                                       |                                                    |                                          |\n|     |                                                                                                                                       |                                                    |                                          |\n|     |                                                                                                                                       |                                                    |                                          |\n|     | ate absence began:                                                 Date fit for work:                                                 |                                                    |                                          |\n|     |                                                                                                                                       |                                                    |                                          |\n|     |                                                                                                                                       |                                                    |                                          |\n|     | Total Number of days absent from work:                                                                                                |                                                    |                                          |\n|     |                                                                                                                                       |                                                    |                                          |\n|     |                                                                                                                                       |                                                    |                                          |\n|     | irst notification to:                                                                                                                 |                                                    |                                          |\n|     | (who you contacted regarding your absence)                                                                                            |                                                    |                                          |\n|     | otification date:                                                                                                                     |                                                    |                                          |\n|     | P                                                                                                                                     | H                                                  |                                          |\n|     |                                                                                                                                       |     I                                              |                                          |\n|     |                                                                                                                                       |   D                                                |                                          |\n|     | ART B.                                                                                                                                | PART C.                                            |                                          |\n|     | Reason for your absence:                                                                                                              | Did you attend (please put an x in box):           |                                          |\n|     |                                                                                                                                       | f  you  are  still  away  from  work  due  to      |                                          |\n|     |                                                                                                                                       | illness  when  are  you  likely  to  be  fit  for  |                                          |\n|     | Please describe symptoms:                                                                                                             | work?                                              |                                          |\n|     |                                                                                                                                       |                                                    |                                          |\n|     |                                                                                                                                       |                                                    |                                          |\n|     |                                                                                                                                       | ate:                                               |                                          |\n|     | PART D.  Employee information. I understand that if I provide inaccurate or false information about my absence it                     |                                                    |                                          |\n|     | may, depending on the circumstances, be treated as gross misconduct and result in my summary dismissal from the                       |                                                    |                                          |\n|     | Company. Please give the completed form to your Line Manager.                                                                         |                                                    |                                          |\n|     | PART E. Line Managers Comments                                                                                                        |                                                    |                                          |\n|     | Was a Return to Work Interview conducted (Yes/No):                                                                                    |                                                    |                                          |\n|     |                                                                                                                                       |                                                    |                                          |\n|     | Total number of days employee was absent from work:                                                                                   |                                                    |                                          |\n|     |                                                                                                                                       |                                                    |                                          |\n|     | Please complete details of any problems discussed, or advice given to the employee (if applicable):                                   |                                                    |                                          |\n|     |                                                                                                                                       |                                                    |                                          |\n|     |                                                                                                                                       |                                                    |                                          |\n|     |                                                                                                                                       |                                                    |                                          |\n|     | Line Manager Name:                                                                                                                    |                                                    |                                          |\n|     |                                                                                                                                       |                                                    |                                          |\n|     | Date:                                                                                                                                 |                                                    |                                          |\n|     |                                                                                                                                       |                                                    |                                          |\n|     | PLEASE EMAILTHE COMPLETED FORM TO THE HR DEPARTMENT                                                                                   |                                                    |                                          |"
   },
   {
-    "filename": "8.-Employee-Handbook-v4.8.pdf",
+    "filename": "The_Clean_Space.pdf",
     "table_index": 3,
     "data": [
       {
@@ -170,5 +358,52 @@
       }
     ],
     "markdown": "| 0     | 1         | 2          | 3                                                   | 4        |\n|:------|:----------|:-----------|:----------------------------------------------------|:---------|\n| Issue | Page(s)   | Issue Date | Additions/Alterations                               | Initials |\n| 1.0   | 68        | 17-5-2015  | Employee Handbook First Authorised Issue            | AB       |\n| 2.0   | 8         | 31-1-2018  | 1.1 updated to include work location                | AB       |\n| 2.0   | 10        | 31-1-2018  | 1.5 updated to include deduction for not working    | AB       |\n|       |           |            | notice                                              |          |\n| 2.0   | 32        | 31-1-2018  | Included a statement on corporate responsibility    | AB       |\n| 2.0   | Various   | 31-1-2018  | Minor changes to document wording                   | AB       |\n| 3.0   | 35 to 36  | 22-5-2018  | Deleted Data Protection and included Privacy        | AB       |\n|       |           |            | notice/GDPR                                         |          |\n| 4.0   | All pages | 26-7-2019  | Full review with HR Consultant                      | RC       |\n| 4.1   | All pages | 5-8-2019   | Formatting and amendments following review.         | SF       |\n| 4.2   | 21        | 02-12-2020 | Added Parental Bereavement Leave                    | SF       |\n| 4.3   | Various   | 22-01-2021 | Update to mission, values, address and addition of  | SH       |\n|       |           |            | PPE section.                                        |          |\n| 4.4   | 23, 24    | 02-02-2022 | Updated flexible working                            | SF       |\n| 4.5   | 15        | 06-01-2023 | Updated adoption policy                             | SF       |\n| 4.6   | 4         | 20-10-2023 | Updated Head Office address                         | SF       |\n| 4.7   | 22-25     | 07-05-2024 | Addition of section 2.9 Carer’s Leave, amendments   | SF       |\n|       |           |            | to sections 2.5, 2.10                               |          |\n| 4.8   | 26        | 05-09/2024 | Updated 2.12.1 to clarify 3 days per annual leave   | SF       |\n|       |           |            | year                                                |          |"
+  },
+  {
+    "filename": "Crouse.pdf",
+    "table_index": 1,
+    "data": [
+      {
+        "0": ""
+      },
+      {
+        "0": "Employee Handbook \n \n \n \n \nRevised October 2020"
+      },
+      {
+        "0": ""
+      }
+    ],
+    "markdown": "| 0                    |\n|:---------------------|\n| Employee Handbook    |\n|                      |\n|                      |\n|                      |\n|                      |\n| Revised October 2020 |"
+  },
+  {
+    "filename": "Crouse.pdf",
+    "table_index": 2,
+    "data": [
+      {
+        "0": "",
+        "1": "",
+        "2": "",
+        "3": "",
+        "4": "",
+        "5": ""
+      },
+      {
+        "0": "",
+        "1": "",
+        "2": "",
+        "3": "",
+        "4": "",
+        "5": ""
+      },
+      {
+        "0": "",
+        "1": "",
+        "2": "",
+        "3": "",
+        "4": "",
+        "5": ""
+      }
+    ],
+    "markdown": "| 0   | 1   | 2   | 3   | 4   | 5   |\n|:----|:----|:----|:----|:----|:----|\n|     |     |     |     |     |     |\n|     |     |     |     |     |     |\n|     |     |     |     |     |     |"
   }
 ]
