@@ -2,82 +2,42 @@ import json
 from pathlib import Path
 import chromadb
 from chromadb.utils import embedding_functions
-from tqdm import tqdm
 
-# ------------------------------------------
-# PATHS
-# ------------------------------------------
-DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "extracted"
-CHUNKS_FILE = DATA_DIR / "combined_chunks.json"
-CHROMA_DIR = Path(__file__).resolve().parents[1] / "data" / "vector_db"
+def main():
+    # Paths
+    data_dir = Path(__file__).resolve().parents[1] / "data"
+    extracted_path = data_dir / "extracted" / "combined_chunks.json"
+    vector_db_path = data_dir / "vector_db"
+    vector_db_path.mkdir(parents=True, exist_ok=True)
 
-# ------------------------------------------
-# LOAD CHUNKS
-# ------------------------------------------
-with open(CHUNKS_FILE, "r", encoding="utf-8") as f:
-    chunks = json.load(f)
+    # Load chunks
+    with open(extracted_path, "r", encoding="utf-8") as f:
+        chunks = json.load(f)
 
-print(f"✅ Loaded {len(chunks)} chunks from {CHUNKS_FILE.name}")
+    print(f"✅ Loaded {len(chunks)} chunks for embedding")
 
-# ------------------------------------------
-# INITIALIZE CHROMADB CLIENT (PERSISTENT)
-# ------------------------------------------
-client = chromadb.PersistentClient(path=str(CHROMA_DIR))
-collection_name = "frontshift_policies"
+    # Initialize ChromaDB
+    client = chromadb.PersistentClient(path=str(vector_db_path))
+    embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
 
-# Recreate or get existing collection
-try:
-    client.delete_collection(collection_name)
-    print(f"🗑️  Existing collection '{collection_name}' deleted.")
-except Exception:
-    pass
+    collection_name = "frontshift_policies"
+    if collection_name in [c.name for c in client.list_collections()]:
+        print(f"🧹 Removing existing collection '{collection_name}' for a clean rebuild...")
+        client.delete_collection(collection_name)
 
-embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
-    model_name="all-MiniLM-L6-v2"
-)
+    collection = client.create_collection(name=collection_name, embedding_function=embedding_fn)
 
-collection = client.create_collection(
-    name=collection_name,
-    embedding_function=embedding_fn
-)
-print(f"✅ Created collection '{collection_name}' in {CHROMA_DIR}")
+    # Prepare data for insertion
+    documents = [chunk["text"] for chunk in chunks]
+    metadatas = [chunk["metadata"] for chunk in chunks]
+    ids = [f"{chunk['metadata']['filename']}_{chunk['metadata']['chunk_id']}" for chunk in chunks]
 
-# ------------------------------------------
-# INSERT CHUNKS INTO CHROMADB
-# ------------------------------------------
-documents = []
-metadatas = []
-ids = []
+    # Add to Chroma
+    print("⚙️ Adding chunks to ChromaDB...")
+    collection.add(documents=documents, metadatas=metadatas, ids=ids)
 
-for i, chunk in enumerate(tqdm(chunks, desc="Embedding and storing chunks")):
-    text = chunk.get("text", "").strip()
-    if not text:
-        continue
+    print(f"✅ Stored {len(documents)} chunks into ChromaDB collection '{collection_name}'")
+    print(f"📦 Vector DB path: {vector_db_path}")
 
-    metadata = chunk.get("metadata", {})
-    documents.append(text)
-    metadatas.append(metadata)
-    ids.append(f"chunk_{i}")
-
-# Batch insert to speed up
-collection.add(
-    ids=ids,
-    documents=documents,
-    metadatas=metadatas
-)
-
-print(f"✅ Stored {len(documents)} chunks in ChromaDB collection '{collection_name}'")
-print(f"📂 Persistent location: {CHROMA_DIR}")
-
-# ------------------------------------------
-# TEST RETRIEVAL
-# ------------------------------------------
-query = "What is the leave policy?"
-results = collection.query(query_texts=[query], n_results=3)
-
-print("\n🔍 Example query results:")
-for doc, meta, dist in zip(
-    results["documents"][0], results["metadatas"][0], results["distances"][0]
-):
-    print(f"- {meta.get('filename', 'unknown')} (score={dist:.4f})")
-    print(doc[:200], "...\n")
+if __name__ == "__main__":
+    main()
