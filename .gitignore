@@ -11,9 +11,6 @@ env/
 .conda/
 .frontshiftai/
 
-# Jupyter
-.ipynb_checkpoints/
-
 # OS
 .DS_Store
 Thumbs.db

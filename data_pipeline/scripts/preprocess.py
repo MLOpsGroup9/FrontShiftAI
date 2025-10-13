@@ -3,7 +3,7 @@ import pandas as pd
 from pathlib import Path
 
 
-def load_extracted_data():
+def load_extracted_data(extracted_dir="data_pipeline/data/extracted"):
     """Load JSON outputs from the extraction step (combined + tables)."""
     # Resolve project root dynamically
     # __file__ = data_pipeline/scripts/preprocess.py
@@ -57,16 +57,20 @@ def convert_to_dataframe(cleaned_chunks):
     return df
 
 
-def save_cleaned(df):
-    """Save cleaned and structured data to CSV inside data/cleaned/."""
-    project_root = Path(__file__).resolve().parents[1]
-    out_dir = project_root / "data" / "cleaned"
+def save_cleaned(df, out_dir=None):
+    if out_dir is None:
+        project_root = Path(__file__).resolve().parents[1]
+        out_dir = project_root / "data" / "cleaned"
+    else:
+        out_dir = Path(out_dir)
+
     out_dir.mkdir(parents=True, exist_ok=True)
     output_path = out_dir / "cleaned_chunks.csv"
 
     df.to_csv(output_path, index=False, encoding="utf-8")
     print(f"✅ Cleaned data saved to {output_path}")
     return output_path
+
 
 
 def main():
