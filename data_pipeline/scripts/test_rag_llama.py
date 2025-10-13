@@ -3,10 +3,11 @@ import chromadb
 from chromadb.utils import embedding_functions
 from llama_cpp import Llama
 
+project_root = Path(__file__).resolve().parents[2]  # /FrontShiftAI
+data_dir = project_root / "data_pipeline" / "data"  # /FrontShiftAI/data_pipeline/data
+CHROMA_DIR = data_dir / "vector_db"                 # /FrontShiftAI/data_pipeline/data/vector_db
+MODEL_PATH = project_root / "models" / "Meta-Llama-3-8B-Instruct.Q4_K_M.gguf"
 
-BASE_DIR = Path(__file__).resolve().parents[1]
-CHROMA_DIR = BASE_DIR / "data" / "vector_db"
-MODEL_PATH = BASE_DIR / "models" / "Meta-Llama-3-8B-Instruct.Q4_K_M.gguf"
 
 
 print("🦙 Loading LLaMA 3 model...")
