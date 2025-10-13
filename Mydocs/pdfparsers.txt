@@ -1,0 +1,12 @@
+LlamaParse
+Unstructured
+pymupdf -> fitz
+PaddleOR
+LLMsherpa
+LLMWhisperer
+RAGflow
+camelot
+Docling
+Surya/Marker 
+VertexAI
+langchain - pdfloader with camelot
