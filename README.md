@@ -30,8 +30,8 @@ These challenges lead to:
 ### 2.1 Dataset Card
 | Attribute      | Description |
 |----------------|-------------|
-| **Name**       | Deskless Worker Handbook Q&A Dataset |
-| **Size**       | 200–20,000 Q&A pairs |
+| **Name**       | Deskless Worker Handbook RAG document dataset”|
+| **Size**       | 20 public HR handbooks (PDFs) |
 | **Sources**    | Publicly available employee handbooks (healthcare, retail, logistics, hospitality, finance, construction, etc.) |
 | **Formats**    | PDF (retrieval embedding) |
 | **Data Types** | Natural language questions, concise answers, metadata (source, industry, section) |
@@ -55,17 +55,10 @@ These challenges lead to:
 ## 3. Data Planning and Splits
 
 ### 3.1 Preprocessing Steps
-- Extract text from PDFs (PyMuPDF, PDFMiner)  
-- Clean headers/footers, remove duplicates  
-- Chunk into policy sections  
-- Generate Q&A pairs (manual + synthetic)  
-- Normalize into JSONL schema  
-
-### 3.2 Splitting Strategy
-- **Train (70%)** → Q&A pairs for fine-tuning  
-- **Validation (15%)** → Hyperparameter tuning  
-- **Test (15%)** → Final evaluation  
-- Stratified by industry, deduplicated  
+- Extract text and tables from HR and policy PDFs using LangChain’s PyPDFLoader and Camelot 
+- Clean and normalize text (remove headers, footers, duplicates, and formatting artifacts)  
+- Split text into context-preserving chunks using RecursiveCharacterTextSplitter for efficient retrieval and embedding.
+- Store structured outputs (combined_chunks.json, table_chunks.json, and cleaned_chunks.csv) for downstream validation and vectorization 
 
 ---
 
@@ -101,16 +94,13 @@ Traditional HR flow → **HR overload, fragmented systems, limited access**.
 ---
 
 ## 7. Metrics, Objectives, and Business Goals
-- **Objectives:** Build RAG system, enable agentic actions, provide voice interface, ensure compliance.  
+- **Objectives:** Implement RAG pipeline for grounded policy retrieval, enable document-based Q&A, ensure high recall and low hallucination.  
 - **Business Alignment:** HR efficiency, training compliance, engagement, reduced risk, scalable support.  
 
 ---
 
 ## 8. Key Metrics
-- **RAG** → Recall@5 > 90%, Factuality > 85%, F1 > 80%, Hallucination < 5%  
-- **Agentic** → Tool accuracy > 90%, Task success > 85%, Fallback > 95%  
-- **Voice** → WER < 10%, Latency < 3s, Voice success > 80%  
-
+- **RAG** → Recall@5 > 90%, Factuality > 85%, F1 > 80%, Hallucination < 5% 
 ---
 
 ## 9. Failure Analysis
@@ -149,11 +139,11 @@ Traditional HR flow → **HR overload, fragmented systems, limited access**.
 ---
 
 ## 13. Timeline (10 weeks)
-1. **Dataset & Retrieval MVP (Weeks 1–2)**  
-2. **Agentic Layer MVP (Weeks 3–4)**  
-3. **Voice Prototype (Weeks 5–6)**  
-4. **Monitoring & Hardening (Weeks 7–8)**  
-5. **Pilot & Acceptance (Weeks 9–10)**  
+- Document ingestion & extraction (Weeks 1–2)
+- Data cleaning and validation (Weeks 3–4)
+- Vector database & retrieval testing (Weeks 5–6)
+- Evaluation & optimization (Weeks 7–8)
+- ßDocumentation & presentation (Weeks 9–10)
 
 ---
 
