@@ -22,3 +22,11 @@ stages:
       - data_pipeline/scripts/store_in_chromadb.py
     outs:
       - data_pipeline/data/vector_db
+
+  validate:
+    cmd: PYTHONPATH=. python data_pipeline/scripts/validate_data.py
+    deps:
+      - data_pipeline/data/cleaned/cleaned_chunks.csv
+    outs:
+      - data_pipeline/data/validation_report.json
+
