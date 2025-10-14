@@ -33,7 +33,7 @@ These challenges lead to:
 | **Name**       | Deskless Worker Handbook Q&A Dataset |
 | **Size**       | 200–20,000 Q&A pairs |
 | **Sources**    | Publicly available employee handbooks (healthcare, retail, logistics, hospitality, finance, construction, etc.) |
-| **Formats**    | CSV (exploration), JSONL (fine-tuning), PDF/TXT (retrieval embedding) |
+| **Formats**    | PDF (retrieval embedding) |
 | **Data Types** | Natural language questions, concise answers, metadata (source, industry, section) |
 
 ### 2.2 Example Sources
@@ -165,18 +165,59 @@ Core principles (RAG core, agentic orchestration, GCP deployment, voice accessib
 
 ## 15. Repository Structure
 ```bash
-├── data/ # Raw and processed handbook data
-├── notebooks/ # Exploration & preprocessing notebooks
-├── src/ # Core RAG + agentic pipeline
-│ ├── rag/ # Retrieval-Augmented Generation components
-│ ├── agents/ # Agentic orchestration layer
-│ ├── voice/ # STT/TTS integrations
-│ └── api/ # FastAPI service
-├── infra/ # Deployment configs (Docker, GCP, Kubernetes, Vertex AI)
-├── docs/ # Diagrams, reports, scoping docs
-│ └── Project_Scoping.md
-├── tests/ # Unit and integration tests
-└── README.md # High-level project overview
+FrontShiftAI/
+├── .dvc/
+├── .pytest_cache/
+│
+├── data_pipeline/
+│ ├── pycache/
+│ ├── dags/
+│ ├── data/
+│ │ ├── raw/
+│ │ ├── extracted/
+│ │ ├── cleaned/
+│ │ └── vector_db/
+│ ├── logs/
+│ ├── scripts/
+│ │ ├── init.py
+│ │ ├── data_extraction.py
+│ │ ├── preprocess.py
+│ │ ├── store_in_chromadb.py
+│ │ ├── validate_data.py
+│ │ └── test_rag_llama.py
+│ ├── tests/
+│ │ ├── init.py
+│ │ ├── test_data_extraction.py
+│ │ ├── test_preprocess.py
+│ │ └── test_pipeline_integration.py
+│ ├── utils/
+│ │ └── logger.py
+│ ├── init.py
+│ └── README.md
+│
+├── docs/
+├── logs/
+│
+├── models/
+│ ├── .cache/
+│ ├── Meta-Llama-3-8B-Instruct.Q4_K_M.gguf
+│ └── README.md
+│
+├── src/
+│ ├── agents/
+│ ├── api/
+│ ├── rag/
+│ ├── utils/
+│ └── voice/
+│
+├── .dvcignore
+├── .gitignore
+├── dvc.lock
+├── dvc.yaml
+├── environment.yml
+├── License.md
+├── README.md
+└── requirements.txt
 ```
 
 ---
