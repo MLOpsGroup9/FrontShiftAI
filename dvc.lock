@@ -1,0 +1,56 @@
+schema: '2.0'
+stages:
+  extract:
+    cmd: python data_pipeline/scripts/data_extraction.py
+    deps:
+    - path: data_pipeline/data/raw
+      hash: md5
+      md5: 4256c18c4d8d09bc7515ac91537d7ca3.dir
+      size: 4819879
+      nfiles: 5
+    - path: data_pipeline/scripts/data_extraction.py
+      hash: md5
+      md5: daf9352f2a27a71b0d76acbb31a9c8ae
+      size: 3168
+    outs:
+    - path: data_pipeline/data/extracted
+      hash: md5
+      md5: f5d050f112f72bb1b17709c528279b26.dir
+      size: 791308
+      nfiles: 2
+  preprocess:
+    cmd: python data_pipeline/scripts/preprocess.py
+    deps:
+    - path: data_pipeline/data/extracted
+      hash: md5
+      md5: f5d050f112f72bb1b17709c528279b26.dir
+      size: 791308
+      nfiles: 2
+    - path: data_pipeline/scripts/preprocess.py
+      hash: md5
+      md5: c35c09048f7175731e43289d4fb704d3
+      size: 2813
+    outs:
+    - path: data_pipeline/data/cleaned
+      hash: md5
+      md5: 5d95df2c84a8443b91371daca27c8830.dir
+      size: 626511
+      nfiles: 1
+  embed:
+    cmd: python data_pipeline/scripts/store_in_chromadb.py
+    deps:
+    - path: data_pipeline/data/cleaned
+      hash: md5
+      md5: 5d95df2c84a8443b91371daca27c8830.dir
+      size: 626511
+      nfiles: 1
+    - path: data_pipeline/scripts/store_in_chromadb.py
+      hash: md5
+      md5: c830d0bf1646330ebaca11f908b7da9b
+      size: 1954
+    outs:
+    - path: data_pipeline/data/vector_db
+      hash: md5
+      md5: ce7cc69a3259aaedae82af0f08a0e60f.dir
+      size: 8138916
+      nfiles: 5
