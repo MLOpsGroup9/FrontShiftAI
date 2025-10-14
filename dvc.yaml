@@ -1,6 +1,6 @@
 stages:
   extract:
-    cmd: python data_pipeline/scripts/data_extraction.py
+    cmd: PYTHONPATH=. python data_pipeline/scripts/data_extraction.py
     deps:
       - data_pipeline/data/raw
       - data_pipeline/scripts/data_extraction.py
@@ -8,7 +8,7 @@ stages:
       - data_pipeline/data/extracted
 
   preprocess:
-    cmd: python data_pipeline/scripts/preprocess.py
+    cmd: PYTHONPATH=. python data_pipeline/scripts/preprocess.py
     deps:
       - data_pipeline/data/extracted
       - data_pipeline/scripts/preprocess.py
@@ -16,9 +16,17 @@ stages:
       - data_pipeline/data/cleaned
 
   embed:
-    cmd: python data_pipeline/scripts/store_in_chromadb.py
+    cmd: PYTHONPATH=. python data_pipeline/scripts/store_in_chromadb.py
     deps:
       - data_pipeline/data/cleaned
       - data_pipeline/scripts/store_in_chromadb.py
     outs:
       - data_pipeline/data/vector_db
+
+  validate:
+    cmd: PYTHONPATH=. python data_pipeline/scripts/validate_data.py
+    deps:
+      - data_pipeline/data/cleaned/cleaned_chunks.csv
+    outs:
+      - data_pipeline/data/validation_report.json
+
