@@ -1,5 +1,6 @@
 langchain>=0.2.0
 langchain-community>=0.2.0
+langchain-core
 chromadb>=0.5.0
 sentence-transformers>=2.6.0
 llama-cpp-python>=0.2.84
@@ -19,14 +20,11 @@ tabulate
 tqdm
 torch
 
-
 pymupdf
 pymupdf4llm
-
+camelot-py
+camelot-py[cv]
 PyPDF2>=3.0.1
 
-langchain
-langchain-core
-
-camelot-py
+dvc
 
