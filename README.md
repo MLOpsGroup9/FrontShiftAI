@@ -1,9 +1,16 @@
+![Python](https://img.shields.io/badge/Python-3.10+-blue)
+![DVC](https://img.shields.io/badge/Data%20Version%20Control-DVC-orange)
+![LangChain](https://img.shields.io/badge/LangChain-Enabled-success)
+![ChromaDB](https://img.shields.io/badge/Vector%20DB-ChromaDB-green)
+![Status](https://img.shields.io/badge/Status-In%20Development-yellow)
+
+
 # Project Scoping - FrontShiftAI: AI Copilot for Deskless Workers
 
 **Team Members**  
-- Harshitkumar Brahmbhatt 
 - Krishna Venkatesh  
 - Raghav Gali  
+- Harshitkumar Brahmbhatt 
 - Rishi Raj Kuleri  
 - Sujitha Godishala  
 - Swathi Baba Eswarappa  
@@ -59,6 +66,9 @@ These challenges lead to:
 - Clean and normalize text (remove headers, footers, duplicates, and formatting artifacts)  
 - Split text into context-preserving chunks using RecursiveCharacterTextSplitter for efficient retrieval and embedding.
 - Store structured outputs (combined_chunks.json, table_chunks.json, and cleaned_chunks.csv) for downstream validation and vectorization 
+- Validate cleaned data using schema-based checks (Pydantic), language detection (langdetect), and deduplication.
+- Store fully validated chunks in `data/validated/` for downstream embedding.
+
 
 ---
 
@@ -78,7 +88,10 @@ These challenges lead to:
 - **Personalization & memory** for context-aware Q&A  
 - **System integration** with HRIS, LMS, calendars  
 - **Safe fallback** when confidence is low  
-- **Voice accessibility** for frontline workers  
+- **Voice accessibility** for frontline workers
+- **Data validation pipeline** ensures only schema-compliant, English, deduplicated chunks reach embeddings.  
+- **Automated run orchestrator** (`run_pipeline.py`) executes all stages sequentially and logs results for reproducibility.
+
 
 ---
 
@@ -119,14 +132,20 @@ Traditional HR flow → **HR overload, fragmented systems, limited access**.
 - **Agents**: LangChain/LangGraph on GKE  
 - **Voice**: Google Cloud STT/TTS  
 - **Data**: GCS (docs), Cloud SQL (metadata), JSONL/CSV  
-- **Monitoring**: Cloud Monitoring, Prometheus/Grafana, Vertex AI drift detection  
+- **Monitoring**: Cloud Monitoring, Prometheus/Grafana, Vertex AI drift detection
+- **Local pipeline automation**: `run_pipeline.py` with timestamped logs simulates Airflow DAGs.
+- **Data versioning**: DVC integrated with `.dvc` tracking for `raw`, `extracted`, `cleaned`, `validated`, and `vector_db`.
+
 
 ---
 
 ## 11. Monitoring Plan
 - Track retrieval recall, hallucination, tool accuracy, fallback rate, WER, latency  
 - GCP Cloud Monitoring alerts + Grafana dashboards  
-- Future: drift detection, detailed audit logs  
+- Future: drift detection, detailed audit logs
+- Track data validation metrics (invalid chunk ratio, duplicate rate, missing schema fields).
+- Log pipeline runs with timestamps and stage statuses in `data_pipeline/logs/`.
+
 
 ---
 
@@ -166,6 +185,7 @@ FrontShiftAI/
 │ │ ├── raw/
 │ │ ├── extracted/
 │ │ ├── cleaned/
+│ │ ├── validated/
 │ │ └── vector_db/
 │ ├── logs/
 │ ├── scripts/
@@ -174,6 +194,7 @@ FrontShiftAI/
 │ │ ├── preprocess.py
 │ │ ├── store_in_chromadb.py
 │ │ ├── validate_data.py
+│ │ ├── run_pipeline.py
 │ │ └── test_rag_llama.py
 │ ├── tests/
 │ │ ├── init.py
@@ -211,6 +232,22 @@ FrontShiftAI/
 ```
 
 ---
+
+
+
+
+## 16. End-to-End Pipeline Summary
+
+| Stage | Script | Input | Output | Tools |
+|--------|--------|--------|--------|--------|
+| Extraction | `data_extraction.py` | PDFs (`data/raw/`) | `combined_chunks.json`, `table_chunks.json` | LangChain, Camelot |
+| Preprocessing | `preprocess.py` | Extracted JSON | `cleaned_chunks.csv` | Pandas |
+| Validation | `validate_data.py` | Cleaned CSV | Validated JSON + `validation_report.csv` | Pydantic, LangDetect |
+| Embedding | `store_in_chromadb.py` | Validated JSON | ChromaDB Collection | SentenceTransformer |
+| Test RAG | `test_rag_llama.py` | ChromaDB + Model | Interactive Q&A | LLaMA 3, Chroma |
+| Orchestration | `run_pipeline.py` | — | Logs, Full Run | Python subprocess |
+
+
 
 ## 🔗 Repository
 👉 [FrontShiftAI GitHub](https://github.com/MLOpsGroup9/FrontShiftAI)
