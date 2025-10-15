@@ -28,7 +28,7 @@ client = chromadb.PersistentClient(path=str(CHROMA_DIR))
 embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
     model_name="all-MiniLM-L6-v2"
 )
-collection = client.get_collection("frontshift_policies", embedding_function=embedding_fn)
+collection = client.get_collection("frontshift_handbooks", embedding_function=embedding_fn)
 print(f"✅ Loaded ChromaDB collection with {collection.count()} chunks")
 
 

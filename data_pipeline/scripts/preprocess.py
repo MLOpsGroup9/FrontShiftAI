@@ -65,6 +65,7 @@ def convert_to_dataframe(cleaned_chunks):
 
 
 def save_cleaned(df, out_dir=None):
+    """Save cleaned data to CSV for validation stage."""
     project_root = Path(__file__).resolve().parents[1]
     out_dir = project_root / "data" / "cleaned" if out_dir is None else Path(out_dir)
 
@@ -73,14 +74,13 @@ def save_cleaned(df, out_dir=None):
     df.to_csv(output_path, index=False, encoding="utf-8")
     logger.info(f"Cleaned data saved to {output_path}")
 
-    # Anomaly check: empty DataFrame
     if df.empty:
         logger.warning("Cleaned CSV is empty. Check extraction step for issues.")
     return output_path
 
 
 def main():
-    """Main preprocessing pipeline."""
+    """Main preprocessing pipeline (no validation here)."""
     logger.info("Starting preprocessing pipeline...")
 
     try:
