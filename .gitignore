@@ -29,6 +29,7 @@ docker-data/
 
 # Local resources
 MyResources/
+src/api/
 
 # DVC
 data_pipeline/data/raw/
