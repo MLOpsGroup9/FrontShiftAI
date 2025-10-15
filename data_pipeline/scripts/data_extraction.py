@@ -1,9 +1,14 @@
+import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
 import json
 from pathlib import Path
 import camelot
-from langchain.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from data_pipeline.utils.logger import get_logger
+
+
 
 logger = get_logger(__name__)
 
