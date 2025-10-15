@@ -29,7 +29,7 @@ stages:
       - data_pipeline/scripts/validate_data.py
       - data_pipeline/data/cleaned
     outs:
-      - data_pipeline/data/validated_policies
+      - data_pipeline/data/validated
       - data_pipeline/logs/validation_report.csv
 
 
