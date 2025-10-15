@@ -23,6 +23,7 @@ FrontShiftAI/
 │   │   ├── raw/                  # Source PDF documents
 │   │   ├── extracted/            # Extracted text and tables
 │   │   ├── cleaned/              # Normalized text chunks
+│   │   ├── validated/ 
 │   │   └── vector_db/            # ChromaDB persistent storage
 │   ├── logs/                     # Pipeline log files
 │   ├── scripts/                  # Modular pipeline scripts
@@ -30,6 +31,7 @@ FrontShiftAI/
 │   │   ├── preprocess.py
 │   │   ├── validate_data.py
 │   │   ├── store_in_chromadb.py
+        ├── run_pipeline.py
 │   │   └── test_rag_llama.py
 │   ├── tests/                    # Unit and integration tests
 │   │   ├── test_data_extraction.py
@@ -83,9 +85,22 @@ If new PDFs are added to `data/raw/`, DVC automatically detects changes and re-r
 - Outputs `cleaned_chunks.csv` to `data/cleaned/`.
 
 ### c. Data Validation
-- Implements schema and integrity checks using Great Expectations.
-- Ensures required columns (`filename`, `text`, `chunk_id`) are present and correctly typed.
-- Validates data consistency before embedding.
+- Validates cleaned chunks against a defined schema (`PolicyChunk`) using **Pydantic**.
+- Checks for:
+  - Non-empty text fields
+  - Minimum word count (default: 30 words)
+  - English language content (via `langdetect`)
+  - JSON schema consistency across all records
+- Automatically cleans minor formatting artifacts (bullets, line breaks).
+- Generates a validation summary report at `logs/validation_report.csv`.
+- Outputs fully validated JSON files to `data/validated/`.
+- Deduplicates valid chunks before embedding.
+
+This ensures that only clean, language-verified, schema-compliant text is passed to the embedding and retrieval stages.
+
+✅ 2. Add a new section — “Pipeline Runner (Automation)”
+
+Append after the “Reproducibility” section, since it ties into automation.
 
 ### d. Vector Storage
 - Embeds cleaned text chunks using SentenceTransformer embeddings.
@@ -147,6 +162,36 @@ All logs are stored in `logs/pipeline.log` for debugging and audit purposes.
 ## 9. License
 
 This project is released under the MIT License. See `License.md` for details.
+
+
+## 10. Automated Pipeline Runner
+
+For local automation without Airflow, the pipeline includes a standalone orchestrator script:
+
+
+### Functionality:
+- Sequentially executes all stages:
+  1. `data_extraction.py`
+  2. `preprocess.py`
+  3. `validate_data.py`
+  4. `store_in_chromadb.py`
+- Stops immediately if any stage fails.
+- Logs all console output to a timestamped file under `logs/`, e.g.:
+- Each stage can be run independently for debugging, while `run_pipeline.py` serves as a lightweight alternative to Airflow DAG orchestration.
+
+This script provides full reproducibility for local experiments without needing a cloud scheduler or CI/CD triggers.
+
+
+## 11. Known Issues and Troubleshooting
+
+**1. `ModuleNotFoundError: No module named 'data_pipeline'`**
+- Add this snippet to the top of each script:
+  ```python
+  import sys, os
+  sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
+from langchain.document_loaders import PyPDFLoader >> from langchain_community.document_loaders import PyPDFLoader
+
 
 
 
