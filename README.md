@@ -1,7 +1,7 @@
 # Project Scoping - FrontShiftAI: AI Copilot for Deskless Workers
 
 **Team Members**  
-- Harshitkumar Brahmbhatt  
+- Harshitkumar Brahmbhatt 
 - Krishna Venkatesh  
 - Raghav Gali  
 - Rishi Raj Kuleri  

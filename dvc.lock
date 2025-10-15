@@ -28,8 +28,8 @@ stages:
       nfiles: 2
     - path: data_pipeline/scripts/preprocess.py
       hash: md5
-      md5: 54c9df03d97058025fb085e78998b1ea
-      size: 3210
+      md5: cc24ea089e87b94173b7c42b1a45f0b3
+      size: 3251
     outs:
     - path: data_pipeline/data/cleaned
       hash: md5
@@ -54,3 +54,25 @@ stages:
       md5: c197186765a442cfb9589b168d2c3cfc.dir
       size: 8143012
       nfiles: 5
+  validate:
+    cmd: PYTHONPATH=. python data_pipeline/scripts/validate_data.py
+    deps:
+    - path: data_pipeline/data/cleaned
+      hash: md5
+      md5: 5d95df2c84a8443b91371daca27c8830.dir
+      size: 626511
+      nfiles: 1
+    - path: data_pipeline/scripts/validate_data.py
+      hash: md5
+      md5: 35ad78cdd961f47e6813f270d3d5d2ac
+      size: 3929
+    outs:
+    - path: data_pipeline/data/validated_policies
+      hash: md5
+      md5: d751713988987e9331980363e24189ce.dir
+      size: 0
+      nfiles: 0
+    - path: data_pipeline/logs/validation_report.csv
+      hash: md5
+      md5: 2ebcddff3acb4c6635f4d8cdb79e4332
+      size: 48

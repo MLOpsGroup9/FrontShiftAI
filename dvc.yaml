@@ -26,7 +26,10 @@ stages:
   validate:
     cmd: PYTHONPATH=. python data_pipeline/scripts/validate_data.py
     deps:
-      - data_pipeline/data/cleaned/cleaned_chunks.csv
+      - data_pipeline/scripts/validate_data.py
+      - data_pipeline/data/cleaned
     outs:
-      - data_pipeline/data/validation_report.json
+      - data_pipeline/data/validated_policies
+      - data_pipeline/logs/validation_report.csv
+
 
