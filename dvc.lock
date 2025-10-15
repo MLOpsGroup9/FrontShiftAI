@@ -46,13 +46,13 @@ stages:
       nfiles: 1
     - path: data_pipeline/scripts/store_in_chromadb.py
       hash: md5
-      md5: 829fa8f8d81c8de8947b348ce8d75fbc
-      size: 2809
+      md5: ec551bc70f9497e724869bf3785b7822
+      size: 3344
     outs:
     - path: data_pipeline/data/vector_db
       hash: md5
-      md5: c197186765a442cfb9589b168d2c3cfc.dir
-      size: 8143012
+      md5: d1039f49a0ff5dc8c269cb8cc6352a8f.dir
+      size: 7844004
       nfiles: 5
   validate:
     cmd: PYTHONPATH=. python data_pipeline/scripts/validate_data.py
@@ -64,15 +64,15 @@ stages:
       nfiles: 1
     - path: data_pipeline/scripts/validate_data.py
       hash: md5
-      md5: 35ad78cdd961f47e6813f270d3d5d2ac
-      size: 3929
+      md5: 23d3fa6bff4294769c88a14890aaba8b
+      size: 3942
     outs:
-    - path: data_pipeline/data/validated_policies
+    - path: data_pipeline/data/validated
       hash: md5
-      md5: d751713988987e9331980363e24189ce.dir
-      size: 0
-      nfiles: 0
+      md5: 50ebab843d35613ac656a45ac546bc04.dir
+      size: 653820
+      nfiles: 5
     - path: data_pipeline/logs/validation_report.csv
       hash: md5
-      md5: 2ebcddff3acb4c6635f4d8cdb79e4332
-      size: 48
+      md5: 7ac1e697876329c877b1d3e3132f2897
+      size: 265
