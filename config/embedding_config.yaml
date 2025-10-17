@@ -1,0 +1,239 @@
+# -----------------------------
+# 0) Runtime & Reproducibility
+# -----------------------------
+runtime:
+  device: auto                   # auto/cuda/cpu
+  seed: 42
+  tqdm_progress: true
+  fault_tolerant_resume: true    # resume on crash
+  save_checkpoints_every_n: 500  # per items embedded
+  tmp_dir: .cache/embed_tmp
+
+# -----------------------------
+# 1) Embedding Models (FREE)
+# -----------------------------
+models:
+  # Default model for RETRIEVAL (fast, 384-D, great recall/latency tradeoff)
+  default:
+    name: sentence-transformers/all-MiniLM-L6-v2
+    dim: 384
+    normalize_embeddings: true
+    max_seq_len: 512
+    batch_size: 96               # tune to GPU/CPU RAM
+    pooling: mean
+    revision: null
+
+  # Optional higher-quality alternative (slower, 768-D)
+  alternative:
+    name: sentence-transformers/all-mpnet-base-v2
+    dim: 768
+    normalize_embeddings: true
+    max_seq_len: 512
+    batch_size: 48
+    pooling: mean
+    revision: null
+
+  # Which model to use now for CHUNKS
+  active_for_chunks: default
+
+# -----------------------------------
+# 2) Collections & What Gets Indexed
+# -----------------------------------
+collections:
+  handbook_chunks:
+    purpose: "RAG retrieval index over validated text/list/table chunks"
+    index: chroma
+    embed_model_ref: default
+    source_dir: data/validated/chunks/        # *.jsonl produced by preprocessing
+    id_field: chunk_id
+    text_field: text                          # field with chunk text
+    metadata_fields_keep:
+      - doc_id
+      - org
+      - industry
+      - doc_type
+      - doc_title
+      - doc_year
+      - section_path
+      - section_title
+      - section_index
+      - content_type
+      - page_number
+      - policy_tags
+      - keywords
+      - prev_chunk_id
+      - next_chunk_id
+      - created_at
+    quality_gate:
+      min_quality_score: 0.55                 # skip low-quality chunks
+      max_tokens: 320                         # safety check, should match preprocessing
+    deduplicate_before_index:
+      enabled: true
+      simhash_field: hash_64
+    hybrid_search:
+      enabled: true
+      bm25_index_dir: data/vector_db/bm25/handbook_chunks  # for keyword + semantic rerank
+
+  # QnA is NOT indexed in Chroma (fine-tuning only) — we keep a section to export to FT datasets
+  handbook_qna_finetune:
+    purpose: "Prepare QnA for supervised fine-tuning only (no vector index)"
+    source_files:
+      - data/qna/qa_cleaned_local_50.jsonl
+      - data/qna/web_hr_qna_v3.jsonl
+    export:
+      out_dir: data/ft_datasets/
+      train_filename: qna_train.jsonl
+      val_filename: qna_val.jsonl
+      split_ratio: 0.9
+      schema:
+        question_field: question
+        answer_field: answer
+        source_field: source
+      # Optionally embed QnA for analysis only (not stored in Chroma)
+      embed_for_analysis:
+        enabled: false
+        model_ref: default
+
+# -----------------------------
+# 3) ChromaDB Configuration
+# -----------------------------
+chromadb:
+  persist_directory: data/vector_db/chroma/
+  collection_name: handbook_chunks
+  distance: cosine                 # cosine recommended for SBERT-style models
+  # HNSW params (Chroma > DuckDB+HNSW)
+  hnsw:
+    space: cosine
+    ef_construction: 200
+    M: 64
+    ef_search: 64
+  reset_on_schema_mismatch: false  # avoid accidental wipe
+
+# -----------------------------
+# 4) Embedding Pipeline Controls
+# -----------------------------
+embedding:
+  batch_size: 96                              # default, overridden by active model
+  show_memory_usage: true
+  fp16: true                                  # if CUDA; ignored on CPU
+  pre_tokenize: true
+  strip_whitespace: true
+  sanitize_control_chars: true
+
+validation:
+  dim_check: true         # ensure vector dim matches model (384/768)
+  null_check: true
+  nan_inf_check: true
+  norm_check: true        # if normalize_embeddings=true, verify unit norm
+  log_sample_every: 200
+
+# -----------------------------
+# 5) Metadata Strategy in Index
+# -----------------------------
+metadata:
+  store_subset_only: true
+  # These are stored in Chroma to enable filtering & re-ranking.
+  fields_for_index:
+    - doc_id
+    - org
+    - industry
+    - doc_type
+    - doc_title
+    - doc_year
+    - section_path
+    - section_title
+    - section_index
+    - content_type
+    - page_number
+    - policy_tags
+    - keywords
+    - prev_chunk_id
+    - next_chunk_id
+    - created_at
+  # Fields kept out of Chroma (remain in source JSONL) to minimize index size:
+  fields_excluded:
+    - char_span
+    - sentence_count
+    - hash_64
+    - effective_date
+    - revision_date
+    - context_preview_prev
+    - context_preview_next
+    - embedding_model
+    - token_count
+    - overlap_with_prev
+    - legal_refs
+
+# -----------------------------
+# 6) Search Defaults (RAG)
+# -----------------------------
+search:
+  # Hybrid search: BM25 pre-filter + semantic ANN + cross-encoder rerank (optional)
+  hybrid:
+    enabled: true
+    bm25_top_k: 50
+    semantic_top_k: 8
+    final_k: 5
+  semantic_only:
+    top_k: 5
+  filters:
+    # Example filter usage at query time
+    # doc_year: ">=2021"
+    # industry: "construction"
+    # policy_tags_any: ["OSHA","FMLA"]
+    allow_empty: true
+
+# -----------------------------
+# 7) Versioning & Audit
+# -----------------------------
+versioning:
+  preprocessing_version: 1.0
+  embedding_version: 1.0
+  run_id_strategy: "uuid4"
+  write_manifest: true
+  manifest_path: data/vector_db/manifests/handbook_chunks_manifest.json
+
+audit:
+  enabled: true
+  log_dir: logs/embeddings/
+  log_fields:
+    - run_id
+    - model_name
+    - items_processed
+    - items_indexed
+    - items_skipped_quality
+    - time_elapsed_sec
+    - throughput_items_per_sec
+
+# -----------------------------
+# 8) Memory & Large Batches
+# -----------------------------
+performance:
+  dataloader_workers: 2
+  pin_memory: true
+  gradient_checkpointing: false
+  # streaming mode for huge corpora — maps file and processes in shards
+  streaming_ingest:
+    enabled: true
+    shard_size: 5000
+    commit_interval: 1000
+
+# -----------------------------
+# 9) Safety & Dedup
+# -----------------------------
+safety:
+  dedup_before_store: true
+  simhash_threshold: 0.92
+  skip_content_types: []          # empty = include all
+  allow_tables: true
+  allow_lists: true
+
+# -----------------------------
+# 10) Defaults you'll call in code
+# -----------------------------
+defaults:
+  active_chunk_model_name: sentence-transformers/all-MiniLM-L6-v2
+  active_chunk_model_dim: 384
+  chroma_persist_dir: data/vector_db/chroma/
+  chroma_collection: handbook_chunks
+

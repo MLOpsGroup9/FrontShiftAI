@@ -1,0 +1,47 @@
+# DVC Pipeline Parameters
+
+# Data directories
+data:
+  raw_dir: data/raw
+  extracted_dir: data/extracted
+  cleaned_dir: data/cleaned
+  validated_dir: data/validated
+  qna_dir: data/qna
+  vector_db_dir: data/vector_db
+  logs_dir: logs
+
+# Chunking parameters
+chunking:
+  tokenizer_name: cl100k_base
+  target_tokens: 220
+  hard_max_tokens: 320
+  overlap_ratio: 0.12
+  min_chars: 180
+  min_words: 50
+
+# Embedding parameters
+embedding:
+  model: sentence-transformers/all-MiniLM-L6-v2
+  batch_size: 100
+  collection_chunks: handbook_chunks
+  collection_qna: handbook_qna
+
+# LLM parameters
+llm:
+  model_path: models/mistral-7b-instruct-v0.2.Q4_K_M.gguf
+  n_ctx: 4096
+  n_threads: 4
+  n_batch: 128
+
+# RAG parameters
+rag:
+  top_k: 3
+  min_relevance_score: 0.0
+
+# Quality thresholds
+quality:
+  quality_threshold: 0.55
+  min_quality_score: 80.0
+  max_short_chunks_pct: 5.0
+  max_long_chunks_pct: 5.0
+
