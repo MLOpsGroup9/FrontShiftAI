@@ -1,0 +1,60 @@
+# DVC Pipeline Configuration
+# Core data processing pipeline (extraction → chunking → embedding)
+
+stages:
+  # Stage 1: Extract text from PDFs
+  extract:
+    cmd: python scripts/data_extraction.py
+    deps:
+      - scripts/data_extraction.py
+      - data/raw
+    params:
+      - data.raw_dir
+      - data.extracted_dir
+    outs:
+      - data/extracted:
+          cache: true
+          persist: true
+    desc: "Extract and clean text from PDF files"
+
+  # Stage 2: Preprocess and chunk text
+  preprocess:
+    cmd: python scripts/preprocess.py
+    deps:
+      - scripts/preprocess.py
+      - data/extracted
+    params:
+      - data.extracted_dir
+      - data.cleaned_dir
+      - data.validated_dir
+      - chunking.tokenizer_name
+      - chunking.target_tokens
+      - chunking.hard_max_tokens
+      - chunking.overlap_ratio
+      - quality.quality_threshold
+    outs:
+      - data/cleaned:
+          cache: true
+      - data/validated/chunks:
+          cache: true
+          persist: true
+    desc: "Chunk and validate extracted text"
+
+  # Stage 3: Embed and store in ChromaDB
+  embed:
+    cmd: python scripts/store_in_chromadb.py
+    deps:
+      - scripts/store_in_chromadb.py
+      - data/validated/chunks
+      - data/qna
+    params:
+      - data.vector_db_dir
+      - embedding.model
+      - embedding.batch_size
+    outs:
+      - data/vector_db:
+          cache: true
+          persist: true
+    desc: "Generate embeddings and store in ChromaDB"
+
+
