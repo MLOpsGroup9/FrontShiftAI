@@ -181,5 +181,51 @@ Core principles (RAG core, agentic orchestration, GCP deployment, voice accessib
 
 ---
 
+## 🚀 Quick Start
+
+### Setup
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Add PDFs to data/raw/
+# Run pipeline (manual or DVC)
+python run_pipeline.py  # or: dvc repro
+```
+
+### DVC Pipeline
+
+```bash
+dvc dag        # View pipeline
+dvc status     # Check status
+dvc repro      # Run full pipeline
+```
+
+**Pipeline Flow:**
+1. **Extract** → PDF to JSON with metadata (`data/raw/` → `data/extracted/`)
+2. **Preprocess** → Smart chunking with quality scoring (`data/extracted/` → `data/validated/chunks/`)
+3. **Embed** → ChromaDB vector store + BM25 hybrid search (`data/validated/chunks/` → `data/vector_db/`)
+
+📖 **Documentation**: [`docs/DVC_GUIDE.md`](docs/DVC_GUIDE.md)
+
+### Recent Updates
+- ✅ **Production Pipeline**: Full DVC-tracked workflow with quality validation
+- ✅ **Smart Chunking**: Token-based with semantic boundaries, quality scoring (0.74 avg)
+- ✅ **Hybrid Search**: ChromaDB + BM25 for better retrieval (505 chunks indexed)
+- ✅ **RAG Testing**: Multiple retrieval strategies (semantic, hybrid, reranking)
+- ✅ **Analytics**: Optional dataflow monitoring and quality metrics
+
+### Testing & Analytics
+
+```bash
+# RAG evaluation with multiple strategies
+python scripts/test_rag.py --mode both
+
+# Optional: Pipeline quality analytics & SLA validation
+python scripts/dataflow_statistics.py
+```
+
+---
+
 ## 🔗 Repository
 👉 [FrontShiftAI GitHub](https://github.com/MLOpsGroup9/FrontShiftAI)
