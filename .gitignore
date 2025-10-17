@@ -18,10 +18,13 @@ env/
 .DS_Store
 Thumbs.db
 
-# Data (don’t upload raw/processed/chroma_db)
+# Data (DVC-tracked, don't commit to git)
 data/raw/
-data/processed/
-data/chroma_db/
+data/extracted/
+data/cleaned/
+data/validated/
+data/vector_db/
+data/ft_datasets/
 
 # QnA dataset (keep small JSONL, ignore large variants)
 data/qna/*.csv
