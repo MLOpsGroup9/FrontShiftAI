@@ -1,7 +1,6 @@
 import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-
 import json
 import pandas as pd
 from pathlib import Path
@@ -9,10 +8,22 @@ from data_pipeline.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-def load_extracted_data():
-    """Load JSON outputs from the extraction step (combined + tables)."""
+def load_extracted_data(extracted_dir=None):
+    """Load JSON outputs from the extraction step (combined + tables).
+
+    Args:
+        extracted_dir (str or Path, optional): Directory containing extracted JSONs.
+            Defaults to 'data_pipeline/data/extracted' if not provided.
+
+    Returns:
+        tuple: (combined_chunks, table_chunks) loaded from JSON files.
+    """
     project_root = Path(__file__).resolve().parents[1]
-    extracted_dir = project_root / "data" / "extracted"
+    extracted_dir = (
+        Path(extracted_dir)
+        if extracted_dir
+        else project_root / "data" / "extracted"
+    )
 
     combined_path = extracted_dir / "combined_chunks.json"
     tables_path = extracted_dir / "table_chunks.json"
