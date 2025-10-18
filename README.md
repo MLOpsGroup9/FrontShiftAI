@@ -5,7 +5,7 @@
 ![Status](https://img.shields.io/badge/Status-In%20Development-yellow)
 
 
-# Project Scoping - FrontShiftAI: AI Copilot for Deskless Workers
+# FrontShiftAI: AI Copilot for Deskless Workers
 
 **Team Members**  
 - Krishna Venkatesh  
