@@ -1,6 +1,6 @@
 from pathlib import Path
 import json
-from data_pipeline.scripts.data_extraction import main as extract_main
+from data_pipeline.scripts.data_extraction_not_ import main as extract_main
 
 def test_extraction_creates_output():
     # Run extraction

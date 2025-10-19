@@ -1,5 +1,5 @@
 from pathlib import Path
-from data_pipeline.scripts.data_extraction import main as extract_main
+from data_pipeline.scripts.data_extraction_not_ import main as extract_main
 from data_pipeline.scripts.preprocess import main as preprocess_main
 
 def test_full_pipeline_flow():
