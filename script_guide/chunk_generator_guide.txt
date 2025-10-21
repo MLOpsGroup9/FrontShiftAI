@@ -1,0 +1,112 @@
+DATACLASSES:
+--------------------------------------------------------------------------------
+
+Section, ChunkMetadata, Chunk
+  → Duplicated from text_preprocessor.py (local definitions)
+  → ChunkMetadata includes 'company' field for organization name
+
+
+CLASS: ChunkGenerator
+--------------------------------------------------------------------------------
+
+__init__(target_tokens=900, hard_max_tokens=1200, overlap_ratio=0.11)
+  → Configures chunking: ~900 tokens per chunk, 11% overlap (~100 tokens)
+  → Sets quality thresholds (min_chars=180, min_words=50, score≥0.55)
+
+setup_logging()
+  → Logs to logs/preprocessing/preprocess.log (same as preprocessor)
+  → Enables debugging and monitoring
+
+split_into_sentences(text)
+  → Regex-based sentence splitter with abbreviation handling
+  → Splits on . ! ? while preserving common abbreviations (Dr., Inc., etc.)
+
+count_tokens(text)
+  → Uses tiktoken "cl100k_base" encoder for token counting
+  → Matches OpenAI's GPT models token counting
+
+create_token_based_chunks(text, sections, target_tokens, overlap_ratio)
+  → Main chunking logic: builds chunks sentence-by-sentence
+  → Adds overlap context from previous chunk for continuity
+
+detect_policy_tags(text)
+  → Keyword-based policy type detection (PTO, Benefits, Conduct, etc.)
+  → Returns list of applicable policy tags for RAG filtering
+
+calculate_quality_score(text)
+  → Multi-factor quality scoring (0.0-1.0)
+  → Considers length, capitalization, digits, special chars, completeness
+
+compute_simhash(text, hash_bits=64)
+  → Generates 64-bit simhash fingerprint for near-duplicate detection
+  → Uses word-level features with weighted hashing
+
+is_duplicate(new_hash, existing_hashes, threshold=5)
+  → Compares simhash Hamming distance to detect duplicates
+  → Threshold=5 bits allows ~8% text difference
+
+validate_chunk(chunk)
+  → Multi-criteria validation: length, word count, quality score
+  → Checks sentence endings, filters boilerplate text
+
+extract_keywords(text, top_n=15)
+  → TF-IDF-based keyword extraction
+  → Returns top N keywords with scores for metadata
+
+extract_company_name(filename, sections)
+  → Smart extraction: cleans filename, filters doc-type words
+  → Removes years, months, common terms (handbook, manual, policy)
+
+infer_org_type(company, text, keywords)
+  → Pattern-based organization type inference
+  → Categories: Financial Services, Construction, Healthcare, Tech, etc.
+
+create_metadata(doc_id, company, text, sections, chunk_id, char_span, ...)
+  → Generates complete ChunkMetadata with 35+ fields
+  → Includes company, org, keywords, policy_tags, quality_score
+
+process_document(json_path)
+  → Main orchestration: load JSON → chunk → metadata → validate → dedupe
+  → Saves validated chunks as JSONL (1 chunk per line)
+
+process_all()
+  → Batch processes all cleaned JSON files
+  → Logs statistics (total chunks, rejected, avg quality)
+
+
+FUNCTION: main()
+--------------------------------------------------------------------------------
+  → CLI entry point with argparse
+  → Default: processes data/cleaned/ → data/validated/chunks/
+
+
+OUTPUT FORMAT (JSONL):
+--------------------------------------------------------------------------------
+Each line is a JSON object:
+{
+  "text": "chunk content...",
+  "metadata": {
+    "chunk_id": "doc_name_chunk_001",
+    "company": "Turner Industries",
+    "org": "Construction",
+    "keywords": ["safety", "policy", "training"],
+    "policy_tags": ["Safety", "Training"],
+    "quality_score": 0.87,
+    "token_count": 912,
+    "section_path": "Safety Policies > Workplace Safety",
+    ...
+  }
+}
+
+
+VALIDATION RULES:
+--------------------------------------------------------------------------------
+- Minimum 180 characters
+- Minimum 50 words
+- Minimum 20 tokens
+- Quality score >= 0.55
+- Ends with sentence-ending punctuation (. ! ? or last chunk)
+- Not boilerplate (copyright notices, page numbers)
+- Not a near-duplicate (Hamming distance > 5 bits)
+
+

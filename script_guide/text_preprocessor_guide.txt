@@ -1,0 +1,74 @@
+DATACLASSES:
+--------------------------------------------------------------------------------
+
+Section
+  → Simple structure: (title: str, start_char: int, end_char: int)
+  → Represents logical sections detected in document
+
+ChunkMetadata
+  → Rich metadata for each text chunk (35+ fields)
+  → Includes new 'company' field for extracted company name
+
+Chunk
+  → Container for text + metadata + quality scores
+  → Provides to_dict() for JSONL serialization
+
+
+CLASS: TextPreprocessor
+--------------------------------------------------------------------------------
+
+__init__(input_dir, output_dir, logs_dir)
+  → Configures input (data/md_files/), output (data/cleaned/)
+  → Sets up logging to logs/preprocessing/preprocess.log
+
+setup_logging()
+  → Creates rotating file handler for preprocessing logs
+  → Formats: timestamp, level, message
+
+normalize_text(text)
+  → Comprehensive text cleaning: whitespace, bullets, quotes
+  → Removes multiple blank lines, normalizes Markdown formatting
+
+detect_sections(text)
+  → Multi-strategy section detection (Markdown headers, numbered, ALL-CAPS)
+  → Returns list of Section objects with char spans
+
+_detect_markdown_headers(text)
+  → Detects # Header syntax (levels 1-6)
+  → Returns Section with title and char positions
+
+_detect_numbered_sections(text)
+  → Detects "1. Title" or "1.1 Title" style sections
+  → Regex-based with flexible number formatting
+
+_detect_allcaps_sections(text)
+  → Detects ALL CAPS titles (min 2 words, under 100 chars)
+  → Filters out common false positives (URLs, acronyms)
+
+process_document(md_path)
+  → Main processing: read MD → normalize → detect sections → save JSON
+  → Generates cleaned text + section metadata
+
+process_all()
+  → Batch processes all .md files in input directory
+  → Logs statistics (total docs, sections per doc)
+
+
+FUNCTION: main()
+--------------------------------------------------------------------------------
+  → CLI entry point with argparse
+  → Default: processes data/md_files/ → data/cleaned/
+
+
+OUTPUT FORMAT (Cleaned JSON):
+--------------------------------------------------------------------------------
+{
+  "filename": "handbook_name.md",
+  "text": "normalized markdown content...",
+  "sections": [
+    {"title": "Section 1", "start_char": 0, "end_char": 1250},
+    {"title": "Section 2", "start_char": 1250, "end_char": 2500}
+  ]
+}
+
+

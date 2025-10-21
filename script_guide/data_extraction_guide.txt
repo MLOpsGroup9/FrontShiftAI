@@ -1,0 +1,102 @@
+CLASS: PDFExtractor (Original JSON Pipeline)
+--------------------------------------------------------------------------------
+
+__init__(pdf_path, output_dir, logger)
+  → Initializes PyMuPDF document for text extraction
+  → Sets up output directory for JSON files
+
+clean_text(text)
+  → Removes extra whitespace and normalizes Unicode characters
+  → Fixes common encoding issues (bullets, quotes, dashes)
+
+is_header_or_footer(text, page_height, y_position)
+  → Detects if text is in header/footer region (top 8% or bottom 8%)
+  → Used to filter out repetitive page elements
+
+extract_text(pdf_document)
+  → Extracts all text blocks from PDF pages using PyMuPDF
+  → Filters out headers, footers, and noisy text
+
+extract_metadata(pdf_document, pdf_name)
+  → Extracts document metadata (title, author, creation date)
+  → Generates unique doc_id and standardized metadata fields
+
+process_pdf()
+  → Main orchestration: extracts text + metadata
+  → Saves output as JSON file in data/extracted/
+
+
+CLASS: MarkdownPDFGenerator (New Markdown Pipeline)
+--------------------------------------------------------------------------------
+
+__init__(pdf_path, output_dir)
+  → Initializes PyMuPDF and pdfplumber for dual extraction
+  → Loads ViT-GPT2 image captioning model with GPU/CPU detection
+
+_configure_tesseract()
+  → Detects Tesseract OCR installation for image caption fallback
+  → Logs warning if OCR unavailable
+
+clean_text(text)
+  → Enhanced version with UTF-8 mojibake fixes
+  → Normalizes bullets, quotes, dashes, ellipsis
+
+is_bullet_point(text) / is_numbered_list_item(text)
+  → Regex-based detection for Markdown list formatting
+  → Handles various bullet styles (•, -, *, ○, ◦, ▪, ▫)
+
+is_horizontal_line(text)
+  → Detects separator lines (---, ***, ___) for Markdown
+  → Prevents false positives with minimum length check
+
+detect_code_block(prev_line, current_line)
+  → Heuristic detection of code snippets (Python, JS, HTML, SQL, etc.)
+  → Returns language identifier for fenced code blocks
+
+is_heading(text, font_size, avg_font_size)
+  → Detects headings by font size (>1.2x average) and ALL-CAPS patterns
+  → Assigns appropriate Markdown heading level (# to ######)
+
+caption_image(image)
+  → AI-based image captioning using ViT-GPT2 model
+  → Falls back to OCR if transformers unavailable, then descriptive text
+
+extract_tables(pdf_path)
+  → Extracts tables using pdfplumber with default settings
+  → Returns list of tables with page numbers and bounding boxes
+
+table_to_markdown(table)
+  → Converts 2D table array to GitHub-style Markdown table
+  → Handles multi-line cells, bullets, and UTF-8 cleaning
+
+process_image_block(page, block)
+  → Extracts image from PDF page at specified bounding box
+  → Generates AI caption or descriptive fallback, saves PNG file
+
+extract_hyperlinks(page)
+  → Extracts all hyperlinks from PDF page annotations
+  → Returns list of Markdown-formatted links [text](url)
+
+process_text_block(page, block)
+  → Processes text spans with formatting (bold, lists, headings)
+  → Detects code blocks and wraps with language-specific fences
+
+extract_markdown(pdf_document, pdf_path)
+  → Main Markdown extraction orchestrator
+  → Combines text, tables, images, links into formatted Markdown
+
+generate_markdown()
+  → Entry point: extracts Markdown and saves to data/md_files/
+  → Also saves associated images in same directory
+
+
+FUNCTION: main() [Original JSON Pipeline Entry]
+--------------------------------------------------------------------------------
+  → CLI entry point for JSON extraction
+  → Accepts --input_dir and --output_dir arguments
+
+FUNCTION: main_md() [New Markdown Pipeline Entry]
+--------------------------------------------------------------------------------
+  → CLI entry point for Markdown + image generation
+  → Accepts --input_dir and --output_dir arguments
+

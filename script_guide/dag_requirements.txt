@@ -1,0 +1,88 @@
+DAG COMPLIANCE REQUIREMENTS
+
+
+PIPELINE STAGES:
+----------------
+
+1. DATA EXTRACTION (data_extraction.py)
+   - Input: PDF files from data/raw/
+   - Output: JSON (data/extracted/) + Markdown + Images (data/md_files/)
+   - Dependencies: None (entry point)
+   - Idempotent: Yes (overwrites existing outputs)
+
+2. TEXT PREPROCESSING (text_preprocessor.py)
+   - Input: Markdown files from data/md_files/
+   - Output: Cleaned JSON with sections (data/cleaned/)
+   - Dependencies: Stage 1 (data_extraction.py)
+   - Idempotent: Yes (overwrites existing outputs)
+
+3. CHUNK GENERATION (chunk_generator.py)
+   - Input: Cleaned JSON from data/cleaned/
+   - Output: Validated JSONL chunks (data/validated/chunks/)
+   - Dependencies: Stage 2 (text_preprocessor.py)
+   - Idempotent: Yes (overwrites existing outputs)
+
+
+DAG COMPLIANCE CHECKLIST:
+--------------------------
+
+MODULARITY
+   - Each script is self-contained with clear input/output contracts
+   - No circular dependencies between modules
+   - Functions are pure and stateless where possible
+
+EXPLICIT DEPENDENCIES
+   - Stage 1 → Stage 2 → Stage 3 (linear pipeline)
+   - Each stage reads from previous stage's output directory
+   - No implicit state sharing between stages
+
+IDEMPOTENCY
+   - Running any stage multiple times produces same output
+   - No cumulative effects or state accumulation
+   - Safe to retry failed stages
+
+ISOLATION
+   - Each script can be tested independently
+   - Logging is file-based, not shared state
+   - Configuration passed via CLI args or config files
+
+CLEAR I/O CONTRACTS
+   - Input format: Stage 1 (PDF), Stage 2 (MD), Stage 3 (JSON)
+   - Output format: Stage 1 (JSON+MD), Stage 2 (JSON), Stage 3 (JSONL)
+   - Directory structure clearly defined in params.yaml
+
+ERROR HANDLING
+   - Each stage logs errors independently
+   - Failures in one document don't block others
+   - Graceful degradation for missing optional features
+
+
+SUGGESTED IMPROVEMENTS FOR PRODUCTION DAG:
+-------------------------------------------
+
+1. ADD VALIDATION CHECKPOINTS
+   - Add file existence checks before each stage
+   - Validate input format before processing
+   - Generate manifest files for tracking processed documents
+
+2. PARAMETERIZATION
+   - Move hardcoded paths to params.yaml or config
+   - Add CLI flags for all configurable parameters
+   - Support partial re-processing (specific files only)
+
+3. MONITORING & OBSERVABILITY
+   - Add structured logging (JSON format)
+   - Emit metrics (processing time, file sizes, success rates)
+   - Generate processing reports at each stage
+
+4. AIRFLOW/PREFECT INTEGRATION
+   - Wrap each script in a task function
+   - Add task dependencies: extract → preprocess → chunk
+   - Add sensors for input file arrival
+   - Configure retries and alerting
+
+5. DATA VERSIONING
+   - Track input/output hashes for each stage
+   - Store metadata about each pipeline run
+   - Enable rollback to previous versions
+
