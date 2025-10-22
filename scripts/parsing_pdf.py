@@ -7,7 +7,6 @@ import traceback
 import warnings
 import shutil
 import pymupdf as fitz 
-import torch
 import cv2
 import numpy as np 
 import argparse
@@ -17,7 +16,8 @@ from pathlib import Path
 from PIL import Image
 from typing import List, Dict, Optional
 from abc import ABC, abstractmethod
-from transformers import VisionEncoderDecoderModel, ViTImageProcessor, AutoTokenizer
+from requests import RequestException
+import requests
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -42,10 +42,10 @@ def _configure_tesseract() -> Optional[str]:
     candidates = [
         os.getenv("TESSERACT_CMD"),
         shutil.which("tesseract"),
-        "/opt/homebrew/bin/tesseract",  # common Homebrew path on Apple Silicon
-        "/usr/local/bin/tesseract",     # common Homebrew path on Intel Macs
-        "/usr/bin/tesseract",           # common Linux path
-        "C:/Program Files/Tesseract-OCR/tesseract.exe",  # Windows default
+        "/opt/homebrew/bin/tesseract",  
+        "/usr/local/bin/tesseract",     
+        "/usr/bin/tesseract",           
+        "C:/Program Files/Tesseract-OCR/tesseract.exe",  
         "C:/Program Files (x86)/Tesseract-OCR/tesseract.exe",
     ]
 
@@ -104,17 +104,25 @@ class MarkdownPDFExtractor(PDFExtractor):
         self.setup_image_captioning()
 
     def setup_image_captioning(self):
-        """Set up the image captioning model."""
+        """Set up the vision model API client."""
+        self.api_base_url = os.getenv("VISION_MODEL_API_URL", "http://localhost:8000").rstrip("/")
+        self.caption_endpoint = f"{self.api_base_url}/caption"
+        self.health_endpoint = f"{self.api_base_url}/health"
+
         try:
-            self.processor = ViTImageProcessor.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
-            self.model = VisionEncoderDecoderModel.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
-            self.tokenizer = AutoTokenizer.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            self.model.to(self.device)
-            self.logger.info("Image captioning model set up successfully.")
-        except Exception as e:
-            self.logger.error(f"Error setting up image captioning model: {e}")
-            self.logger.exception(traceback.format_exc())
+            response = requests.get(self.health_endpoint, timeout=5)
+            response.raise_for_status()
+            self.logger.info(
+                "Connected to vision captioning service at %s (device: %s)",
+                self.api_base_url,
+                response.json().get("device", "unknown"),
+            )
+        except RequestException as exc:
+            self.logger.warning(
+                "Vision captioning service unavailable at %s: %s",
+                self.api_base_url,
+                exc,
+            )
 
     
     def extract(self):
@@ -299,8 +307,8 @@ class MarkdownPDFExtractor(PDFExtractor):
             self.logger.exception(traceback.format_exc())
             return ""
 
-    def caption_image(self, image):
-        """Generate a caption for the given image."""
+    def caption_image(self, image: Image.Image, image_path: Path) -> str:
+        """Generate a caption for the given image via OCR fallback or vision model API."""
         try:
             ocr_text = self.perform_ocr(image)
             if ocr_text:
@@ -310,15 +318,30 @@ class MarkdownPDFExtractor(PDFExtractor):
             if image.mode != "RGB":
                 image = image.convert("RGB")
 
-            inputs = self.processor(images=image, return_tensors="pt").to(self.device)
+            payload = {
+                "image_path": str(image_path),
+            }
 
-            pixel_values = inputs.pixel_values
+            response = requests.post(self.caption_endpoint, json=payload, timeout=60)
+            response.raise_for_status()
+            data = response.json()
 
-            generated_ids = self.model.generate(pixel_values, max_length=30)
-            generated_caption = self.tokenizer.batch_decode(
-                generated_ids, skip_special_tokens=True
-            )[0]
-            return generated_caption.strip()
+            caption = data.get("caption")
+            if caption:
+                return caption.strip()
+
+            self.logger.warning(
+                "Vision model API returned no caption for %s; falling back to filename.",
+                image_path,
+            )
+            return ""
+        except RequestException as exc:
+            self.logger.error(
+                "Error calling vision captioning service for %s: %s",
+                image_path,
+                exc,
+            )
+            return ""
         except Exception as e:
             self.logger.error(f"Error captioning image: {e}")
             self.logger.exception(traceback.format_exc())
@@ -659,7 +682,7 @@ class MarkdownPDFExtractor(PDFExtractor):
             )  # Convert to Path object
             image.save(image_path, "PNG", optimize=True, quality=95)
 
-            caption = self.caption_image(image)
+            caption = self.caption_image(image, image_path)
             if not caption:
                 caption = (
                     f"{self.pdf_filename}_image_{int(page.number)+1}_{block['number']}"
