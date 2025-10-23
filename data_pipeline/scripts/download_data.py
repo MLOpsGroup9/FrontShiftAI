@@ -49,6 +49,7 @@ def download_pdf(urls_path: Path, save_dir: Path) -> None:
         url_list = json.load(f)
 
     logging.info(f"\n{'=' * 50} NEW RUN @ {datetime.now()} {'=' * 50}")
+    logging.info(f"Found {len(url_list)} entries in {urls_path}")
 
     for entry in tqdm.tqdm(url_list, desc="Downloading PDFs..."):
         domain = entry.get("domain")
@@ -64,9 +65,8 @@ def download_pdf(urls_path: Path, save_dir: Path) -> None:
             sanitized_domain = re.sub(r'[^\w\-_.]', '_', domain or "unknown_domain")
             sanitized_company = re.sub(r'[^\w\-_.]', '_', company or "unknown_company")
 
-            # Create descriptive filename
-            url_path = Path(url)
-            filename = f"{sanitized_domain}_{sanitized_company}_{url_path.name}"
+            # Create clean and descriptive filename
+            filename = f"{sanitized_domain}_{sanitized_company}.pdf"
             savepath = save_dir / filename
 
             if savepath.exists():
@@ -81,16 +81,16 @@ def download_pdf(urls_path: Path, save_dir: Path) -> None:
                 )
             }
 
-            response = requests.get(url, headers=headers, stream=True, timeout=10)
+            response = requests.get(url, headers=headers, stream=True, timeout=20)
 
             if response.ok:
                 with open(savepath, "wb") as f_out:
                     for chunk in response.iter_content(chunk_size=1024):
                         if chunk:
                             f_out.write(chunk)
-                logging.info(f"Downloaded: {filename} | Domain: {domain} | Company: {company}")
+                logging.info(f"✅ Downloaded: {filename} | Domain: {domain} | Company: {company}")
             else:
-                logging.info(f"Failed to download {url} (Status: {response.status_code}) | Domain: {domain} | Company: {company}")
+                logging.warning(f"❌ Failed to download {url} (Status: {response.status_code}) | Domain: {domain} | Company: {company}")
 
         except requests.exceptions.RequestException as e:
             logging.exception(f"Error downloading {url} | Domain: {domain} | Company: {company} | Error: {e}")
