@@ -7,7 +7,6 @@ import traceback
 import warnings
 import shutil
 import pymupdf as fitz 
-import torch
 import cv2
 import numpy as np 
 import argparse
@@ -17,7 +16,8 @@ from pathlib import Path
 from PIL import Image
 from typing import List, Dict, Optional
 from abc import ABC, abstractmethod
-from transformers import VisionEncoderDecoderModel, ViTImageProcessor, AutoTokenizer
+from requests import RequestException
+import requests
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -26,19 +26,18 @@ load_dotenv()
 markdown, the tables will also be converted to markdown, the images will be captioned using a Vision Transformer but will first go through PyTessaract for OCR. This script also will involve
 cleaning the markdown 
 """
-
-
-BASE_DIR = Path(__file__).resolve().parents[1]
+BASE_DIR = Path(__file__).resolve().parents[1]  # one level up from scripts/
 DATA_DIR = BASE_DIR / "data"
+LOGS_DIR = BASE_DIR / "logs"
 
-RAW_PDF_DIR = os.getenv("RAW_DATA_DIR", str(DATA_DIR / "raw"))
-PROCESSED_PDF_DIR = os.getenv("PROCESSED_PDF_DIR", str(DATA_DIR / "parsed"))
-LOG_DIR = os.getenv("LOG_DIR", str(BASE_DIR / "logs" / "parsed_log"))
-
+RAW_PDF_DIR = Path(os.getenv("RAW_DATA_DIR", DATA_DIR / "raw"))
+PROCESSED_PDF_DIR = Path(os.getenv("PROCESSED_PDF_DIR", DATA_DIR / "parsed"))
+LOG_DIR = Path(os.getenv("LOG_DIR", LOGS_DIR / "processed_pdf_log"))
 PAGE_DELIMITER = os.getenv("PAGE_DELIMITER", "\n\n---\n\n")
 
-os.makedirs(PROCESSED_PDF_DIR, exist_ok=True)
-os.makedirs(LOG_DIR, exist_ok=True)
+RAW_PDF_DIR.mkdir(parents=True, exist_ok=True)
+PROCESSED_PDF_DIR.mkdir(parents=True, exist_ok=True)
+LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _configure_tesseract() -> Optional[str]:
@@ -46,10 +45,10 @@ def _configure_tesseract() -> Optional[str]:
     candidates = [
         os.getenv("TESSERACT_CMD"),
         shutil.which("tesseract"),
-        "/opt/homebrew/bin/tesseract",  # common Homebrew path on Apple Silicon
-        "/usr/local/bin/tesseract",     # common Homebrew path on Intel Macs
-        "/usr/bin/tesseract",           # common Linux path
-        "C:/Program Files/Tesseract-OCR/tesseract.exe",  # Windows default
+        "/opt/homebrew/bin/tesseract",  
+        "/usr/local/bin/tesseract",     
+        "/usr/bin/tesseract",           
+        "C:/Program Files/Tesseract-OCR/tesseract.exe",  
         "C:/Program Files (x86)/Tesseract-OCR/tesseract.exe",
     ]
 
@@ -84,7 +83,7 @@ class PDFExtractor(ABC):
             level=logging.INFO,
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             handlers=[
-                logging.FileHandler(os.path.join(LOG_DIR, "parsed_pdf.log"), encoding="utf-8"),
+                logging.FileHandler(os.path.join(LOG_DIR, "processed_pdf.log"), encoding="utf-8"),
                 logging.StreamHandler(),
             ],
         )
@@ -104,21 +103,32 @@ class MarkdownPDFExtractor(PDFExtractor):
     def __init__(self, pdf_path):
         super().__init__(pdf_path)
         self.pdf_filename = Path(pdf_path).stem
+        parts = self.pdf_filename.split("_", 1)
+        self.domain = parts[0] if len(parts) > 0 else "unknown_domain"
+        self.company = parts[1] if len(parts) > 1 else "unknown_company"
         Path(PROCESSED_PDF_DIR)
         self.setup_image_captioning()
 
     def setup_image_captioning(self):
-        """Set up the image captioning model."""
+        """Set up the vision model API client."""
+        self.api_base_url = os.getenv("VISION_MODEL_API_URL", "http://localhost:8000").rstrip("/")
+        self.caption_endpoint = f"{self.api_base_url}/caption"
+        self.health_endpoint = f"{self.api_base_url}/health"
+
         try:
-            self.processor = ViTImageProcessor.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
-            self.model = VisionEncoderDecoderModel.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
-            self.tokenizer = AutoTokenizer.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            self.model.to(self.device)
-            self.logger.info("Image captioning model set up successfully.")
-        except Exception as e:
-            self.logger.error(f"Error setting up image captioning model: {e}")
-            self.logger.exception(traceback.format_exc())
+            response = requests.get(self.health_endpoint, timeout=5)
+            response.raise_for_status()
+            self.logger.info(
+                "Connected to vision captioning service at %s (device: %s)",
+                self.api_base_url,
+                response.json().get("device", "unknown"),
+            )
+        except RequestException as exc:
+            self.logger.warning(
+                "Vision captioning service unavailable at %s: %s",
+                self.api_base_url,
+                exc,
+            )
 
     
     def extract(self):
@@ -303,8 +313,8 @@ class MarkdownPDFExtractor(PDFExtractor):
             self.logger.exception(traceback.format_exc())
             return ""
 
-    def caption_image(self, image):
-        """Generate a caption for the given image."""
+    def caption_image(self, image: Image.Image, image_path: Path) -> str:
+        """Generate a caption for the given image via OCR fallback or vision model API."""
         try:
             ocr_text = self.perform_ocr(image)
             if ocr_text:
@@ -314,15 +324,30 @@ class MarkdownPDFExtractor(PDFExtractor):
             if image.mode != "RGB":
                 image = image.convert("RGB")
 
-            inputs = self.processor(images=image, return_tensors="pt").to(self.device)
+            payload = {
+                "image_path": str(image_path),
+            }
 
-            pixel_values = inputs.pixel_values
+            response = requests.post(self.caption_endpoint, json=payload, timeout=60)
+            response.raise_for_status()
+            data = response.json()
 
-            generated_ids = self.model.generate(pixel_values, max_length=30)
-            generated_caption = self.tokenizer.batch_decode(
-                generated_ids, skip_special_tokens=True
-            )[0]
-            return generated_caption.strip()
+            caption = data.get("caption")
+            if caption:
+                return caption.strip()
+
+            self.logger.warning(
+                "Vision model API returned no caption for %s; falling back to filename.",
+                image_path,
+            )
+            return ""
+        except RequestException as exc:
+            self.logger.error(
+                "Error calling vision captioning service for %s: %s",
+                image_path,
+                exc,
+            )
+            return ""
         except Exception as e:
             self.logger.error(f"Error captioning image: {e}")
             self.logger.exception(traceback.format_exc())
@@ -661,9 +686,9 @@ class MarkdownPDFExtractor(PDFExtractor):
             image_path = (
                 Path(PROCESSED_PDF_DIR) / image_filename
             )  # Convert to Path object
-            #image.save(image_path, "PNG", optimize=True, quality=95)
+            image.save(image_path, "PNG", optimize=True, quality=95)
 
-            caption = self.caption_image(image)
+            caption = self.caption_image(image, image_path)
             if not caption:
                 caption = (
                     f"{self.pdf_filename}_image_{int(page.number)+1}_{block['number']}"
@@ -734,11 +759,8 @@ class MarkdownPDFExtractor(PDFExtractor):
         """Save the markdown content to a file."""
         try:
             os.makedirs(Path(PROCESSED_PDF_DIR), exist_ok=True)
-            with open(
-                f"{Path(PROCESSED_PDF_DIR)}/{self.pdf_filename}.md",
-                "w",
-                encoding="utf-8",
-            ) as f:
+            output_path = Path(PROCESSED_PDF_DIR) / f"{self.domain}_{self.company}.md"
+            with open(output_path, "w", encoding="utf-8") as f:
                 f.write(markdown_content)
             self.logger.info("Markdown content saved successfully.")
         except Exception as e:
@@ -785,28 +807,23 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "pdf_path",
-        nargs="?",
-        help="Optional path to a single PDF. If not provided, all PDFs in data/raw will be processed.",
+        nargs="?",  # optional
+        help="Path to a single PDF file. If not provided, all PDFs in RAW_PDF_DIR will be processed.",
     )
     parser.add_argument(
         "--out",
         dest="out_path",
-        help="Optional output file or directory. Defaults to data/parsed/.",
+        help="Optional output file or directory. Defaults to PROCESSED_PDF_DIR.",
     )
     args = parser.parse_args()
 
     if args.pdf_path:
-        # Single file mode
         convert_pdf_to_md(args.pdf_path, args.out_path)
     else:
-        # Batch mode: process all PDFs in data/raw
-        pdf_dir = Path(RAW_PDF_DIR)
-        pdf_files = list(pdf_dir.glob("*.pdf"))
+        raw_dir = Path(RAW_PDF_DIR)
+        pdf_files = list(raw_dir.glob("*.pdf"))
         if not pdf_files:
-            print("No PDFs found in data/raw/.")
-        else:
-            print(f"Found {len(pdf_files)} PDF(s). Processing...\n")
-            for pdf_path in pdf_files:
-                print(f"📄 {pdf_path.name}")
-                convert_pdf_to_md(str(pdf_path))
-            print("\n✅ All PDFs converted successfully!")
+            print(f"No PDFs found in {raw_dir}")
+            sys.exit(0)
+        for pdf_file in pdf_files:
+            convert_pdf_to_md(pdf_file)
