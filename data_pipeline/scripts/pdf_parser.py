@@ -686,7 +686,7 @@ class MarkdownPDFExtractor(PDFExtractor):
             image_path = (
                 Path(PROCESSED_PDF_DIR) / image_filename
             )  # Convert to Path object
-            image.save(image_path, "PNG", optimize=True, quality=95)
+            #image.save(image_path, "PNG", optimize=True, quality=95)
 
             caption = self.caption_image(image, image_path)
             if not caption:
