@@ -1,7 +1,7 @@
 """
 Comprehensive validation for processed chunks.
-Performs explicit schema validation (Pydantic), language, length, metadata, and duplication checks.
-Reads from data/validated/chunks/, outputs validation reports and invalid sample logs.
+Reads from data/chunked/, validates schema, language, length, and metadata.
+Outputs reports, valid chunks, and invalid chunk samples to data/validated/.
 """
 
 # =====================================================
@@ -22,11 +22,13 @@ from pydantic import BaseModel, Field, validator, ValidationError
 # =====================================================
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
-VALIDATED_DIR = DATA_DIR / "validated"
-CHUNKS_DIR = VALIDATED_DIR / "chunks"
+
+CHUNKS_DIR = DATA_DIR / "chunked"            # input from chunker.py
+VALIDATED_DIR = DATA_DIR / "validated"       # output reports + valid chunks
 REPORTS_DIR = VALIDATED_DIR / "reports"
 LOG_DIR = BASE_DIR / "logs" / "validation"
 
+# Ensure directories exist
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -68,12 +70,7 @@ class ChunkMetadataModel(BaseModel):
     policy_tags: List[str]
     hash_64: str
     created_at: str
-
     token_count: Optional[int] = Field(default=None, ge=0)
-    quality_score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
-    page_number: Optional[int] = Field(default=None, ge=0)
-    has_tables: Optional[bool] = False
-    has_images: Optional[bool] = False
 
     @validator("created_at")
     def validate_timestamp(cls, v):
@@ -147,9 +144,6 @@ def validate_chunk_structure(chunk: Dict[str, Any], filename: str) -> List[str]:
     if not meta.industry.strip():
         issues.append("MissingIndustry")
 
-    if meta.quality_score is not None and meta.quality_score < 0.55:
-        issues.append(f"LowQuality({meta.quality_score:.2f})")
-
     if len(meta.hash_64.strip()) < 8:
         issues.append("InvalidHash")
 
@@ -165,18 +159,21 @@ def validate_all_chunks():
     """Validate all JSONL chunk files and produce reports."""
     jsonl_files = list(CHUNKS_DIR.glob("*.jsonl"))
     if not jsonl_files:
-        logger.warning(f"No chunk files found in {CHUNKS_DIR}")
+        logger.warning(f"No chunk files found in {CHUNKS_DIR}/")
         return
 
     report_csv = REPORTS_DIR / "validation_report.csv"
     summary_json = REPORTS_DIR / "validation_summary.json"
-    invalid_jsonl = REPORTS_DIR / "invalid_chunks.jsonl"
+    invalid_jsonl = VALIDATED_DIR  / "invalid_chunks.jsonl"
+    valid_jsonl = VALIDATED_DIR  / "valid_chunks.jsonl"
 
     seen_hashes: Set[str] = set()
     total_valid, total_invalid = 0, 0
-    all_results = []
 
-    with open(report_csv, "w", newline="") as csvfile, open(invalid_jsonl, "w", encoding="utf-8") as invalid_out:
+    with open(report_csv, "w", newline="") as csvfile, \
+         open(invalid_jsonl, "w", encoding="utf-8") as invalid_out, \
+         open(valid_jsonl, "w", encoding="utf-8") as valid_out:
+
         writer = csv.writer(csvfile)
         writer.writerow(["filename", "total", "valid", "invalid", "issues", "timestamp"])
 
@@ -211,10 +208,11 @@ def validate_all_chunks():
                             "file": fpath.name,
                             "issues": issues,
                             "metadata": obj.get("metadata", {}),
-                            "preview": obj.get("text", "")[:120]
+                            "preview": obj.get("text", "")[:150]
                         }) + "\n")
                     else:
                         file_valid += 1
+                        valid_out.write(json.dumps(obj) + "\n")
 
             total_valid += file_valid
             total_invalid += file_invalid
@@ -245,6 +243,7 @@ def validate_all_chunks():
 
     logger.info("📊 Validation summary saved to %s", summary_json)
     logger.info("🧾 Invalid chunks written to %s", invalid_jsonl)
+    logger.info("✅ Valid chunks written to %s", valid_jsonl)
     logger.info("✔ Total valid chunks: %s", total_valid)
     logger.info("❌ Total invalid chunks: %s", total_invalid)
     logger.info("=" * 70)
