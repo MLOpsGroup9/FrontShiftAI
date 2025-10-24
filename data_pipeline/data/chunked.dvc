@@ -1,6 +1,0 @@
-outs:
-- md5: b81e378bf9ef234cff39e90d1a5a8b31.dir
-  size: 1973274
-  nfiles: 16
-  hash: md5
-  path: chunked
