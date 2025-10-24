@@ -1,47 +1,82 @@
 # ----------- FrontShiftAI Makefile -----------
 
-.PHONY: repro run rag test validate report clean init
+# Variables
+PYTHON := python
+PIPELINE_DIR := data_pipeline/scripts
+LOG_DIR := data_pipeline/logs
+DATA_DIR := data_pipeline/data
 
-# Run full DVC pipeline
+# Default target
+.DEFAULT_GOAL := help
+
+.PHONY: repro run rag test validate report clean init help
+
+# -------------------------------------------------------------------
+# 📦 DVC + Pipeline Commands
+# -------------------------------------------------------------------
+
+## Reproduce full DVC pipeline (download → parse → preprocess → chunk → validate → embed)
 repro:
 	dvc repro
 
-# Run full pipeline (extract → preprocess → validate → embed)
+## Run the entire pipeline manually (without DVC)
 run:
-	python scripts/run_pipeline.py
+	$(PYTHON) $(PIPELINE_DIR)/run_pipeline.py
 
-# Run LLaMA RAG test
-rag:
-	python scripts/test_rag_llama.py
-
-# Run unit and integration tests
-test:
-	pytest -v --maxfail=1 --disable-warnings
-
-# Validate processed data
+## Run data validation manually
 validate:
-	python scripts/validate_data.py
+	$(PYTHON) $(PIPELINE_DIR)/validate_data.py
 
-# Generate validation report CSV
+## Generate validation report CSV and JSON
 report:
-	python scripts/validate_data.py > data_pipeline/logs/validation_report.csv
+	$(PYTHON) $(PIPELINE_DIR)/validate_data.py --report
+	@echo "✅ Validation reports generated in $(DATA_DIR)/validated/reports/"
 
-# Clean up cache and logs
+# -------------------------------------------------------------------
+# 🧠 RAG / Model Tests
+# -------------------------------------------------------------------
+
+## Run LLaMA or RAG pipeline test
+rag:
+	$(PYTHON) $(PIPELINE_DIR)/test_rag_llama.py
+
+# -------------------------------------------------------------------
+# 🧪 Testing
+# -------------------------------------------------------------------
+
+## Run all unit and integration tests
+test:
+	pytest tests -v --maxfail=1 --disable-warnings
+
+# -------------------------------------------------------------------
+# 🧹 Cleanup
+# -------------------------------------------------------------------
+
+## Clean logs, cache, and temporary files
 clean:
-	rm -rf data_pipeline/logs/*.log
+	@echo "🧹 Cleaning up logs and caches..."
+	rm -rf $(LOG_DIR)/*.log
 	rm -rf **/__pycache__ .pytest_cache
+	rm -rf $(DATA_DIR)/vector_db/*.chroma*
+	@echo "✅ Cleanup complete."
 
-# (Optional) Initialize environment
-# init:
-# 	conda env create -f environment.yml || conda env update -f environment.yml
-# 	pip install -r requirements.txt
+# -------------------------------------------------------------------
+# ⚙️ Environment Setup
+# -------------------------------------------------------------------
 
+## Initialize or update Python environment
+init:
+	@echo "📦 Setting up environment..."
+	pip install -r requirements.txt
+	@echo "✅ Environment ready."
 
-# Usage:
-# make repro      → Run DVC pipeline
-# make run        → Run all stages via run_pipeline.py
-# make test       → Run unit + integration tests
-# make validate   → Validate final data outputs
-# make clean      → Remove cache and logs
-# make rag        → Run RAG LLaMA test
-# make report     → Generate validation report CSV
+# -------------------------------------------------------------------
+# 🆘 Help
+# -------------------------------------------------------------------
+
+help:
+	@echo ""
+	@echo "🚀 FrontShiftAI Makefile Commands"
+	@echo "-----------------------------------------"
+	@grep -E '^##' Makefile | sed 's/## //'
+	@echo ""
