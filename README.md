@@ -229,10 +229,7 @@ airflow webserver --port 8080 &
 
 ## 11. Success & Acceptance Criteria
 
-- **RAG**: Recall@5 ≥ 90%, Hallucination ≤ 5%  
-- **Agentic**: Task success ≥ 85%  
-- **Voice**: WER ≤ 10%, latency ≤ 3s  
-- **Pilot Study**: ≥ 80% accuracy, ≥ 4/5 satisfaction  
+TBD
 
 ---
 
