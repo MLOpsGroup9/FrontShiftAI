@@ -32,9 +32,7 @@ MyResources/
 src/api/
 
 # DVC
-data_pipeline/data/raw/
-data_pipeline/data/extracted/
-data_pipeline/data/cleaned/
-data_pipeline/data/vector_db/
-.dvc/cache/
-.dvc/tmp/
+
+
+#logs
+data_pipeline/logs/
