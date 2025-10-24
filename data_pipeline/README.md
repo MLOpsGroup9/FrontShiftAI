@@ -201,3 +201,21 @@ The current FrontShiftAI RAG pipeline processes organizational policy documents 
 Future extensions (e.g., user feedback-based fine-tuning or Q&A classification) will integrate Fairlearn or TFMA for bias detection and fairness evaluation across demographic slices.
 
 
+
+
+
+## When Others Clone Your GitHub Repo
+
+clone -> https://github.com/MLOpsGroup9/FrontShiftAI
+
+
+git clone https://github.com/MLOpsGroup9/FrontShiftAI.git
+cd FrontShiftAI
+pyenv activate frontshiftai  # or use your requirements.txt
+pip install -r requirements.txt
+
+
+dvc pull
+
+
+dvc repro
