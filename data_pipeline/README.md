@@ -1,6 +1,12 @@
 # FrontShiftAI Data Pipeline
 
-This repository contains the data pipeline component of the FrontShiftAI project. The pipeline focuses on document ingestion, preprocessing, validation, and vector storage for a Retrieval-Augmented Generation (RAG) system. The current implementation covers all stages up to embedding and storage. Airflow DAG orchestration will be integrated in a later stage.
+> **FrontShiftAI** is a modular, data-centric pipeline for processing and embedding organizational policy documents into a ChromaDB vector store.  
+> It automates ingestion, extraction, validation, and embedding using Python and DVC, with optional Airflow orchestration for automated triggers.
+
+This repository contains the data pipeline component of the FrontShiftAI project. The pipeline focuses on document ingestion, preprocessing, validation, and vector storage for a Retrieval-Augmented Generation (RAG) system. The current implementation covers all stages up to embedding and storage.  
+An **optional Airflow DAG (`dvc_repro_manual_dag.py`)** is included, which can be triggered manually or automatically when new URLs are added to `data_pipeline/data/url.json`.
+
+---
 
 ## 1. Project Overview
 
@@ -12,13 +18,18 @@ The data pipeline automates the following steps:
 4. Data versioning and reproducibility with DVC.
 5. Embedding generation and vector storage in ChromaDB.
 6. Centralized logging and basic testing for reliability.
+7. Optional Airflow orchestration for automation.
+
+---
 
 ## 2. Directory Structure
 
 ```
 FrontShiftAI/
 ├── data_pipeline/
-│   ├── dags/                     # Airflow DAGs (to be implemented)
+│   ├── airflow/                  # Airflow DAGs for manual/auto pipeline triggers
+│   │   └── dags/
+│   │       └── dvc_repro_manual_dag.py   # Triggers DVC repro + push when url.json changes
 │   ├── data/
 │   │   ├── raw/                  # Source PDF documents
 │   │   ├── extracted/            # Extracted text and tables
@@ -31,191 +42,231 @@ FrontShiftAI/
 │   │   ├── preprocess.py
 │   │   ├── validate_data.py
 │   │   ├── store_in_chromadb.py
-        ├── run_pipeline.py
-│   │   └── test_rag_llama.py
+│   │   └── run_pipeline.py
 │   ├── tests/                    # Unit and integration tests
-│   │   ├── test_data_extraction.py
-│   │   ├── test_preprocess.py
-│   │   └── test_pipeline_integration.py
 │   ├── utils/                    # Logger and helper functions
 │   │   └── logger.py
 │   ├── dvc.yaml                  # DVC pipeline configuration
 │   ├── __init__.py
 │   └── README.md
-
+├── requirements.txt
+└── environment.yml
 ```
+
+---
 
 ## 3. Environment Setup
 
-```
+```bash
+# Create and activate environment
 conda create -n frontshiftai python=3.10
 conda activate frontshiftai
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-All necessary dependencies for LangChain, ChromaDB, Great Expectations, DVC, and supporting tools are listed in `requirements.txt` and `environment.yml`.
+---
 
-## 4. Pipeline Execution
+## 4. Quick Start for New Users (Cloning the Repo)
 
-The pipeline is tracked and reproduced using Data Version Control (DVC). Each stage can be executed individually or through the full workflow.
-
-```
-dvc repro
-```
-
-This command executes the defined stages:
-1. Data extraction  
-2. Preprocessing  
-3. Validation  
-4. Vector storage  
-
-If new PDFs are added to `data/raw/`, DVC automatically detects changes and re-runs the dependent stages.
-
-## 5. Components and Functionality
-
-### a. Data Extraction
-- Extracts text and tables from PDF documents.
-- Uses LangChain’s `PyPDFLoader` and Camelot for structured parsing.
-- Splits text into context-preserving chunks using `RecursiveCharacterTextSplitter`.
-- Outputs `combined_chunks.json` and `table_chunks.json` to `data/extracted/`.
-
-### b. Preprocessing
-- Cleans and normalizes extracted text.
-- Consolidates data into a structured DataFrame.
-- Outputs `cleaned_chunks.csv` to `data/cleaned/`.
-
-### c. Data Validation
-- Validates cleaned chunks against a defined schema (`PolicyChunk`) using **Pydantic**.
-- Checks for:
-  - Non-empty text fields
-  - Minimum word count (default: 30 words)
-  - English language content (via `langdetect`)
-  - JSON schema consistency across all records
-- Automatically cleans minor formatting artifacts (bullets, line breaks).
-- Generates a validation summary report at `logs/validation_report.csv`.
-- Outputs fully validated JSON files to `data/validated/`.
-- Deduplicates valid chunks before embedding.
-
-This ensures that only clean, language-verified, schema-compliant text is passed to the embedding and retrieval stages.
-
-✅ 2. Add a new section — “Pipeline Runner (Automation)”
-
-Append after the “Reproducibility” section, since it ties into automation.
-
-### d. Vector Storage
-- Embeds cleaned text chunks using SentenceTransformer embeddings.
-- Stores embeddings and metadata into a persistent ChromaDB instance at `data/vector_db/`.
-- Supports subsequent retrieval for RAG applications.
-
-### e. Logging and Error Handling
-- Uses a centralized logger located in `data_pipeline/utils/logger.py`.
-- Logs to both console and `logs/pipeline.log`.
-- Handles missing data, failed table extractions, and malformed inputs gracefully.
-- Logs are timestamped and categorized by severity level.
-
-### f. Testing
-- Unit tests validate the extraction, preprocessing, and integration stages.
-- `pytest` is included in requirements for automated test execution.
-
-### g. Reproducibility and Data Versioning
-- DVC tracks all data directories (`raw`, `extracted`, `cleaned`, `vector_db`).
-- `.dvc` files manage data versioning without committing large binaries to Git.
-- Pipeline stages are defined declaratively in `dvc.yaml`.
-- A local DVC remote (`../dvc_storage`) is configured for versioned data storage.
-
-### h. Planned Extensions
-- Airflow DAGs will orchestrate the pipeline in future releases.
-- Slack or email alerting will be integrated for anomaly detection and failure notifications.
-- Model retraining and drift detection will be added to the monitoring layer.
-
-## 6. Reproducibility
-
-The project ensures full reproducibility through:
-- Deterministic pipeline stages managed by DVC.
-- Environment files (`requirements.txt`, `environment.yml`) specifying exact dependencies.
-- Modular code organization with explicit inputs and outputs for each step.
-
-Reproduction steps on a new machine:
-
-```
-git clone <repository-url>
+```bash
+# Clone the repository
+git clone https://github.com/MLOpsGroup9/FrontShiftAI.git
 cd FrontShiftAI
-conda env create -f environment.yml
-conda activate frontshiftai
+
+# Setup environment
+conda activate frontshiftai  # or use pyenv activate frontshiftai
+pip install -r requirements.txt
+
+# Pull data from DVC remote
 dvc pull
+
+# Run the full pipeline
 dvc repro
 ```
 
-## 7. Code Style and Modularity
+To test individual stages:
+```bash
+python data_pipeline/scripts/data_extraction.py
+python data_pipeline/scripts/preprocess.py
+python data_pipeline/scripts/validate_data.py
+python data_pipeline/scripts/store_in_chromadb.py
+```
 
-The code follows PEP 8 standards and modular programming practices. Each script contains a clearly defined `main()` function and is independently executable. Shared functionality (logging, utilities) is placed in the `utils` module. The pipeline can be extended or modified with minimal coupling between stages.
+---
 
-## 8. Error Handling and Logging
+## 5. Automated Pipeline Runner
 
-Comprehensive error handling ensures robustness against missing data, file corruption, or extraction failures. Logging captures:
-- Data ingestion progress
-- Extraction and validation warnings
-- Exceptions and recovery attempts
+The pipeline includes a standalone orchestrator script (`run_pipeline.py`) for **local automation**.
 
-All logs are stored in `logs/pipeline.log` for debugging and audit purposes.
+### Run locally without Airflow
 
-## 9. License
+```bash
+python data_pipeline/scripts/run_pipeline.py
+```
 
-This project is released under the MIT License. See `License.md` for details.
-
-
-## 10. Automated Pipeline Runner
-
-For local automation without Airflow, the pipeline includes a standalone orchestrator script:
-
-
-### Functionality:
-- Sequentially executes all stages:
+**Functionality:**
+- Sequentially executes all core stages:
   1. `data_extraction.py`
   2. `preprocess.py`
   3. `validate_data.py`
   4. `store_in_chromadb.py`
 - Stops immediately if any stage fails.
-- Logs all console output to a timestamped file under `logs/`, e.g.:
-- Each stage can be run independently for debugging, while `run_pipeline.py` serves as a lightweight alternative to Airflow DAG orchestration.
+- Logs output to `data_pipeline/logs/pipeline_<timestamp>.log`.
 
-This script provides full reproducibility for local experiments without needing a cloud scheduler or CI/CD triggers.
+**Example log:**
+```
+2025-10-24 14:33:15 INFO - Extracted 12 PDFs successfully.
+2025-10-24 14:34:02 INFO - Preprocessed 4,830 text chunks.
+2025-10-24 14:35:22 INFO - Validated 4,700 chunks (130 dropped).
+2025-10-24 14:36:05 INFO - Stored 4,700 embeddings in ChromaDB.
+```
 
+---
 
-## 11. Known Issues and Troubleshooting
+## 6. Airflow DAG (Optional Orchestration)
 
-**1. `ModuleNotFoundError: No module named 'data_pipeline'`**
-- Add this snippet to the top of each script:
-  ```python
-  import sys, os
-  sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+An optional **Apache Airflow DAG** (`dvc_repro_manual_dag.py`) is provided for automation.
 
-from langchain.document_loaders import PyPDFLoader >> from langchain_community.document_loaders import PyPDFLoader
+### Purpose
+- Automates the DVC pipeline when new URLs are added to `data_pipeline/data/url.json`.
+- Can also be triggered manually from the Airflow web UI.
 
+### Behavior
+1. Detects changes in `url.json`.
+2. Executes:
+   ```bash
+   dvc repro
+   dvc push
+   git add dvc.lock
+   git commit -m "Reproduce pipeline after new URLs added"
+   ```
+3. Logs progress within the Airflow UI.
 
+### Setup
 
+```bash
+export AIRFLOW_HOME=/Users/sriks/Documents/Projects/FrontShiftAI/data_pipeline/airflow
+airflow db init
 
+# Create user
+airflow users create --username krishna --firstname Krishna --lastname FrontShiftAI --role Admin --email krishna@frontshiftai.com --password airflow
 
-## Bias Detection Summary:
-The current FrontShiftAI RAG pipeline processes organizational policy documents without demographic attributes or decision-making components. Hence, no bias analysis across user subgroups applies at this stage.
-Future extensions (e.g., user feedback-based fine-tuning or Q&A classification) will integrate Fairlearn or TFMA for bias detection and fairness evaluation across demographic slices.
+# Start Airflow services
+airflow scheduler &
+airflow webserver --port 8080 &
+```
 
+Access the UI at [http://localhost:8080](http://localhost:8080)  
+and trigger the DAG: **`dvc_repro_manual_dag`**
 
+---
 
+## 7. Reproducibility and DVC Setup
 
+The project ensures reproducibility via deterministic DVC stages.
 
-## When Others Clone Your GitHub Repo
+```bash
+# Add and configure DVC remote storage
+dvc remote add -d local_storage ../dvc_storage
 
-clone -> https://github.com/MLOpsGroup9/FrontShiftAI
+# Reproduce pipeline
+dvc repro
+```
 
+All stages are declared in `dvc.yaml`.
 
+---
+
+## 8. Troubleshooting
+
+### Import Errors
+If you see:
+```
+ModuleNotFoundError: No module named 'data_pipeline'
+```
+Add this to the top of your script:
+```python
+import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+```
+
+### LangChain Import Change
+If you’re using LangChain >= 0.1.0, replace:
+```python
+from langchain.document_loaders import PyPDFLoader
+```
+with:
+```python
+from langchain_community.document_loaders import PyPDFLoader
+```
+
+---
+
+## 9. Bias and Fairness (Appendix)
+
+The current FrontShiftAI pipeline processes organizational policy documents that contain no demographic or decision-making data.  
+Hence, no bias analysis across subgroups applies at this stage.  
+Future modules (e.g., Q&A systems or user feedback-based fine-tuning) will integrate **Fairlearn** or **TFMA** for fairness evaluation.
+
+---
+
+## 10. License
+
+This project is released under the **MIT License**.  
+See `License.md` for details.
+
+---
+
+## 11. Commands Reference Summary
+
+| Purpose | Command |
+|----------|----------|
+| **Setup Environment** | `conda create -n frontshiftai python=3.10` |
+| **Activate Env** | `conda activate frontshiftai` |
+| **Install Dependencies** | `pip install -r requirements.txt` |
+| **Pull Versioned Data** | `dvc pull` |
+| **Run Full Pipeline** | `dvc repro` |
+| **Run Manually** | `python data_pipeline/scripts/run_pipeline.py` |
+| **Trigger via Airflow** | `airflow dags trigger dvc_repro_manual_dag` |
+| **Start Webserver** | `airflow webserver --port 8080` |
+| **Start Scheduler** | `airflow scheduler` |
+| **Commit Lockfile** | `git add dvc.lock && git commit -m "Reproduce pipeline"` |
+
+---
+
+## 12. When Others Clone This Repo
+
+Steps for any collaborator or new user:
+
+```bash
 git clone https://github.com/MLOpsGroup9/FrontShiftAI.git
 cd FrontShiftAI
-pyenv activate frontshiftai  # or use your requirements.txt
+
+# Create environment
+conda create -n frontshiftai python=3.10
+conda activate frontshiftai
 pip install -r requirements.txt
 
-
+# Pull versioned data and reproduce pipeline
 dvc pull
-
-
 dvc repro
+
+# (Optional) Trigger pipeline automatically when url.json changes
+export AIRFLOW_HOME=./data_pipeline/airflow
+airflow db init
+airflow scheduler &
+airflow webserver --port 8080 &
+```
+
+---
+
+## 13. Contributing
+
+Contributions are welcome!  
+1. Fork the repo  
+2. Create a branch (`feature/new-component`)  
+3. Submit a Pull Request  
+
+---
