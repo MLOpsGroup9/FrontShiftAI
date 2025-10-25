@@ -7,9 +7,10 @@
 # FrontShiftAI: AI Copilot for Deskless Workers
 
 **Team Members**  
+
+- Harshitkumar Brahmbhatt 
 - Krishna Venkatesh  
-- Raghav Gali  
-- Harshitkumar Brahmbhatt  
+- Raghav Gali 
 - Rishi Raj Kuleri  
 - Sujitha Godishala  
 - Swathi Baba Eswarappa  
@@ -27,7 +28,7 @@ These challenges lead to:
 
 **Proposed Solution:**  
 - **RAG core** → Retrieves grounded answers from HR docs and policies.  
-- **Agentic layer** → Executes actions like scheduling, compliance checks, escalation.  
+- **Agentic layer (planned)** → Executes actions like scheduling, compliance checks, escalation.  
 - **Voice interaction (planned)** → Enables hands-free access for frontline roles.  
 
 The project includes an optional **Airflow DAG (`dvc_repro_manual_dag.py`)** located under `data_pipeline/airflow/dags/`.  
