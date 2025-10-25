@@ -15,7 +15,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List, Set, Optional, Tuple
 from langdetect import detect
-from pydantic import BaseModel, Field, validator, ValidationError
+from pydantic import BaseModel, Field, field_validator, ValidationError
 
 # =====================================================
 # 2. Path setup
@@ -72,7 +72,7 @@ class ChunkMetadataModel(BaseModel):
     created_at: str
     token_count: Optional[int] = Field(default=None, ge=0)
 
-    @validator("created_at")
+    @field_validator("created_at")
     def validate_timestamp(cls, v):
         try:
             datetime.fromisoformat(v)
@@ -80,7 +80,7 @@ class ChunkMetadataModel(BaseModel):
         except ValueError:
             raise ValueError("Invalid ISO timestamp format")
 
-    @validator("industry")
+    @field_validator("industry")
     def validate_industry(cls, v):
         if not v or len(v.strip()) < 2:
             raise ValueError("Industry field missing or invalid")
@@ -91,7 +91,7 @@ class ChunkModel(BaseModel):
     text: str = Field(..., min_length=50)
     metadata: ChunkMetadataModel
 
-    @validator("text")
+    @field_validator("text")
     def ensure_not_empty(cls, v):
         if not v.strip():
             raise ValueError("Text is empty or whitespace only")
