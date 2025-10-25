@@ -7,6 +7,7 @@
 # FrontShiftAI: AI Copilot for Deskless Workers
 
 **Team Members**  
+
 - Harshitkumar Brahmbhatt 
 - Krishna Venkatesh  
 - Raghav Gali 
