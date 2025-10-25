@@ -25,8 +25,11 @@ pytest>=7.4.0
 docling>=1.16.0
 easyocr
 pillow
+pytesseract
 pymupdf
 pymupdf4llm
+pdfplumber
+tiktoken
 camelot-py
 camelot-py[cv]
 PyPDF2>=3.0.1
@@ -37,6 +40,6 @@ great_expectations
 
 
 # Airflow Orchestration
-apache-airflow==2.9.2
+apache-airflow==3.0.0
 apache-airflow-providers-sqlite
 apache-airflow-providers-http
