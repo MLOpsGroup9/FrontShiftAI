@@ -5,8 +5,8 @@ Author: Krishna (FrontShiftAI)
 """
 
 from datetime import datetime, timedelta
-from airflow import DAG
-from airflow.operators.bash import BashOperator
+from data_pipeline.dags.data_pipeline_dag import DAG
+from data_pipeline.dags.data_pipeline_dag import BashOperator
 
 PROJECT_DIR = "/Users/sriks/Documents/Projects/FrontShiftAI"
 
