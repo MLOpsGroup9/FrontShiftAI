@@ -15,6 +15,7 @@ DEFAULT_SCRIPTS = [
     "preprocess.py",
     "chunker.py",
     "validate_data.py",
+    "data_bias.py",
     "store_in_chromadb.py",
 ]
 
