@@ -7,6 +7,8 @@ __pycache__/
 
 # Virtual environments
 .venv/
+*venv/
+_venv/
 env/
 .conda/
 .frontshiftai/
@@ -38,6 +40,9 @@ src/
 
 #logs
 data_pipeline/logs/
+
+# Data 
+/data/
 
 
 
