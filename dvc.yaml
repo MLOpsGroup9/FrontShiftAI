@@ -1,0 +1,48 @@
+stages:
+  download:
+    cmd: python data_pipeline/scripts/download_data.py
+    deps:
+      - data_pipeline/scripts/download_data.py
+      - data_pipeline/data/url.json
+    outs:
+      - data_pipeline/data/raw
+
+  parse:
+    cmd: python data_pipeline/scripts/pdf_parser.py
+    deps:
+      - data_pipeline/scripts/pdf_parser.py
+      - data_pipeline/data/raw
+    outs:
+      - data_pipeline/data/parsed
+
+  preprocess:
+    cmd: python data_pipeline/scripts/preprocess.py
+    deps:
+      - data_pipeline/scripts/preprocess.py
+      - data_pipeline/data/parsed
+    outs:
+      - data_pipeline/data/cleaned
+
+  chunk:
+    cmd: python data_pipeline/scripts/chunker.py
+    deps:
+      - data_pipeline/scripts/chunker.py
+      - data_pipeline/data/cleaned
+    outs:
+      - data_pipeline/data/chunked
+
+  validate:
+    cmd: python data_pipeline/scripts/validate_data.py
+    deps:
+      - data_pipeline/scripts/validate_data.py
+      - data_pipeline/data/chunked
+    outs:
+      - data_pipeline/data/validated
+
+  store_in_chromadb:
+    cmd: python data_pipeline/scripts/store_in_chromadb.py
+    deps:
+      - data_pipeline/scripts/store_in_chromadb.py
+      - data_pipeline/data/validated/valid_chunks.jsonl
+    outs:
+      - data_pipeline/data/vector_db

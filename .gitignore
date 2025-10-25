@@ -1,0 +1,43 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+
+# Virtual environments
+.venv/
+env/
+.conda/
+.frontshiftai/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Models (do not push heavy GGUF/finetuned weights)
+models/*.bin
+models/*.pt
+models/*.safetensors
+models/*.gguf
+models/*-finetuned-*/
+
+# Infrastructure / Docker
+*.env
+.env.*
+docker-data/
+
+# Local resources
+MyResources/
+src/api/
+models/
+src/
+
+# DVC
+
+
+#logs
+data_pipeline/logs/
+
+
+

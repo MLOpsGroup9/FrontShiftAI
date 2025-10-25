@@ -1,0 +1,42 @@
+# Core LLM & RAG Frameworks
+langchain>=0.2.0
+langchain-community>=0.2.0
+langchain-core
+chromadb>=0.5.0
+sentence-transformers>=2.6.0
+llama-cpp-python>=0.2.84
+huggingface_hub>=0.23.0
+torch
+
+# ML / Data Science Utilities
+scikit-learn>=1.5.0
+pandas>=2.2.0
+tqdm>=4.66.0
+tabulate
+pydantic>=2.0
+langdetect
+
+# Backend / API Layer
+fastapi>=0.110.0
+uvicorn>=0.30.0
+pytest>=7.4.0
+
+# Document Processing & OCR
+docling>=1.16.0
+easyocr
+pillow
+pymupdf
+pymupdf4llm
+camelot-py
+camelot-py[cv]
+PyPDF2>=3.0.1
+
+# Data Versioning & Validation
+dvc
+great_expectations
+
+
+# Airflow Orchestration
+apache-airflow==2.9.2
+apache-airflow-providers-sqlite
+apache-airflow-providers-http
