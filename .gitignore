@@ -34,6 +34,7 @@ MyResources/
 src/api/
 models/
 src/
+.email_config.json
 
 # DVC
 
