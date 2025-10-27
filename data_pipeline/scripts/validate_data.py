@@ -4,9 +4,7 @@ Reads from data/chunked/, validates schema, language, length, and metadata.
 Outputs reports, valid chunks, and invalid chunk samples to data/validated/.
 """
 
-# =====================================================
-# 1. Imports
-# =====================================================
+
 import os
 import json
 import csv
@@ -15,11 +13,12 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List, Set, Optional, Tuple
 from langdetect import detect
-from pydantic import BaseModel, Field, validator, ValidationError
+from pydantic import BaseModel, Field, field_validator, ValidationError
+import smtplib
+from email.message import EmailMessage
+import requests
 
-# =====================================================
-# 2. Path setup
-# =====================================================
+
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
 
@@ -32,9 +31,7 @@ LOG_DIR = BASE_DIR / "logs" / "validation"
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-# =====================================================
-# 3. Logging setup
-# =====================================================
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
@@ -45,9 +42,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# =====================================================
-# 4. Pydantic Schema Definitions
-# =====================================================
+
 class ChunkMetadataModel(BaseModel):
     doc_id: str
     company: str
@@ -72,7 +67,7 @@ class ChunkMetadataModel(BaseModel):
     created_at: str
     token_count: Optional[int] = Field(default=None, ge=0)
 
-    @validator("created_at")
+    @field_validator("created_at")
     def validate_timestamp(cls, v):
         try:
             datetime.fromisoformat(v)
@@ -80,7 +75,7 @@ class ChunkMetadataModel(BaseModel):
         except ValueError:
             raise ValueError("Invalid ISO timestamp format")
 
-    @validator("industry")
+    @field_validator("industry")
     def validate_industry(cls, v):
         if not v or len(v.strip()) < 2:
             raise ValueError("Industry field missing or invalid")
@@ -91,15 +86,13 @@ class ChunkModel(BaseModel):
     text: str = Field(..., min_length=50)
     metadata: ChunkMetadataModel
 
-    @validator("text")
+    @field_validator("text")
     def ensure_not_empty(cls, v):
         if not v.strip():
             raise ValueError("Text is empty or whitespace only")
         return v
 
-# =====================================================
-# 5. Helper functions
-# =====================================================
+
 def is_english(text: str) -> bool:
     """Detect if text is English."""
     try:
@@ -152,9 +145,7 @@ def validate_chunk_structure(chunk: Dict[str, Any], filename: str) -> List[str]:
 
     return issues
 
-# =====================================================
-# 6. Validation Pipeline
-# =====================================================
+
 def validate_all_chunks():
     """Validate all JSONL chunk files and produce reports."""
     jsonl_files = list(CHUNKS_DIR.glob("*.jsonl"))
@@ -164,8 +155,8 @@ def validate_all_chunks():
 
     report_csv = REPORTS_DIR / "validation_report.csv"
     summary_json = REPORTS_DIR / "validation_summary.json"
-    invalid_jsonl = VALIDATED_DIR  / "invalid_chunks.jsonl"
-    valid_jsonl = VALIDATED_DIR  / "valid_chunks.jsonl"
+    invalid_jsonl = VALIDATED_DIR / "invalid_chunks.jsonl"
+    valid_jsonl = VALIDATED_DIR / "valid_chunks.jsonl"
 
     seen_hashes: Set[str] = set()
     total_valid, total_invalid = 0, 0
@@ -248,9 +239,54 @@ def validate_all_chunks():
     logger.info("❌ Total invalid chunks: %s", total_invalid)
     logger.info("=" * 70)
 
-# =====================================================
-# 7. Entry point
-# =====================================================
+
+    anomalies = []
+    if summary["files_processed"] == 0:
+        anomalies.append("No chunk files processed.")
+    if summary["valid_ratio"] < 0.8:
+        anomalies.append(f"Low valid ratio detected: {summary['valid_ratio']}")
+    if summary["invalid_chunks"] > 50:
+        anomalies.append(f"High invalid chunk count: {summary['invalid_chunks']}")
+
+    if anomalies:
+        alert_msg = "\n".join(anomalies)
+        logger.warning(f"🚨 Anomalies detected:\n{alert_msg}")
+
+        # --- Shared Email Config (group9mlops@gmail.com) ---
+        cfg_path = BASE_DIR / ".email_config.json"
+        email_cfg = {}
+        if cfg_path.exists():
+            with open(cfg_path, "r", encoding="utf-8") as cfile:
+                email_cfg = json.load(cfile)
+
+        EMAIL_USER = email_cfg.get("sender")
+        EMAIL_PASS = email_cfg.get("password")
+        EMAIL_TO = email_cfg.get("receiver")
+
+        if EMAIL_USER and EMAIL_PASS and EMAIL_TO:
+            try:
+                msg = EmailMessage()
+                msg["Subject"] = "🚨 FrontShiftAI Validation Anomaly Alert"
+                msg["From"] = EMAIL_USER
+                msg["To"] = EMAIL_TO
+                msg.set_content(alert_msg)
+
+                # Attach validation summary
+                if summary_json.exists():
+                    with open(summary_json, "r", encoding="utf-8") as sf:
+                        msg.add_attachment(sf.read(), subtype="json", filename="validation_summary.json")
+
+                with smtplib.SMTP("smtp.gmail.com", 587) as server:
+                    server.starttls()
+                    server.login(EMAIL_USER, EMAIL_PASS)
+                    server.send_message(msg)
+                logger.info("📧 Email alert sent successfully.")
+            except Exception as e:
+                logger.error(f"❌ Failed to send email alert: {e}")
+        else:
+            logger.warning("⚠️ Email config not found or incomplete — skipping email alert.")
+
+
 if __name__ == "__main__":
     print("\n" + "=" * 70)
     print("Chunk Validation Pipeline")
