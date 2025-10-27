@@ -5,8 +5,8 @@ stages:
     deps:
     - path: data_pipeline/data/url.json
       hash: md5
-      md5: e3a2e2f693258c47b73b27f05738982e
-      size: 3474
+      md5: 907239af3d26329713e06719c419a913
+      size: 3691
     - path: data_pipeline/scripts/download_data.py
       hash: md5
       md5: 2e14f1d3709454cb52186b6cad7febf7
@@ -14,17 +14,17 @@ stages:
     outs:
     - path: data_pipeline/data/raw
       hash: md5
-      md5: 5bc16cfcae787aa75b6e379a8dcbefc9.dir
-      size: 20225304
-      nfiles: 16
+      md5: 4c099a8f15556675ee46dc6531983dfd.dir
+      size: 21277775
+      nfiles: 18
   parse:
     cmd: python data_pipeline/scripts/pdf_parser.py
     deps:
     - path: data_pipeline/data/raw
       hash: md5
-      md5: 5bc16cfcae787aa75b6e379a8dcbefc9.dir
-      size: 20225304
-      nfiles: 16
+      md5: 4c099a8f15556675ee46dc6531983dfd.dir
+      size: 21277775
+      nfiles: 18
     - path: data_pipeline/scripts/pdf_parser.py
       hash: md5
       md5: 5c01f7e61b11858ae56f8ff51cfdfc8e
@@ -32,17 +32,17 @@ stages:
     outs:
     - path: data_pipeline/data/parsed
       hash: md5
-      md5: 6a2f8715cf09cdcab0db2c422c804cf6.dir
-      size: 1723791
-      nfiles: 16
+      md5: fa58c38b79dc618e5f0e820a1bf5cda8.dir
+      size: 1842500
+      nfiles: 18
   preprocess:
     cmd: python data_pipeline/scripts/preprocess.py
     deps:
     - path: data_pipeline/data/parsed
       hash: md5
-      md5: 6a2f8715cf09cdcab0db2c422c804cf6.dir
-      size: 1723791
-      nfiles: 16
+      md5: fa58c38b79dc618e5f0e820a1bf5cda8.dir
+      size: 1842500
+      nfiles: 18
     - path: data_pipeline/scripts/preprocess.py
       hash: md5
       md5: 519d10d8004526c8c00eae5e7043f82b
@@ -50,17 +50,17 @@ stages:
     outs:
     - path: data_pipeline/data/cleaned
       hash: md5
-      md5: 5ed247b20e41e839b00c55540da041ab.dir
-      size: 1861330
-      nfiles: 16
+      md5: 3cfd0160b6eff4602d8bd909c7afaa6c.dir
+      size: 1986477
+      nfiles: 18
   chunk:
     cmd: python data_pipeline/scripts/chunker.py
     deps:
     - path: data_pipeline/data/cleaned
       hash: md5
-      md5: 5ed247b20e41e839b00c55540da041ab.dir
-      size: 1861330
-      nfiles: 16
+      md5: 3cfd0160b6eff4602d8bd909c7afaa6c.dir
+      size: 1986477
+      nfiles: 18
     - path: data_pipeline/scripts/chunker.py
       hash: md5
       md5: 8ddf878601c621bca30e81a46d14278c
@@ -68,34 +68,34 @@ stages:
     outs:
     - path: data_pipeline/data/chunked
       hash: md5
-      md5: c08b0dd8142ee564bf69a9ef6d8893bf.dir
-      size: 1973274
-      nfiles: 16
+      md5: b62dd1325a2995fa7740c147a0fb33b8.dir
+      size: 2121878
+      nfiles: 18
   validate:
     cmd: python data_pipeline/scripts/validate_data.py
     deps:
     - path: data_pipeline/data/chunked
       hash: md5
-      md5: c08b0dd8142ee564bf69a9ef6d8893bf.dir
-      size: 1973274
-      nfiles: 16
+      md5: b62dd1325a2995fa7740c147a0fb33b8.dir
+      size: 2121878
+      nfiles: 18
     - path: data_pipeline/scripts/validate_data.py
       hash: md5
-      md5: c87869cae77365f4f7a0b90781badc2e
-      size: 8607
+      md5: ca7f2a318aab27a035afd9794e1b52ac
+      size: 9737
     outs:
     - path: data_pipeline/data/validated
       hash: md5
-      md5: ad52097f105072bbaad01e636b337c47.dir
-      size: 1966349
+      md5: 7d98d8ac3aa93bb58799c1d1270c22ae.dir
+      size: 2111680
       nfiles: 4
   store_in_chromadb:
     cmd: python data_pipeline/scripts/store_in_chromadb.py
     deps:
     - path: data_pipeline/data/validated/valid_chunks.jsonl
       hash: md5
-      md5: 9a4a75da3cbd53fa019375f46614cafb
-      size: 1961413
+      md5: 1c0f852cf4b13cb09853f64b81267987
+      size: 2105411
     - path: data_pipeline/scripts/store_in_chromadb.py
       hash: md5
       md5: b34646df52743a82d1f4ba09f8202c09
@@ -103,6 +103,6 @@ stages:
     outs:
     - path: data_pipeline/data/vector_db
       hash: md5
-      md5: 6c33f7625306c2a99d2eb53f81aa0253.dir
-      size: 13144228
+      md5: 641cba1c715c2812de357bfde48c8bdd.dir
+      size: 14475428
       nfiles: 5

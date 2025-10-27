@@ -7,6 +7,8 @@ __pycache__/
 
 # Virtual environments
 .venv/
+*venv/
+_venv/
 env/
 .conda/
 .frontshiftai/
@@ -32,12 +34,16 @@ MyResources/
 src/api/
 models/
 src/
+.email_config.json
 
 # DVC
 
 
 #logs
 data_pipeline/logs/
+
+# Data 
+/data/
 
 
 
