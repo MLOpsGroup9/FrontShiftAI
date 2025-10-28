@@ -97,16 +97,16 @@ class ImagePayload(BaseModel):
         default=None,
         description="Path to an image accessible on the service host.",
     )
-    # image_b64: Optional[str] = Field(
-    #     default=None,
-    #     description="Base64 encoded image bytes.",
-    # )
+    image_b64: Optional[str] = Field(
+        default=None,
+        description="Base64 encoded image bytes.",
+    )
 
-    # @model_validator(mode="after")
-    # def validate_source(cls, values: "ImagePayload") -> "ImagePayload":
-    #     if bool(values.image_path) == bool(values.image_b64):
-    #         raise ValueError("Provide exactly one of `image_path` or `image_b64`.")
-    #     return values
+    @model_validator(mode="after")
+    def validate_source(cls, values: "ImagePayload") -> "ImagePayload":
+        if bool(values.image_path) == bool(values.image_b64):
+            raise ValueError("Provide exactly one of `image_path` or `image_b64`.")
+        return values
 
 
 class CaptionRequest(ImagePayload):

@@ -4,41 +4,57 @@ Reads validated chunks from data/validated/valid_chunks.jsonl
 and stores embeddings into data/vector_db/.
 """
 
-import sys, os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
-
 import json
-import pandas as pd
+import logging
+import sys
 from pathlib import Path
-import chromadb
-from chromadb.utils import embedding_functions
-from data_pipeline.utils.logger import get_logger
 
-logger = get_logger(__name__)
+import chromadb
+import pandas as pd
+from chromadb.utils import embedding_functions
+
+BASE_DIR = Path(__file__).resolve().parents[1]
+DATA_DIR = BASE_DIR / "data"
+VALIDATED_CHUNKS_PATH = DATA_DIR / "validated" / "valid_chunks.jsonl"
+VECTOR_DB_PATH = DATA_DIR / "vector_db"
+LOG_DIR = BASE_DIR / "logs" / "vector_store"
+
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+if not logger.handlers:
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
+    file_handler = logging.FileHandler(LOG_DIR / "store_in_chromadb.log", encoding="utf-8")
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(formatter)
+
+    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler.setLevel(logging.INFO)
+    stream_handler.setFormatter(formatter)
+
+    logger.addHandler(file_handler)
+    logger.addHandler(stream_handler)
 
 def main():
     logger.info("🚀 Starting embedding and ChromaDB storage pipeline...")
 
     try:
-        # --- Directory setup ---
-        project_root = Path(__file__).resolve().parents[1]  # data_pipeline/
-        data_dir = project_root / "data"
-
-        # Input: validated chunks file
-        valid_chunks_path = data_dir / "validated" / "valid_chunks.jsonl"
-        if not valid_chunks_path.exists():
-            msg = f"Validated chunks file not found: {valid_chunks_path}. Run validate_data.py first."
+        if not VALIDATED_CHUNKS_PATH.exists():
+            msg = f"Validated chunks file not found: {VALIDATED_CHUNKS_PATH}. Run validate_data.py first."
             logger.error(msg)
             raise FileNotFoundError(msg)
 
-        # Output: ChromaDB vector storage
-        vector_db_path = data_dir / "vector_db"
-        vector_db_path.mkdir(parents=True, exist_ok=True)
+        VECTOR_DB_PATH.mkdir(parents=True, exist_ok=True)
 
         # --- Load validated chunks ---
-        logger.info(f"📥 Loading validated chunks from: {valid_chunks_path}")
+        logger.info(f"📥 Loading validated chunks from: {VALIDATED_CHUNKS_PATH}")
         all_chunks = []
-        with open(valid_chunks_path, "r", encoding="utf-8") as f:
+        with open(VALIDATED_CHUNKS_PATH, "r", encoding="utf-8") as f:
             for line in f:
                 try:
                     record = json.loads(line)
@@ -61,7 +77,7 @@ def main():
             raise ValueError("No valid chunks found in file. Check validation output.")
 
         # --- Initialize ChromaDB ---
-        client = chromadb.PersistentClient(path=str(vector_db_path))
+        client = chromadb.PersistentClient(path=str(VECTOR_DB_PATH))
         embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name="all-MiniLM-L6-v2"
         )
@@ -95,7 +111,7 @@ def main():
         collection.add(documents=documents, metadatas=metadatas, ids=ids)
 
         logger.info(f"💾 Stored {len(documents)} embeddings in collection '{collection_name}'.")
-        logger.info(f"📂 Vector DB saved at: {vector_db_path}")
+        logger.info(f"📂 Vector DB saved at: {VECTOR_DB_PATH}")
 
     except Exception as e:
         logger.error(f"❌ Error during embedding/storage stage: {e}", exc_info=True)
