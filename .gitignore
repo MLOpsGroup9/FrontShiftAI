@@ -37,13 +37,16 @@ src/
 .email_config.json
 
 # DVC
-
+.dvc
 
 #logs
 data_pipeline/logs/
 
 # Data 
 /data/
+
+# Airflow 
+.airflow
 
 
 
