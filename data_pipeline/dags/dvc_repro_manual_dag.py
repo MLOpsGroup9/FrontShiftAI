@@ -5,10 +5,10 @@ Author: Krishna (FrontShiftAI)
 """
 
 from datetime import datetime, timedelta
-from data_pipeline.dags.data_pipeline_dag import DAG
-from data_pipeline.dags.data_pipeline_dag import BashOperator
+from airflow import DAG
+from airflow.providers.standard.operators.bash import BashOperator
 
-PROJECT_DIR = "/Users/sriks/Documents/Projects/FrontShiftAI"
+PROJECT_DIR = "/opt/airflow/project"
 
 default_args = {
     "owner": "krishna",
@@ -22,7 +22,6 @@ default_args = {
 with DAG(
     dag_id="dvc_repro_manual_dag",
     description="Manually trigger DVC repro for the FrontShiftAI project.",
-    schedule_interval=None,
     start_date=datetime(2025, 1, 1),
     catchup=False,
     max_active_runs=1,
