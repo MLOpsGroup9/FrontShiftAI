@@ -156,7 +156,7 @@ def query_docs(query, company):
         results = collection.query(
             query_texts=[query],
             where={"company": {"$eq": possible_company}},
-            n_results=4,
+            n_results=10,  # fetch more chunks to improve context
         )
 
         docs = results["documents"][0]
@@ -164,7 +164,37 @@ def query_docs(query, company):
         if not docs:
             return None, None
 
-        context = "\n\n".join(docs)
+        # --- Filter out irrelevant or generic handbook sections ---
+        filtered_docs = []
+        banned_phrases = [
+            "equal opportunity employer",
+            "code of conduct",
+            "drug and alcohol policy",
+            "safety regulations",
+            "driving under the influence",
+            "sexual harassment policy",
+            "this handbook does not constitute",
+            "employment at will",
+        ]
+        for d in docs:
+            if not d or not d.strip():
+                continue
+            if any(bad_phrase in d.lower() for bad_phrase in banned_phrases):
+                continue
+            filtered_docs.append(d)
+
+        if not filtered_docs:
+            return None, None
+
+        # --- Simple reranking by keyword overlap for precision ---
+        ranked_docs = sorted(
+            filtered_docs,
+            key=lambda x: sum(word in x.lower() for word in query.lower().split()),
+            reverse=True,
+        )
+
+        # --- Join top 4 for the final context ---
+        context = "\n\n".join(ranked_docs[:4])
         return context[:5000], metas
 
     except Exception as e:
@@ -188,13 +218,23 @@ def stream_answer(context, question):
             [line for line in context.splitlines() if phrase.lower() not in line.lower()]
         )
 
-    system_prompt = """You are FrontShiftAI, the virtual HR assistant.
-Answer questions only using the provided company handbook context.
-Do not refer users to HR or external contacts — respond naturally as if *you* are HR.
-If the information isn’t available in the handbook, say:
-"This information isn’t available in the provided company handbook."
-Be clear, concise, and professional.
+    system_prompt = """
+You are FrontShiftAI — the company’s intelligent HR assistant.
+Answer employee questions strictly using the provided company handbook context.
+Do not invent, speculate, or use outside sources.
+
+Guidelines:
+- Maintain a professional, concise, and factual tone.
+- Use only information from the context.
+- If the answer is missing, respond:
+  "This information isn’t available in the provided company handbook."
+- Stop after giving a complete answer.
+
+Formatting:
+- Use **bold** for key terms.
+- Use bullet points or short headers for clarity.
 """
+
 
     # Construct the prompt clearly — prevents timestamp hallucinations
     prompt = f"{system_prompt}\n\n### Company Handbook Context:\n{context}\n\n### Employee Question:\n{question}\n\n### HR Assistant Answer:\n"
