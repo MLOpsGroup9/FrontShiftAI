@@ -205,59 +205,87 @@ def query_docs(query, company):
 
 
 def stream_answer(context, question):
-    # Clean irrelevant lines
+    # --- Early response for casual greetings ---
+    greetings = ["hi", "hello", "hey", "what's up", "whats up", "yo", "sup", "how are you", "good morning", "good afternoon", "good evening"]
+    if question.strip().lower() in greetings:
+        response = (
+            "Hello! I’m **FrontShiftAI**, your company’s HR assistant. "
+            "You can ask me questions about company policies such as **PTO**, **holidays**, **attendance**, or **leave rules**. "
+            "I’m here to help you understand your company handbook."
+        )
+        st.markdown(response)
+        return response
+
+    # --- Check for inappropriate or off-topic content ---
+    inappropriate_keywords = [
+        "hit", "kill", "hurt", "fight", "violence", "harass", "abuse", "weapon",
+        "dating", "love", "salary negotiation", "personal advice"
+    ]
+    if any(word in question.lower() for word in inappropriate_keywords):
+        response = (
+            "That’s not an appropriate workplace question. "
+            "If this is about **workplace behavior or safety**, please remember that **violence or harassment is strictly prohibited** under company policy. "
+            "If you need to report an incident, please contact your HR representative immediately."
+        )
+        st.markdown(response)
+        return response
+
+    # --- Clean irrelevant context lines ---
     banned_phrases = [
         "please contact human resources",
         "contact hr for more information",
         "for additional information",
         "refer to hr department",
         "reach out to your supervisor",
+        "refer to the handbook",
     ]
     for phrase in banned_phrases:
         context = "\n".join(
             [line for line in context.splitlines() if phrase.lower() not in line.lower()]
         )
 
+    # --- Refined system prompt ---
     system_prompt = """
-You are FrontShiftAI — the company’s intelligent HR assistant.
-Answer employee questions strictly using the provided company handbook context.
-Do not invent, speculate, or use outside sources.
+You are FrontShiftAI, the company’s professional HR assistant.
+You are friendly, concise, and factual.
 
 Guidelines:
-- Maintain a professional, concise, and factual tone.
-- Use only information from the context.
-- If the answer is missing, respond:
-  "This information isn’t available in the provided company handbook."
-- Stop after giving a complete answer.
-
-Formatting:
-- Use **bold** for key terms.
-- Use bullet points or short headers for clarity.
+- Answer questions using only the provided company handbook context.
+- You represent HR: maintain professionalism and empathy.
+- Do NOT refer users to the handbook — you *are* the handbook.
+- If an answer truly cannot be found, respond with:
+  "I’m sorry, I couldn’t find details on that topic in the company handbook."
+- For inappropriate, violent, or off-topic questions, give a professional HR-style safety reminder.
+- Use **bold** for key terms and bullet points for clarity.
 """
 
-
-    # Construct the prompt clearly — prevents timestamp hallucinations
+    # --- Build structured prompt ---
     prompt = f"{system_prompt}\n\n### Company Handbook Context:\n{context}\n\n### Employee Question:\n{question}\n\n### HR Assistant Answer:\n"
 
-    # Stream response tokens
+    # --- Stream the model output ---
     output_container = st.empty()
     partial_text = ""
-    for token in llm.create_completion(
-        prompt=prompt,
-        max_tokens=512,
-        temperature=0.7,
-        top_p=0.9,
-        stream=True,
-    ):
-        chunk = token.get("choices", [{}])[0].get("text", "")
-        if chunk:
-            partial_text += chunk
-            output_container.markdown(partial_text + "▌")
+    try:
+        for token in llm.create_completion(
+            prompt=prompt,
+            max_tokens=512,
+            temperature=0.7,
+            top_p=0.9,
+            stream=True,
+        ):
+            chunk = token.get("choices", [{}])[0].get("text", "")
+            if chunk:
+                partial_text += chunk
+                output_container.markdown(partial_text + "▌")
 
-    # Finalize
-    output_container.markdown(partial_text.strip())
-    return partial_text.strip()
+        output_container.markdown(partial_text.strip())
+        return partial_text.strip()
 
+    except Exception as e:
+        st.error(f"❌ Model error: {e}")
+        return "I’m sorry, something went wrong while processing your question."
+
+   
 
 
 if "messages" not in st.session_state:
@@ -277,9 +305,7 @@ if query := st.chat_input("Ask about your company policies..."):
     with st.chat_message("assistant"):
         context, metas = query_docs(query, company_name)
         if not context:
-            st.write("⚠️ No relevant context found in your company handbook.")
-            answer = "This information isn’t available in the provided company handbook."
-            st.markdown(answer)
+            answer = "I’m sorry, I couldn’t find details on that topic in the company handbook."
         else:
             # ✅ Stream output directly from LLaMA
             answer = stream_answer(context, query)
