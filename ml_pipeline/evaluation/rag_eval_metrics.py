@@ -3,14 +3,17 @@ from pathlib import Path
 import pandas as pd
 from sentence_transformers import SentenceTransformer, util
 
-# --- Project setup ---
+# --- Ensure project root is in sys.path ---
 current_file = Path(__file__).resolve()
-project_root = current_file.parents[2]
-sys.path.append(str(project_root))
+project_root = current_file.parents[2]  # /Users/sriks/Documents/Projects/FrontShiftAI
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
+# --- Imports after sys.path setup ---
 from ml_pipeline.rag.rag_query_utils import retrieve_context
 from ml_pipeline.tracking.push_to_registry import push_to_registry
-from ml_pipeline.utils.logger import get_logger   # ✅ new logger import
+from ml_pipeline.utils.logger import get_logger
+from ml_pipeline.tracking.exp_tracking import log_metrics
 
 # ✅ Initialize logger
 logger = get_logger("rag_eval_metrics")
@@ -75,6 +78,13 @@ def main():
 
     push_to_registry(model_name, model_file, metrics)
     logger.info(f"✅ Model {model_name} pushed to registry with metrics: {metrics}")
+
+    # --------------------------------------------------------
+    # ✅ Log results to Weights & Biases (W&B)
+    # --------------------------------------------------------
+    artifacts = {"eval_results": OUT_CSV}
+    log_metrics("RAG_Evaluation", model_name, metrics, artifacts)
+    logger.info(f"📊 Logged RAG Evaluation metrics to W&B: {metrics}")
 
     print("✅ Evaluation complete and model registered.")
     print(f"📊 Mean semantic similarity: {mean_sim}")

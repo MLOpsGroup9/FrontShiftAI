@@ -3,13 +3,15 @@ from pathlib import Path
 import pandas as pd
 from sentence_transformers import SentenceTransformer, util
 
-# --- Project setup ---
+# --- Ensure project root in sys.path ---
 current_file = Path(__file__).resolve()
-project_root = current_file.parents[2]  # /Users/sriks/Documents/Projects/FrontShiftAI
-sys.path.append(str(project_root))
+project_root = current_file.parents[2]
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
-from ml_pipeline.utils.logger import get_logger
 from ml_pipeline.rag.rag_query_utils import retrieve_context
+from ml_pipeline.utils.logger import get_logger
+from ml_pipeline.tracking.exp_tracking import log_metrics
 
 # ✅ Initialize logger
 logger = get_logger("sensitivity_analysis")
@@ -23,6 +25,7 @@ PARAPhrases = [
     "how many days of sick leave are allowed",
     "sick leave entitlement"
 ]
+
 COMPANY = "Crouse Medical Practice"
 
 def main():
@@ -30,13 +33,11 @@ def main():
     model = SentenceTransformer("all-MiniLM-L6-v2")
     rows = []
 
-    # --- Base query context ---
     base_docs, _ = retrieve_context(BASE, COMPANY, top_k=4)
     base_ctx = " ".join(base_docs) if base_docs else ""
     base_emb = model.encode(base_ctx, convert_to_tensor=True) if base_ctx else None
     logger.info(f"Base query: '{BASE}' | Context length: {len(base_ctx)}")
 
-    # --- Paraphrase comparisons ---
     for p in PARAPhrases:
         logger.info(f"Comparing variant: '{p}'")
         docs, _ = retrieve_context(p, COMPANY, top_k=4)
@@ -46,16 +47,15 @@ def main():
             sim = util.cos_sim(base_emb, emb).item()
         else:
             sim = 0.0
-
-        logger.info(f"Context similarity ({BASE} ↔ {p}): {round(float(sim), 4)}")
         rows.append({
             "base_query": BASE,
             "variant_query": p,
             "context_similarity": round(float(sim), 4),
             "context_length": len(ctx)
         })
+        logger.info(f"Context similarity ({BASE} ↔ {p}): {sim:.3f}")
 
-    # --- Save report ---
+    # Save CSV
     df = pd.DataFrame(rows)
     OUT_CSV.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(OUT_CSV, index=False)
@@ -63,6 +63,16 @@ def main():
     logger.info(f"\n{df}")
 
     print(f"✅ Sensitivity analysis completed. Results saved at {OUT_CSV}")
+
+    # --------------------------------------------------------
+    # ✅ Log metrics + artifact to W&B
+    # --------------------------------------------------------
+    avg_ctx_sim = round(df["context_similarity"].mean(), 4)
+    metrics = {"mean_context_similarity": avg_ctx_sim}
+    artifacts = {"sensitivity_report": OUT_CSV}
+
+    log_metrics("Sensitivity_Analysis", "llama_3b_instruct", metrics, artifacts)
+    logger.info(f"📊 Logged sensitivity analysis metrics to W&B: {metrics}")
 
 if __name__ == "__main__":
     main()
