@@ -2,13 +2,13 @@ import sys
 from pathlib import Path
 import pandas as pd
 from sentence_transformers import SentenceTransformer, util
-from ml_pipeline.utils.logger import get_logger
 
 # --- Project setup ---
 current_file = Path(__file__).resolve()
 project_root = current_file.parents[2]  # /Users/sriks/Documents/Projects/FrontShiftAI
 sys.path.append(str(project_root))
 
+from ml_pipeline.utils.logger import get_logger
 from ml_pipeline.rag.rag_query_utils import retrieve_context
 
 # ✅ Initialize logger

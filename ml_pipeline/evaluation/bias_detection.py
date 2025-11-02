@@ -1,6 +1,17 @@
 from pathlib import Path
 import pandas as pd
+import sys
+from pathlib import Path
+
+# --- Ensure FrontShiftAI root is in sys.path ---
+current_file = Path(__file__).resolve()
+project_root = current_file.parents[2]  # /Users/sriks/Documents/Projects/FrontShiftAI
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+
 from ml_pipeline.utils.logger import get_logger
+
 
 # ✅ Initialize logger
 logger = get_logger("bias_detection")
