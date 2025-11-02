@@ -3,13 +3,19 @@ from pathlib import Path
 import pandas as pd
 from sentence_transformers import SentenceTransformer, util
 
+# --- Project setup ---
 current_file = Path(__file__).resolve()
-project_root = current_file.parents[2]  # /Users/sriks/Documents/Projects/FrontShiftAI
+project_root = current_file.parents[2]
 sys.path.append(str(project_root))
 
 from ml_pipeline.rag.rag_query_utils import retrieve_context
+from ml_pipeline.tracking.push_to_registry import push_to_registry
+from ml_pipeline.utils.logger import get_logger   # ✅ new logger import
 
-PROJECT_ROOT = Path("/Users/sriks/Documents/Projects/FrontShiftAI")
+# ✅ Initialize logger
+logger = get_logger("rag_eval_metrics")
+
+PROJECT_ROOT = project_root
 OUT_CSV = PROJECT_ROOT / "ml_pipeline" / "evaluation" / "eval_results" / "rag_eval_results.csv"
 
 EVAL_QUERIES = [
@@ -19,14 +25,14 @@ EVAL_QUERIES = [
 ]
 
 def main():
-    print("🧠 Starting RAG evaluation...")
+    logger.info("🧠 Starting RAG evaluation pipeline...")
     model = SentenceTransformer("all-MiniLM-L6-v2")
     rows = []
 
     for item in EVAL_QUERIES:
         q = item["q"]
         company = item.get("company")
-        print(f"🔍 Evaluating query: '{q}' | company: {company}")
+        logger.info(f"🔍 Evaluating query: '{q}' | company: {company}")
 
         docs, metas = retrieve_context(q, company, top_k=4)
         context = " ".join(docs) if docs else ""
@@ -54,8 +60,25 @@ def main():
     df = pd.DataFrame(rows)
     OUT_CSV.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(OUT_CSV, index=False)
-    print(f"✅ Saved evaluation results to {OUT_CSV}")
-    print(df)
+    logger.info(f"✅ Saved evaluation results to {OUT_CSV}")
+    logger.info(f"\n{df}")
+
+    # --------------------------------------------------------
+    # ✅ Push evaluated model to registry
+    # --------------------------------------------------------
+    model_name = "llama_3b_instruct"
+    model_file = "Llama-3.2-3B-Instruct-Q4_K_S.gguf"
+
+    mean_sim = round(df["semantic_sim"].mean(), 4)
+    mean_prec = round(df["precision_at_k"].mean(), 4)
+    metrics = {"mean_semantic_sim": mean_sim, "mean_precision_at_k": mean_prec}
+
+    push_to_registry(model_name, model_file, metrics)
+    logger.info(f"✅ Model {model_name} pushed to registry with metrics: {metrics}")
+
+    print("✅ Evaluation complete and model registered.")
+    print(f"📊 Mean semantic similarity: {mean_sim}")
+    print(f"📊 Mean precision@k: {mean_prec}")
 
 if __name__ == "__main__":
     main()

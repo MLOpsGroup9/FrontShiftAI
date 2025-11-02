@@ -21,7 +21,6 @@ Thumbs.db
 models/*.bin
 models/*.pt
 models/*.safetensors
-models/*.gguf
 models/*-finetuned-*/
 
 # Infrastructure / Docker
@@ -32,12 +31,13 @@ docker-data/
 # Local resources
 MyResources/
 src/api/
-models/
 src/
 .email_config.json
 
 # DVC
 .dvc
+models_registry/
+
 
 #logs
 data_pipeline/logs/

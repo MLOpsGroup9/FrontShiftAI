@@ -40,7 +40,7 @@ PyPDF2>=3.0.1
 # Data Versioning & Validation
 dvc
 great_expectations
-
+gcsfs
 
 # Airflow Orchestration
 apache-airflow==3.0.0

@@ -1,4 +1,4 @@
 query,company,k,semantic_sim,precision_at_k,num_docs,top_filenames
-how many sick leaves do I get,Crouse Medical Practice,4,0.4274,1.0,4,Logistics_O_Neill_Logistics.md;Construction_Kinyon_Construction.md;Finance_Home_Bank.md
-what is bereavement leave policy,Crouse Medical Practice,4,0.6302,1.0,4,Healthcare_Crouse_Medical_Practice.md;Logistics_O_Neill_Logistics.md;Hospitality_Alta_Peruvian_Lodge.md;Logistics_Buchheit_Logistics.md
-how to apply for FMLA,Crouse Medical Practice,4,0.5698,1.0,4,Healthcare_Crouse_Medical_Practice.md;Hospitality_Alta_Peruvian_Lodge.md;Logistics_Buchheit_Logistics.md;Finance_Home_Bank.md
+how many sick leaves do I get,Crouse Medical Practice,4,0.4274,1.0,4,Logistics_O_Neill_Logistics.md;Finance_Home_Bank.md;Construction_Kinyon_Construction.md
+what is bereavement leave policy,Crouse Medical Practice,4,0.6302,1.0,4,Logistics_O_Neill_Logistics.md;Healthcare_Crouse_Medical_Practice.md;Logistics_Buchheit_Logistics.md;Hospitality_Alta_Peruvian_Lodge.md
+how to apply for FMLA,Crouse Medical Practice,4,0.5698,1.0,4,Hospitality_Alta_Peruvian_Lodge.md;Healthcare_Crouse_Medical_Practice.md;Logistics_Buchheit_Logistics.md;Finance_Home_Bank.md
