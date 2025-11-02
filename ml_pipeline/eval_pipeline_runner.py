@@ -37,6 +37,12 @@ STAGES = [
         "script": PROJECT_ROOT / "ml_pipeline" / "evaluation" / "sensitivity_analysis.py",
         "expected_output": EVAL_DIR / "sensitivity_report.csv",
     },
+    {
+    "name": "Unified Evaluation Summary",
+    "script": PROJECT_ROOT / "ml_pipeline" / "evaluation" / "unified_eval_summary.py",
+    "expected_output": EVAL_DIR / "unified_summary.json",
+    },
+
 ]
 
 
