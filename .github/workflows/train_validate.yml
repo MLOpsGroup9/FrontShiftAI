@@ -130,7 +130,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: eval-results
-          path: .
+          path: /FrontShiftAI
 
       - name: Push to Model Registry
         run: |
