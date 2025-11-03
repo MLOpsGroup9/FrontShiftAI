@@ -1,0 +1,110 @@
+name: CI – Train and Validate Model
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "ml_pipeline/**"
+      - "models/**"
+      - "requirements.txt"
+  workflow_dispatch:
+
+jobs:
+  train-validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Set Environment Variables
+        run: |
+          echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
+          echo "TOKENIZERS_PARALLELISM=false" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Run Evaluation Pipeline
+        env:
+          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+          WANDB_ENTITY: group9mlops-northeastern-university
+          WANDB_PROJECT: FrontShiftAI
+        run: |
+          python ml_pipeline/eval_pipeline_runner.py
+
+      - name: Check Evaluation Metrics
+        id: eval
+        run: |
+          METRIC=$(python - <<'PYCODE'
+import json, pathlib
+p = pathlib.Path("ml_pipeline/evaluation/eval_results/unified_summary.json")
+data = json.load(open(p))
+print(data["rag"]["mean_semantic_sim"])
+PYCODE
+)
+          echo "mean_sim=$METRIC" >> $GITHUB_ENV
+          echo "Mean Semantic Similarity: $METRIC"
+          THRESHOLD=0.45
+          if (( $(echo "$METRIC < $THRESHOLD" | bc -l) )); then
+            echo "Model below threshold ($METRIC < $THRESHOLD)"
+            exit 1
+          fi
+
+      - name: Upload Evaluation Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: ml_pipeline/evaluation/eval_results/
+
+      - name: Send Email Notification
+        if: always()
+        env:
+          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+        run: |
+          echo "📧 Sending email notification..."
+          python - <<'PYCODE'
+import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+sender = os.getenv("EMAIL_SENDER")
+password = os.getenv("EMAIL_PASSWORD")
+receiver = os.getenv("EMAIL_RECEIVER")
+
+subject = f"FrontShiftAI CI/CD Pipeline – {'SUCCESS' if os.getenv('GITHUB_JOB_STATUS', 'success') == 'success' else 'FAILURE'}"
+body = f"""
+FrontShiftAI CI/CD Pipeline Run Summary
+
+Repository: {os.getenv('GITHUB_REPOSITORY')}
+Branch: {os.getenv('GITHUB_REF_NAME')}
+Status: {os.getenv('GITHUB_JOB_STATUS', 'success').upper()}
+
+Mean Semantic Similarity: {os.getenv('mean_sim')}
+"""
+
+msg = MIMEMultipart()
+msg["From"] = sender
+msg["To"] = receiver
+msg["Subject"] = subject
+msg.attach(MIMEText(body, "plain"))
+
+try:
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(sender, password)
+        server.send_message(msg)
+    print(f"✅ Email sent successfully to {receiver}")
+except Exception as e:
+    print(f"❌ Failed to send email: {e}")
+PYCODE
