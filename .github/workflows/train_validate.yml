@@ -64,16 +64,93 @@ jobs:
             ml_pipeline/evaluation/eval_results/
             models/
 
+  deploy:
+    name: Deploy Model to Registry
+    runs-on: ubuntu-latest
+    needs: train-validate
+    if: success()
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Download Artifacts from CI
+        uses: actions/download-artifact@v4
+        with:
+          name: eval-results
+          path: .
+
+      - name: Push to Model Registry
+        run: |
+          python3 << 'EOF'
+          import json
+          import pathlib
+          from ml_pipeline.tracking.push_to_registry import push_to_registry
+          
+          summary_path = pathlib.Path('ml_pipeline/evaluation/eval_results/unified_summary.json')
+          if not summary_path.exists():
+              raise FileNotFoundError(f'Missing unified summary at: {summary_path}')
+          
+          summary = json.load(open(summary_path))
+          metrics = {
+              'mean_semantic_sim': summary['rag']['mean_semantic_sim'],
+              'mean_precision_at_k': summary['rag']['mean_precision_at_k']
+          }
+          
+          push_to_registry(
+              model_name='llama_3b_instruct',
+              model_file='Llama-3.2-3B-Instruct-Q4_K_S.gguf',
+              metrics=metrics
+          )
+          
+          print('✅ Model successfully pushed to registry.')
+          EOF
+
+  notify:
+    name: Send Email Notification
+    runs-on: ubuntu-latest
+    needs: [train-validate, deploy]
+    if: always()
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download Evaluation Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: eval-results
+          path: .
+        continue-on-error: true
+
       - name: Send Email Notification
-        if: always()
         env:
           EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+          TRAIN_STATUS: ${{ needs.train-validate.result }}
+          DEPLOY_STATUS: ${{ needs.deploy.result }}
         run: |
           echo "Sending email notification..."
           python3 << 'EOF'
           import os
+          import json
+          import pathlib
           import smtplib
           from email.mime.text import MIMEText
           from email.mime.multipart import MIMEMultipart
@@ -81,15 +158,46 @@ jobs:
           sender = os.getenv('EMAIL_SENDER')
           password = os.getenv('EMAIL_PASSWORD')
           receiver = os.getenv('EMAIL_RECEIVER')
+          train_status = os.getenv('TRAIN_STATUS', 'unknown')
+          deploy_status = os.getenv('DEPLOY_STATUS', 'unknown')
           
-          subject = f"FrontShiftAI CI/CD Pipeline - {'SUCCESS' if os.getenv('GITHUB_JOB_STATUS', 'success') == 'success' else 'FAILURE'}"
+          # Determine overall status
+          if train_status == 'success' and deploy_status == 'success':
+              overall_status = 'SUCCESS'
+          elif train_status == 'failure' or deploy_status == 'failure':
+              overall_status = 'FAILURE'
+          else:
+              overall_status = 'PARTIAL'
+          
+          # Try to get metrics
+          mean_sim = 'N/A'
+          try:
+              summary_path = pathlib.Path('ml_pipeline/evaluation/eval_results/unified_summary.json')
+              if summary_path.exists():
+                  data = json.load(open(summary_path))
+                  mean_sim = data['rag']['mean_semantic_sim']
+          except:
+              pass
+          
+          subject = f"FrontShiftAI CI/CD Pipeline - {overall_status}"
           body = f"""FrontShiftAI CI/CD Pipeline Run Summary
           
           Repository: {os.getenv('GITHUB_REPOSITORY')}
           Branch: {os.getenv('GITHUB_REF_NAME')}
-          Status: {os.getenv('GITHUB_JOB_STATUS', 'success').upper()}
+          Workflow: {os.getenv('GITHUB_WORKFLOW')}
+          Run ID: {os.getenv('GITHUB_RUN_ID')}
           
-          Mean Semantic Similarity: {os.getenv('mean_sim')}"""
+          Job Status:
+          - Train & Validate: {train_status.upper()}
+          - Deploy to Registry: {deploy_status.upper()}
+          
+          Overall Status: {overall_status}
+          
+          Metrics:
+          - Mean Semantic Similarity: {mean_sim}
+          
+          View full run: https://github.com/{os.getenv('GITHUB_REPOSITORY')}/actions/runs/{os.getenv('GITHUB_RUN_ID')}
+          """
           
           msg = MIMEMultipart()
           msg['From'] = sender
@@ -101,59 +209,7 @@ jobs:
               with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
                   server.login(sender, password)
                   server.send_message(msg)
-              print(f'Email sent successfully to {receiver}')
+              print(f'✅ Email sent successfully to {receiver}')
           except Exception as e:
-              print(f'Failed to send email: {e}')
+              print(f'❌ Failed to send email: {e}')
           EOF
-
-  deploy:
-  name: Deploy Model to Registry
-  runs-on: ubuntu-latest
-  needs: train-validate
-  if: success()
-
-  steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.12"
-
-    - name: Install Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-
-    - name: Download Artifacts from CI
-      uses: actions/download-artifact@v4
-      with:
-        name: eval-results
-        path: .  # Downloads to workspace root
-
-    - name: Push to Model Registry
-      run: |
-        python3 << 'EOF'
-        import json
-        import pathlib
-        from ml_pipeline.tracking.push_to_registry import push_to_registry
-        
-        summary_path = pathlib.Path('ml_pipeline/evaluation/eval_results/unified_summary.json')
-        if not summary_path.exists():
-            raise FileNotFoundError(f'Missing unified summary at: {summary_path}')
-        
-        summary = json.load(open(summary_path))
-        metrics = {
-            'mean_semantic_sim': summary['rag']['mean_semantic_sim'],
-            'mean_precision_at_k': summary['rag']['mean_precision_at_k']
-        }
-        
-        push_to_registry(
-            model_name='llama_3b_instruct',
-            model_file='Llama-3.2-3B-Instruct-Q4_K_S.gguf',
-            metrics=metrics
-        )
-        
-        print('✅ Model successfully pushed to registry.')
-        EOF
