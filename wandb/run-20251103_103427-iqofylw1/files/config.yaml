@@ -1,0 +1,56 @@
+_wandb:
+    value:
+        cli_version: 0.22.3
+        e:
+            opoiem2aba0r2djdnxviwpr7mldi0w3j:
+                apple:
+                    ecpuCores: 6
+                    gpuCores: 10
+                    memoryGb: 24
+                    name: Apple M4
+                    pcpuCores: 4
+                    ramTotalBytes: "25769803776"
+                    swapTotalBytes: "11811160064"
+                codePath: ml_pipeline/evaluation/unified_eval_summary.py
+                codePathLocal: ml_pipeline/evaluation/unified_eval_summary.py
+                cpu_count: 10
+                cpu_count_logical: 10
+                disk:
+                    /:
+                        total: "994662584320"
+                        used: "314128744448"
+                email: group9mlops@gmail.com
+                executable: /Users/sriks/.pyenv/versions/frontshiftai/bin/python
+                git:
+                    commit: b407c5d49e490fc7b4c3a3c03dd032f967a93d2d
+                    remote: https://github.com/sriksven/FrontShiftAI.git
+                host: Krishnas-MacBook-Pro.local
+                memory:
+                    total: "25769803776"
+                os: macOS-26.0.1-arm64-arm-64bit
+                program: /Users/sriks/Documents/Projects/FrontShiftAI/ml_pipeline/evaluation/unified_eval_summary.py
+                python: CPython 3.12.9
+                root: /Users/sriks/Documents/Projects/FrontShiftAI
+                startedAt: "2025-11-03T15:34:27.735700Z"
+                writerId: opoiem2aba0r2djdnxviwpr7mldi0w3j
+        m: []
+        python_version: 3.12.9
+        t:
+            "1":
+                - 105
+            "2":
+                - 105
+            "3":
+                - 2
+                - 13
+                - 16
+            "4": 3.12.9
+            "5": 0.22.3
+            "10":
+                - 20
+            "12": 0.22.3
+            "13": darwin-arm64
+model_name:
+    value: llama_3b_instruct
+stage:
+    value: Unified_Evaluation

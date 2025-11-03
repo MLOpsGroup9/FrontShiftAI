@@ -1,0 +1,37 @@
+{
+  "os": "macOS-26.0.1-arm64-arm-64bit",
+  "python": "CPython 3.12.9",
+  "startedAt": "2025-11-03T15:34:12.940954Z",
+  "program": "/Users/sriks/Documents/Projects/FrontShiftAI/ml_pipeline/evaluation/bias_detection.py",
+  "codePath": "ml_pipeline/evaluation/bias_detection.py",
+  "codePathLocal": "ml_pipeline/evaluation/bias_detection.py",
+  "git": {
+    "remote": "https://github.com/sriksven/FrontShiftAI.git",
+    "commit": "b407c5d49e490fc7b4c3a3c03dd032f967a93d2d"
+  },
+  "email": "group9mlops@gmail.com",
+  "root": "/Users/sriks/Documents/Projects/FrontShiftAI",
+  "host": "Krishnas-MacBook-Pro.local",
+  "executable": "/Users/sriks/.pyenv/versions/frontshiftai/bin/python",
+  "cpu_count": 10,
+  "cpu_count_logical": 10,
+  "disk": {
+    "/": {
+      "total": "994662584320",
+      "used": "314127364096"
+    }
+  },
+  "memory": {
+    "total": "25769803776"
+  },
+  "apple": {
+    "name": "Apple M4",
+    "ecpuCores": 6,
+    "pcpuCores": 4,
+    "gpuCores": 10,
+    "memoryGb": 24,
+    "swapTotalBytes": "11811160064",
+    "ramTotalBytes": "25769803776"
+  },
+  "writerId": "2uvq0a9ec8ehcfv52lq4v8txlp318ewt"
+}
