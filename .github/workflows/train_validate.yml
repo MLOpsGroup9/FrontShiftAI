@@ -1,4 +1,4 @@
-name: CI – Train and Validate Model
+name: CI - Train and Validate Model
 
 on:
   push:
@@ -72,7 +72,7 @@ PYCODE
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
         run: |
-          echo "📧 Sending email notification..."
+          echo "Sending email notification..."
           python - <<'PYCODE'
 import os
 import smtplib
@@ -83,7 +83,7 @@ sender = os.getenv("EMAIL_SENDER")
 password = os.getenv("EMAIL_PASSWORD")
 receiver = os.getenv("EMAIL_RECEIVER")
 
-subject = f"FrontShiftAI CI/CD Pipeline – {'SUCCESS' if os.getenv('GITHUB_JOB_STATUS', 'success') == 'success' else 'FAILURE'}"
+subject = f"FrontShiftAI CI/CD Pipeline - {'SUCCESS' if os.getenv('GITHUB_JOB_STATUS', 'success') == 'success' else 'FAILURE'}"
 body = f"""
 FrontShiftAI CI/CD Pipeline Run Summary
 
@@ -104,7 +104,7 @@ try:
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
         server.login(sender, password)
         server.send_message(msg)
-    print(f"✅ Email sent successfully to {receiver}")
+    print(f"Email sent successfully to {receiver}")
 except Exception as e:
-    print(f"❌ Failed to send email: {e}")
+    print(f"Failed to send email: {e}")
 PYCODE
