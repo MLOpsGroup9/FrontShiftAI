@@ -62,7 +62,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: eval-results
-          path: ml_pipeline/evaluation/eval_results/
+          path: |
+            ml_pipeline/evaluation/eval_results/
+            models/
       
       - name: Send Email Notification
         if: always()

@@ -25,6 +25,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Download Model Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: eval-results
+          path: .
+
+
       - name: Push to Model Registry
         run: |
           python -c "
