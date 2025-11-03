@@ -23,11 +23,9 @@ models/*.pt
 models/*.safetensors
 models/*-finetuned-*/
 models_registry/
-models/*
 models/*.bin
 models/*.pt
 models/*.safetensors
-models/*.gguf
 models/*-finetuned-*/
 
 # Infrastructure / Docker
