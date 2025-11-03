@@ -1,8 +1,8 @@
-name: CD – Push Model to Registry
+name: CD - Push Model to Registry
 
 on:
   workflow_run:
-    workflows: ["CI – Train and Validate Model"]
+    workflows: ["CI - Train and Validate Model"]
     types:
       - completed
 
@@ -10,6 +10,7 @@ jobs:
   deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -21,19 +22,34 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          python -m pip install -r requirements.txt
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: Push to Model Registry
         run: |
           python - <<'PYCODE'
+import json
+import pathlib
 from ml_pipeline.tracking.push_to_registry import push_to_registry
-import json, pathlib
 
-summary = json.load(open("ml_pipeline/evaluation/eval_results/unified_summary.json"))
+# Load metrics from the unified summary file
+summary_path = pathlib.Path("ml_pipeline/evaluation/eval_results/unified_summary.json")
+if not summary_path.exists():
+    raise FileNotFoundError(f"Missing unified summary at: {summary_path}")
+
+summary = json.load(open(summary_path))
+
 metrics = {
     "mean_semantic_sim": summary["rag"]["mean_semantic_sim"],
     "mean_precision_at_k": summary["rag"]["mean_precision_at_k"]
 }
-push_to_registry("llama_3b_instruct", "Llama-3.2-3B-Instruct-Q4_K_S.gguf", metrics)
+
+push_to_registry(
+    model_name="llama_3b_instruct",
+    model_file="Llama-3.2-3B-Instruct-Q4_K_S.gguf",
+    metrics=metrics
+)
+
 print("✅ Model successfully pushed to registry.")
 PYCODE
+  
