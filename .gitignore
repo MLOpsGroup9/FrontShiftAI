@@ -22,28 +22,23 @@ models/*.bin
 models/*.pt
 models/*.safetensors
 models/*-finetuned-*/
+models_registry/
+models/*.bin
+models/*.pt
+models/*.safetensors
+models/*-finetuned-*/
 
 # Infrastructure / Docker
 *.env
-.env.*
 docker-data/
 
 # Local resources
 MyResources/
-src/api/
-src/
 .email_config.json
-models_registry/
-models/*
-models/*.bin
-models/*.pt
-models/*.safetensors
-models/*.gguf
-models/*-finetuned-*/
+ml_pipeline/utils/email_config.json
 
 # DVC
 .dvc
-
 
 #logs
 data_pipeline/logs/

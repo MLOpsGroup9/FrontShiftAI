@@ -1,0 +1,37 @@
+{
+  "os": "macOS-26.0.1-arm64-arm-64bit",
+  "python": "CPython 3.12.9",
+  "startedAt": "2025-11-03T12:16:11.183098Z",
+  "program": "/Users/sriks/Documents/Projects/FrontShiftAI/ml_pipeline/evaluation/rag_eval_metrics.py",
+  "codePath": "ml_pipeline/evaluation/rag_eval_metrics.py",
+  "codePathLocal": "ml_pipeline/evaluation/rag_eval_metrics.py",
+  "git": {
+    "remote": "https://github.com/sriksven/FrontShiftAI.git",
+    "commit": "5a185eea06ab0007d609e369074d57d786adf350"
+  },
+  "email": "group9mlops@gmail.com",
+  "root": "/Users/sriks/Documents/Projects/FrontShiftAI",
+  "host": "Krishnas-MacBook-Pro.local",
+  "executable": "/Users/sriks/.pyenv/versions/frontshiftai/bin/python",
+  "cpu_count": 10,
+  "cpu_count_logical": 10,
+  "disk": {
+    "/": {
+      "total": "994662584320",
+      "used": "308616818688"
+    }
+  },
+  "memory": {
+    "total": "25769803776"
+  },
+  "apple": {
+    "name": "Apple M4",
+    "ecpuCores": 6,
+    "pcpuCores": 4,
+    "gpuCores": 10,
+    "memoryGb": 24,
+    "swapTotalBytes": "6442450944",
+    "ramTotalBytes": "25769803776"
+  },
+  "writerId": "neceiw5gg7l2plsawgulnzc1tmz5ka1w"
+}

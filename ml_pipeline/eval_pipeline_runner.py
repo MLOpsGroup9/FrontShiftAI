@@ -18,26 +18,33 @@ from ml_pipeline.utils.logger import get_logger
 logger = get_logger("eval_pipeline_runner")
 
 PROJECT_ROOT = project_root
-EVAL_DIR = PROJECT_ROOT / "evaluation" / "eval_results"
+EVAL_DIR = PROJECT_ROOT / "ml_pipeline" / "evaluation" / "eval_results"
 
 # --- Pipeline Stages ---
 STAGES = [
     {
         "name": "RAG Evaluation",
-        "script": PROJECT_ROOT / "evaluation" / "rag_eval_metrics.py",
+        "script": PROJECT_ROOT / "ml_pipeline" / "evaluation" / "rag_eval_metrics.py",
         "expected_output": EVAL_DIR / "rag_eval_results.csv",
     },
     {
         "name": "Bias Detection",
-        "script": PROJECT_ROOT / "evaluation" / "bias_detection.py",
+        "script": PROJECT_ROOT / "ml_pipeline" / "evaluation" / "bias_detection.py",
         "expected_output": EVAL_DIR / "bias_report.csv",
     },
     {
         "name": "Sensitivity Analysis",
-        "script": PROJECT_ROOT / "evaluation" / "sensitivity_analysis.py",
+        "script": PROJECT_ROOT / "ml_pipeline" / "evaluation" / "sensitivity_analysis.py",
         "expected_output": EVAL_DIR / "sensitivity_report.csv",
     },
+    {
+    "name": "Unified Evaluation Summary",
+    "script": PROJECT_ROOT / "ml_pipeline" / "evaluation" / "unified_eval_summary.py",
+    "expected_output": EVAL_DIR / "unified_summary.json",
+    },
+
 ]
+
 
 def run_stage(stage):
     """Run a single pipeline stage and log its result."""

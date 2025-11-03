@@ -1,0 +1,56 @@
+_wandb:
+    value:
+        cli_version: 0.22.3
+        e:
+            pva4polgjr9cpmtfwfvla3m68aoctplb:
+                apple:
+                    ecpuCores: 6
+                    gpuCores: 10
+                    memoryGb: 24
+                    name: Apple M4
+                    pcpuCores: 4
+                    ramTotalBytes: "25769803776"
+                    swapTotalBytes: "11811160064"
+                codePath: ml_pipeline/evaluation/bias_detection.py
+                codePathLocal: ml_pipeline/evaluation/bias_detection.py
+                cpu_count: 10
+                cpu_count_logical: 10
+                disk:
+                    /:
+                        total: "994662584320"
+                        used: "304296173568"
+                email: group9mlops@gmail.com
+                executable: /Users/sriks/.pyenv/versions/frontshiftai/bin/python
+                git:
+                    commit: 7439936a1181d8c2e603a578cc557b50a1c9f8fe
+                    remote: https://github.com/sriksven/FrontShiftAI.git
+                host: Krishnas-MacBook-Pro.local
+                memory:
+                    total: "25769803776"
+                os: macOS-26.0.1-arm64-arm-64bit
+                program: /Users/sriks/Documents/Projects/FrontShiftAI/ml_pipeline/evaluation/bias_detection.py
+                python: CPython 3.12.9
+                root: /Users/sriks/Documents/Projects/FrontShiftAI
+                startedAt: "2025-11-02T19:55:43.222432Z"
+                writerId: pva4polgjr9cpmtfwfvla3m68aoctplb
+        m: []
+        python_version: 3.12.9
+        t:
+            "1":
+                - 105
+            "2":
+                - 105
+            "3":
+                - 2
+                - 13
+                - 16
+            "4": 3.12.9
+            "5": 0.22.3
+            "10":
+                - 20
+            "12": 0.22.3
+            "13": darwin-arm64
+model_name:
+    value: llama_3b_instruct
+stage:
+    value: Bias_Detection
