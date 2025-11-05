@@ -1,5 +1,4 @@
 """
-Data Loader for ML-RAG Pipeline.
 Loads chunks from data_pipeline and provides fast retrieval via ChromaDB.
 """
 
