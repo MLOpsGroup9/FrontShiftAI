@@ -11,6 +11,7 @@ transformers>=4.30.0
 
 # LLM
 llama-cpp-python>=0.2.0
+huggingface_hub>=0.20.0
 
 # Experiment tracking
 mlflow>=2.8.0

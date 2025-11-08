@@ -1,17 +1,41 @@
 """
-Loads chunks from data_pipeline and provides fast retrieval via ChromaDB.
+Loads chunks from data_pipeline.
 """
 
-import argparse
 import json
+import os
 import sys
 import time
+import warnings
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
+# Suppress TensorFlow and oneDNN logs
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+
+# Hardware optimization environment variables
+os.environ.setdefault('OMP_NUM_THREADS', '4')
+os.environ.setdefault('TOKENIZERS_PARALLELISM', 'false')
+os.environ.setdefault('CHROMADB_SEGMENT_CACHE_SIZE', '2G')
+
+# Suppress all warnings including TensorFlow deprecation warnings
+warnings.filterwarnings('ignore')
+os.environ['PYTHONWARNINGS'] = 'ignore'
 
 import chromadb
 import pandas as pd
 from chromadb.utils import embedding_functions
+
+# Additional TensorFlow warning suppression
+try:
+    import tensorflow as tf
+    tf.get_logger().setLevel('ERROR')
+    import logging
+    logging.getLogger('tensorflow').setLevel('ERROR')
+    logging.getLogger('tf_keras').setLevel('ERROR')
+except ImportError:
+    pass
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(BASE_DIR / "data_pipeline"))
@@ -19,6 +43,26 @@ sys.path.insert(0, str(BASE_DIR / "data_pipeline"))
 from utils.logger import get_logger
 
 logger = get_logger("ml_data_loader")
+
+# Global embedding function (loaded once)
+_global_embedding_function = None
+
+def get_embedding_function():
+    """Get or create global embedding function with warm-up."""
+    global _global_embedding_function
+    if _global_embedding_function is None:
+        logger.info("Initializing embedding function (all-MiniLM-L6-v2)...")
+        _global_embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
+            model_name="all-MiniLM-L6-v2"
+        )
+        # Warm-up: encode a dummy sentence to compile graph once
+        try:
+            _global_embedding_function(["warm-up sentence"])
+            logger.info("Embedding function initialized and warmed up")
+        except Exception as e:
+            logger.warning(f"Embedding warm-up failed: {e}")
+            logger.info("Embedding function initialized")
+    return _global_embedding_function
 
 
 class ChunkDataLoader:
@@ -33,12 +77,23 @@ class ChunkDataLoader:
     
     def __init__(
         self,
-        chunks_dir: str = "data_pipeline/data/chunked",
-        chromadb_path: str = "data_pipeline/data/vector_db",
+        chunks_dir: Optional[str] = None,
+        chromadb_path: Optional[str] = None,
         collection_name: str = "frontshift_handbooks"
     ):
-        self.chunks_dir = Path(BASE_DIR) / chunks_dir
-        self.chromadb_path = Path(BASE_DIR) / chromadb_path
+        # Use environment variables if available, otherwise use defaults
+        self.chunks_dir = Path(
+            os.getenv("CHUNKS_DIR", chunks_dir or "data_pipeline/data/chunked")
+        )
+        if not self.chunks_dir.is_absolute():
+            self.chunks_dir = BASE_DIR / self.chunks_dir
+        
+        self.chromadb_path = Path(
+            os.getenv("CHROMADB_PATH", chromadb_path or "data_pipeline/data/vector_db")
+        )
+        if not self.chromadb_path.is_absolute():
+            self.chromadb_path = BASE_DIR / self.chromadb_path
+        
         self.collection_name = collection_name
         
         if not self.chunks_dir.exists():
@@ -49,25 +104,45 @@ class ChunkDataLoader:
         self._client = None
         self._collection = None
         
-        logger.info(f"Initialized ChunkDataLoader")
-        logger.info(f"  Chunks: {self.chunks_dir}")
-        logger.info(f"  ChromaDB: {self.chromadb_path}")
-        logger.info(f"  Collection: {self.collection_name}")
+        # Initialize with retry
+        self._initialize_with_retry()
+    
+    def _initialize_with_retry(self, max_retries: int = 1):
+        """Initialize ChromaDB connection with retry logic and optimized settings."""
+        for attempt in range(max_retries + 1):
+            try:
+                # Pre-initialize client (single connection, reused across queries)
+                self._client = chromadb.PersistentClient(path=str(self.chromadb_path))
+                logger.debug("Connected to ChromaDB")
+                
+                # Get embedding function (with warm-up) and collection
+                emb_fn = get_embedding_function()
+                self._collection = self._client.get_collection(
+                    name=self.collection_name,
+                    embedding_function=emb_fn
+                )
+                logger.debug(f"Loaded collection '{self.collection_name}'")
+                return
+            except Exception as e:
+                if attempt < max_retries:
+                    logger.warning(f"Initialization attempt {attempt + 1} failed: {e}. Retrying...")
+                    time.sleep(1)
+                else:
+                    logger.error(f"Failed to initialize after {max_retries + 1} attempts: {e}")
+                    raise
     
     @property
     def client(self) -> chromadb.ClientAPI:
-        """Lazy load ChromaDB client."""
+        """Get ChromaDB client (pre-initialized)."""
         if self._client is None:
-            self._client = chromadb.PersistentClient(path=str(self.chromadb_path))
-            logger.info("Connected to ChromaDB")
+            raise RuntimeError("ChromaDB client not initialized. Call _initialize_with_retry first.")
         return self._client
     
     @property
     def collection(self) -> chromadb.Collection:
-        """Lazy load ChromaDB collection."""
+        """Get ChromaDB collection (pre-initialized and reused)."""
         if self._collection is None:
-            self._collection = self.client.get_collection(name=self.collection_name)
-            logger.info(f"Loaded collection '{self.collection_name}' ({self._collection.count()} embeddings)")
+            raise RuntimeError("ChromaDB collection not initialized. Call _initialize_with_retry first.")
         return self._collection
     
     def load_chunks(self, include_embeddings: bool = False) -> pd.DataFrame:
@@ -77,13 +152,9 @@ class ChunkDataLoader:
         Returns:
             DataFrame with columns: chunk_id, text, company, policy_tags, etc.
         """
-        logger.info("Loading chunks...")
-        
         chunk_files = sorted(self.chunks_dir.glob("*_chunks.jsonl"))
         if not chunk_files:
             raise FileNotFoundError(f"No chunk files in {self.chunks_dir}")
-        
-        logger.info(f"Found {len(chunk_files)} chunk files")
         
         all_chunks = []
         for chunk_file in chunk_files:
@@ -93,8 +164,6 @@ class ChunkDataLoader:
                         all_chunks.append(json.loads(line))
                     except json.JSONDecodeError:
                         continue
-        
-        logger.info(f"Loaded {len(all_chunks)} chunks")
         
         records = []
         for chunk in all_chunks:
@@ -117,10 +186,8 @@ class ChunkDataLoader:
         df = pd.DataFrame(records)
         
         if include_embeddings:
-            logger.info("Fetching embeddings...")
             df['embedding'] = df['chunk_id'].apply(self._get_embedding)
         
-        logger.info(f"Created DataFrame: {df.shape}")
         return df
     
     def _extract_company(self, metadata: Dict) -> str:
@@ -145,165 +212,101 @@ class ChunkDataLoader:
             logger.warning(f"No embedding for {chunk_id}: {e}")
             return None
     
-    def get_embeddings(self, chunk_ids: List[str]) -> Dict[str, List[float]]:
-        """Get embeddings for multiple chunks."""
-        logger.info(f"Fetching embeddings for {len(chunk_ids)} chunks...")
-        embeddings = {cid: emb for cid in chunk_ids if (emb := self._get_embedding(cid))}
-        logger.info(f"Retrieved {len(embeddings)}/{len(chunk_ids)} embeddings")
-        return embeddings
-    
     def retrieve(
         self,
         query: str,
         company_name: Optional[str] = None,
         top_k: int = 5,
-        include_distances: bool = False
+        include_distances: bool = True
     ) -> Tuple[List[str], List[Dict], Optional[List[float]]]:
         """
-        Fast semantic search via ChromaDB.
+        Fast semantic search via ChromaDB with optimized performance and profiling.
         
         Args:
             query: Query text
-            company_name: Optional company filter
+            company_name: Optional company filter (case-insensitive)
             top_k: Number of results
-            include_distances: Return distance scores
+            include_distances: Return distance scores (default: True for sorting)
             
         Returns:
-            (documents, metadatas, distances)
+            (documents, metadatas, distances) - already sorted by ChromaDB by similarity distance
         """
-        start_time = time.time()
+        total_start = time.time()
         
-        if not hasattr(self, '_emb_fn'):
-            self._emb_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
-                model_name="all-MiniLM-L6-v2"
-            )
+        # Use pre-initialized collection (reused across queries)
+        collection = self.collection
         
-        collection = self.client.get_collection(
-            name=self.collection_name,
-            embedding_function=self._emb_fn
-        )
-        
+        # Profile: Company filtering time
+        company_filter_start = time.time()
         query_args = {
             "query_texts": [query],
             "n_results": top_k,
-            "include": ["documents", "metadatas"]
+            "include": ["documents", "metadatas"]  # Reduced: only get what we need
         }
         
         if include_distances:
             query_args["include"].append("distances")
+        
+        # Optimized company filtering - cache company lookup if needed
         if company_name:
-            query_args["where"] = {"company": company_name}
+            # Use a more efficient lookup (only get metadata, not full chunks)
+            if not hasattr(self, '_company_cache'):
+                self._company_cache = {}
+            
+            cache_key = company_name.lower()
+            if cache_key not in self._company_cache:
+                # One-time lookup: get unique companies efficiently
+                sample = collection.get(limit=1000, include=["metadatas"])
+                company_map = {}
+                for meta in sample.get('metadatas', []):
+                    comp = meta.get('company', '').strip()
+                    if comp:
+                        company_map[comp.lower()] = comp
+                self._company_cache = company_map
+            
+            matched_company = self._company_cache.get(cache_key)
+            if matched_company:
+                query_args["where"] = {"company": matched_company}
+                logger.debug(f"Company filter: '{company_name}' -> '{matched_company}'")
+            else:
+                logger.warning(f"Company '{company_name}' not found, searching all companies")
         
+        company_filter_time = (time.time() - company_filter_start) * 1000
+        
+        # Profile: ChromaDB query time (includes embedding creation)
+        query_start = time.time()
         results = collection.query(**query_args)
+        query_time = (time.time() - query_start) * 1000
         
-        docs = results.get("documents", [[]])[0]
-        metas = results.get("metadatas", [[]])[0]
+        # Profile: Post-processing time
+        postprocess_start = time.time()
+        
+        # ChromaDB already returns results sorted by distance, so no need to re-sort
+        docs = results.get("documents", [[]])[0] or []
+        metas = results.get("metadatas", [[]])[0] or []
         distances = results.get("distances", [[]])[0] if include_distances else None
         
-        latency = (time.time() - start_time) * 1000
-        logger.info(f"Retrieved {len(docs)} chunks in {latency:.2f} ms")
+        # Optimized metadata filtering using list comprehension (faster than loop)
+        if metas:
+            filtered_metas = [
+                {
+                    'company': m.get('company', ''),
+                    'doc_id': m.get('filename', m.get('doc_id', '')),
+                    'chunk_id': m.get('chunk_id', ''),
+                    'section_title': m.get('section', m.get('section_title', ''))
+                }
+                for m in metas
+            ]
+        else:
+            filtered_metas = []
         
-        return docs, metas, distances
+        postprocess_time = (time.time() - postprocess_start) * 1000
+        total_latency = (time.time() - total_start) * 1000
+        
+        logger.debug(
+            f"Retrieved {len(docs)} chunks in {total_latency:.2f} ms "
+            f"(filter: {company_filter_time:.2f}ms, query: {query_time:.2f}ms, postprocess: {postprocess_time:.2f}ms)"
+        )
+        
+        return docs, filtered_metas, distances
     
-    def get_summary(self) -> Dict:
-        """Get dataset statistics."""
-        logger.info("Generating summary...")
-        df = self.load_chunks(include_embeddings=False)
-        
-        return {
-            'total_chunks': len(df),
-            'unique_documents': df['doc_id'].nunique(),
-            'unique_companies': df['company'].nunique(),
-            'industries': df['industry'].value_counts().to_dict(),
-            'doc_types': df['doc_type'].value_counts().to_dict(),
-            'doc_years': df['doc_year'].value_counts().to_dict(),
-            'avg_token_count': df['token_count'].mean(),
-            'avg_quality_score': df['quality_score'].mean(),
-            'chunks_with_policy_tags': (df['policy_tags'] != '').sum(),
-            'chromadb_embedding_count': self.collection.count()
-        }
-    
-    def print_summary(self):
-        """Print formatted summary."""
-        summary = self.get_summary()
-        
-        print("\n" + "="*70)
-        print("Data Summary")
-        print("="*70)
-        print(f"Total Chunks:             {summary['total_chunks']:,}")
-        print(f"Unique Documents:         {summary['unique_documents']}")
-        print(f"Unique Companies:         {summary['unique_companies']}")
-        print(f"ChromaDB Embeddings:      {summary['chromadb_embedding_count']:,}")
-        print(f"Avg Token Count:          {summary['avg_token_count']:.1f}")
-        print(f"Avg Quality Score:        {summary['avg_quality_score']:.3f}")
-        print(f"Chunks with Policy Tags:  {summary['chunks_with_policy_tags']}")
-        
-        print("\nIndustries:")
-        for industry, count in summary['industries'].items():
-            print(f"  - {industry}: {count}")
-        
-        print("\nDocument Years:")
-        for year, count in sorted(summary['doc_years'].items()):
-            print(f"  - {year}: {count}")
-        
-        print("\n" + "="*70 + "\n")
-
-
-def main():
-    """CLI entry point."""
-    parser = argparse.ArgumentParser(description="Load chunks and query ChromaDB")
-    parser.add_argument('--show-summary', action='store_true', help='Display data summary')
-    parser.add_argument('--query', type=str, help='Query text')
-    parser.add_argument('--top-k', type=int, default=5, help='Number of results (default: 5)')
-    
-    args = parser.parse_args()
-    
-    try:
-        loader = ChunkDataLoader()
-        
-        if args.show_summary:
-            loader.print_summary()
-        
-        if args.query:
-            print(f"\nQuery: '{args.query}'")
-            print("="*70)
-            
-            start_time = time.time()
-            documents, metadatas, distances = loader.retrieve(
-                query=args.query,
-                top_k=args.top_k,
-                include_distances=True
-            )
-            retrieval_time = (time.time() - start_time) * 1000
-            
-            print(f"Retrieved {len(documents)} chunks in {retrieval_time:.2f} ms")
-            print("="*70)
-            
-            for i, (doc, meta, dist) in enumerate(zip(documents, metadatas, distances), 1):
-                company = meta.get('company', 'N/A')
-                section = meta.get('section_title', meta.get('section', 'Unknown'))
-                
-                print(f"\n[{i}] {company} - {section}")
-                print(f"    Distance: {dist:.4f}")
-                
-                preview = doc[:120].encode('ascii', 'ignore').decode('ascii')
-                preview = preview.replace('\n', ' ').strip()
-                print(f"    {preview}...")
-            
-            print("\n" + "="*70)
-        
-        if not args.show_summary and not args.query:
-            df = loader.load_chunks()
-            print(f"\nLoaded {len(df)} chunks")
-            print(f"Shape: {df.shape}")
-            print(f"Columns: {list(df.columns)}")
-            print(f"\nFirst 3 rows:")
-            print(df.head(3))
-    
-    except Exception as e:
-        logger.error(f"Failed: {e}", exc_info=True)
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()
