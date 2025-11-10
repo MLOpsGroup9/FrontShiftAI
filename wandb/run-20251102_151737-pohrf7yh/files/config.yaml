@@ -1,0 +1,57 @@
+_wandb:
+    value:
+        cli_version: 0.22.3
+        e:
+            mx9dun7fpsmk8i07m2hlgr54udx1l7n3:
+                codePath: ml_pipeline/evaluation/rag_eval_metrics.py
+                codePathLocal: ml_pipeline/evaluation/rag_eval_metrics.py
+                email: group9mlops@gmail.com
+                executable: /Users/sriks/.pyenv/versions/frontshiftai/bin/python
+                git:
+                    commit: 7be0d9fd4d3f9aabbbdf3b86e7b1b18b0b0ec9e4
+                    remote: https://github.com/sriksven/FrontShiftAI.git
+                host: Krishnas-MacBook-Pro.local
+                os: macOS-26.0.1-arm64-arm-64bit
+                program: /Users/sriks/Documents/Projects/FrontShiftAI/ml_pipeline/evaluation/rag_eval_metrics.py
+                python: CPython 3.12.9
+                root: /Users/sriks/Documents/Projects/FrontShiftAI
+                startedAt: "2025-11-02T20:17:37.259243Z"
+                writerId: mx9dun7fpsmk8i07m2hlgr54udx1l7n3
+        m: []
+        python_version: 3.12.9
+        t:
+            "1":
+                - 1
+                - 5
+                - 11
+                - 49
+                - 53
+                - 71
+                - 75
+                - 92
+                - 105
+            "2":
+                - 1
+                - 5
+                - 11
+                - 49
+                - 53
+                - 71
+                - 75
+                - 92
+                - 105
+            "3":
+                - 2
+                - 13
+                - 16
+            "4": 3.12.9
+            "5": 0.22.3
+            "6": 4.45.2
+            "10":
+                - 20
+            "12": 0.22.3
+            "13": darwin-arm64
+model_name:
+    value: llama_3b_instruct
+stage:
+    value: RAG_Evaluation

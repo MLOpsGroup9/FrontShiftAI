@@ -1,0 +1,73 @@
+_wandb:
+    value:
+        cli_version: 0.22.3
+        e:
+            3uvjk3xz0fojcg5c75uv6qtnraohro8b:
+                apple:
+                    ecpuCores: 6
+                    gpuCores: 10
+                    memoryGb: 24
+                    name: Apple M4
+                    pcpuCores: 4
+                    ramTotalBytes: "25769803776"
+                    swapTotalBytes: "11811160064"
+                codePath: ml_pipeline/evaluation/sensitivity_analysis.py
+                codePathLocal: ml_pipeline/evaluation/sensitivity_analysis.py
+                cpu_count: 10
+                cpu_count_logical: 10
+                disk:
+                    /:
+                        total: "994662584320"
+                        used: "314131345408"
+                email: group9mlops@gmail.com
+                executable: /Users/sriks/.pyenv/versions/frontshiftai/bin/python
+                git:
+                    commit: b407c5d49e490fc7b4c3a3c03dd032f967a93d2d
+                    remote: https://github.com/sriksven/FrontShiftAI.git
+                host: Krishnas-MacBook-Pro.local
+                memory:
+                    total: "25769803776"
+                os: macOS-26.0.1-arm64-arm-64bit
+                program: /Users/sriks/Documents/Projects/FrontShiftAI/ml_pipeline/evaluation/sensitivity_analysis.py
+                python: CPython 3.12.9
+                root: /Users/sriks/Documents/Projects/FrontShiftAI
+                startedAt: "2025-11-03T15:34:22.724698Z"
+                writerId: 3uvjk3xz0fojcg5c75uv6qtnraohro8b
+        m: []
+        python_version: 3.12.9
+        t:
+            "1":
+                - 1
+                - 5
+                - 11
+                - 49
+                - 53
+                - 71
+                - 75
+                - 92
+                - 105
+            "2":
+                - 1
+                - 5
+                - 11
+                - 49
+                - 53
+                - 71
+                - 75
+                - 92
+                - 105
+            "3":
+                - 2
+                - 13
+                - 16
+            "4": 3.12.9
+            "5": 0.22.3
+            "6": 4.45.2
+            "10":
+                - 20
+            "12": 0.22.3
+            "13": darwin-arm64
+model_name:
+    value: llama_3b_instruct
+stage:
+    value: Sensitivity_Analysis

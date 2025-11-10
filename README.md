@@ -1,16 +1,17 @@
-![Python](https://img.shields.io/badge/Python-3.10+-blue)
+
+![Python](https://img.shields.io/badge/Python-3.12+-blue)
 ![DVC](https://img.shields.io/badge/Data%20Version%20Control-DVC-orange)
-![LangChain](https://img.shields.io/badge/LangChain-Enabled-success)
+![Pytest](https://img.shields.io/badge/Tests-Passed-green)
+![Coverage](https://img.shields.io/badge/Coverage-100%25-success)
 ![ChromaDB](https://img.shields.io/badge/Vector%20DB-ChromaDB-green)
-![Status](https://img.shields.io/badge/Status-In%20Development-yellow)
+![Status](https://img.shields.io/badge/Status-Active-brightgreen)
 
 # FrontShiftAI: AI Copilot for Deskless Workers
 
 **Team Members**  
-
-- Harshitkumar Brahmbhatt 
+- Harshitkumar Brahmbhatt  
 - Krishna Venkatesh  
-- Raghav Gali 
+- Raghav Gali  
 - Rishi Raj Kuleri  
 - Sujitha Godishala  
 - Swathi Baba Eswarappa  
@@ -19,228 +20,255 @@
 
 ## 1. Introduction
 
-Deskless workers face limited access to HR systems due to **irregular schedules, lack of computer access, and fragmented communication**.  
+Deskless workers often have limited access to HR systems because of irregular schedules, lack of computer access, and fragmented communication channels. These challenges reduce employee engagement and lead to lower utilization of benefits, poor training adoption, and higher attrition.  
 
-These challenges lead to:  
-- Lower benefits enrollment/utilization  
-- Poor training adoption  
-- High attrition and disengagement  
+**FrontShiftAI** is designed to address these issues through a context-aware AI copilot that provides retrieval-augmented responses and integrates with existing HR systems.  
 
-**Proposed Solution:**  
-- **RAG core** → Retrieves grounded answers from HR docs and policies.  
-- **Agentic layer (planned)** → Executes actions like scheduling, compliance checks, escalation.  
-- **Voice interaction (planned)** → Enables hands-free access for frontline roles.  
+Key components include:  
+- Retrieval-Augmented Generation (RAG) core for document-grounded answers  
+- An agentic orchestration layer for HR workflow automation (in development)  
+- Voice-based interaction features for hands-free accessibility (in development)  
 
-The project includes an optional **Airflow DAG (`dvc_repro_manual_dag.py`)** located under `data_pipeline/airflow/dags/`.  
-This DAG automatically triggers the DVC pipeline when new URLs are added to `data_pipeline/data/url.json`, or can be triggered manually through the Airflow UI.
+The platform integrates a fully automated **data pipeline**, an **evaluation and registry pipeline**, and a **Streamlit-based AI interface**, all orchestrated through CI/CD workflows.
 
 ---
 
-## 2. Dataset Information
+## 2. Automated Data Pipeline Overview
 
-### 2.1 Dataset Card
+The data pipeline is modular, test-driven, and reproducible. Each stage is independently testable using `pytest`. The pipeline supports ingestion, preprocessing, validation, and embedding of HR policy documents.
+
+| Stage | Script | Functionality |
+|--------|--------|----------------|
+| Download | `download_data.py` | Fetches and stores PDFs defined in `url.json` |
+| Extraction | `pdf_parser.py` | Extracts structured text and tables from PDFs |
+| Preprocessing | `preprocess.py` | Cleans and normalizes extracted text |
+| Chunking | `chunker.py` | Splits cleaned text into semantically coherent chunks |
+| Validation | `validate_data.py` | Applies schema checks, deduplication, and language filtering |
+| Embedding | `store_in_chromadb.py` | Converts validated chunks into vector embeddings stored in ChromaDB |
+| Bias Analysis | `data_bias.py` | Performs bias and diversity checks on processed content |
+
+All components pass unit and integration tests under `data_pipeline/tests/` using the following command:
+
+```bash
+pytest -v --disable-warnings
+```
+
+---
+
+## 3. Dataset Information
+
 | Attribute | Description |
 |------------|-------------|
-| **Name** | Deskless Worker Handbook RAG document dataset |
-| **Size** | 20 public HR handbooks (PDFs) |
-| **Sources** | Publicly available employee handbooks (healthcare, retail, logistics, hospitality, finance, construction, etc.) |
-| **Formats** | PDF (retrieval embedding) |
-| **Data Types** | Natural language questions, concise answers, metadata (source, industry, section) |
+| **Name** | Deskless Worker Handbook RAG Dataset |
+| **Size** | 20 public HR handbooks |
+| **Sources** | Employee handbooks from multiple industries |
+| **Formats** | PDF, JSONL, CSV |
+| **Data Types** | Policy text, metadata, extracted tables |
 
-### 2.2 Example Sources
-- Healthcare: [Crouse Medical Handbook (2019)](https://crousemed.com/media/1449/cmp-employee-handbook.pdf)  
-- Retail: [Lunds & Byerlys Handbook (2019)](https://corporate.lundsandbyerlys.com/wp-content/uploads/2024/05/EmployeeHandbook_20190926.pdf)  
-- Manufacturing: [BG Foods Handbook (2022)](https://bgfood.com/wp-content/uploads/2022/01/BG-Employee-Handbook-2022.pdf)  
-- Construction: [TNT Construction Handbook (2018)](https://www.tntconstructionmn.com/wp-content/uploads/2018/05/TNT-Construction-Inc-Handbook_Final-2018.pdf)  
-- Hospitality: [Alta Peruvian Lodge Handbook (2016)](https://www.altaperuvian.com/wp-content/uploads/2017/01/APL-Empl-Manual-Revised-12-22-16-fixed.pdf)  
-- Finance: [Old National Bank Handbook](https://www.oldnational.com/globalassets/onb-site/onb-documents/onb-about-us/onb-team-member-handbook/team-member-handbook.pdf)  
+Example sources include healthcare, retail, manufacturing, construction, and finance company handbooks.
 
-### 2.3 Rights & Privacy
-- **Source Material**: All handbooks are public PDFs.  
-- **Usage**: Research/educational only.  
-- **Privacy**: No personal data; only policy text.  
-- **Compliance**: GDPR/CCPA principles respected.  
+All handbooks are publicly available and used solely for educational and research purposes. No personal or sensitive data is included.
 
 ---
 
-## 3. Data Planning and Splits
-
-### 3.1 Preprocessing Steps
-- Extract text and tables from HR and policy PDFs using LangChain’s `PyPDFLoader` and Camelot.  
-- Clean and normalize text (remove headers, footers, duplicates, and formatting artifacts).  
-- Split text into context-preserving chunks using `RecursiveCharacterTextSplitter` for efficient retrieval and embedding.  
-- Store structured outputs (`combined_chunks.json`, `table_chunks.json`, and `cleaned_chunks.csv`) for downstream validation and vectorization.  
-- Validate cleaned data using schema-based checks (Pydantic), language detection (langdetect), and deduplication.  
-- Store fully validated chunks in `data/validated/` for downstream embedding.  
-
-When new URLs are appended to `url.json`, the pipeline can be re-run automatically through the Airflow DAG, ensuring new documents are extracted, validated, and embedded without manual intervention.
-
----
-
-## 4. Problems & Current Solutions
-
-| Existing Systems | Limitations |
-|------------------|--------------|
-| **HCM Suites (Workday, SAP)** | Admin-focused, vendor-locked |
-| **Enterprise Assistants (Oracle DA)** | Rigid, schema-bound |
-| **LMS Microlearning (Docebo, Cornerstone)** | Static, non-queryable |
-| **Generic Chatbots (Leena AI, Talla)** | FAQ-only, no grounding |
-| **Self-Service Portals** | Desktop-centric, not conversational |
-| **Slack/Teams** | Transient, non-retrievable |
-
----
-
-## 5. Proposed Solution
-
-- **RAG for grounded answers** (cited, accurate)  
-- **Agentic orchestration** for HR workflows (scheduling, compliance, escalation)  
-- **Personalization & memory** for context-aware Q&A  
-- **System integration** with HRIS, LMS, calendars  
-- **Safe fallback** when confidence is low  
-- **Voice accessibility** for frontline workers  
-- **Data validation pipeline** ensures only schema-compliant, English, deduplicated chunks reach embeddings.  
-- **Automated run orchestrator** (`run_pipeline.py`) executes all stages sequentially and logs results for reproducibility.  
-
----
-
-## 6. Deployment Infrastructure
-
-- **Backend**: FastAPI on GKE  
-- **RAG**: Hugging Face embeddings + ChromaDB (GKE)  
-- **LLM**: LLaMA-3 8B (Vertex AI endpoint)  
-- **Agents**: LangChain/LangGraph on GKE  
-- **Voice**: Google Cloud STT/TTS  
-- **Data**: GCS (docs), Cloud SQL (metadata), JSONL/CSV  
-- **Monitoring**: Cloud Monitoring, Prometheus/Grafana, Vertex AI drift detection  
-- **Local pipeline automation**: `run_pipeline.py` executes all stages sequentially with timestamped logs.  
-- **Airflow orchestration**: Optional DAG (`dvc_repro_manual_dag.py`) automatically triggers the pipeline when new entries appear in `url.json`, or can be manually triggered from the Airflow UI (`localhost:8080`).  
-- **Data versioning**: DVC integrated with `.dvc` tracking for `raw`, `extracted`, `cleaned`, `validated`, and `vector_db`.  
-
----
-
-## 7. Monitoring Plan
-
-- Track retrieval recall, hallucination, tool accuracy, fallback rate, WER, latency.  
-- GCP Cloud Monitoring alerts + Grafana dashboards.  
-- Future: drift detection, detailed audit logs.  
-- Track data validation metrics (invalid chunk ratio, duplicate rate, missing schema fields).  
-- Log pipeline runs with timestamps and stage statuses in `data_pipeline/logs/`.  
-
----
-
-## 8. Repository Structure
+## 4. Repository Structure (Updated)
 
 ```bash
 FrontShiftAI/
-├── data_pipeline/
-│   ├── airflow/
-│   │   └── dags/
-│   │       └── dvc_repro_manual_dag.py
-│   ├── data/
-│   │   ├── raw/
-│   │   ├── extracted/
-│   │   ├── cleaned/
-│   │   ├── validated/
-│   │   └── vector_db/
-│   ├── logs/
-│   ├── scripts/
-│   │   ├── data_extraction.py
-│   │   ├── preprocess.py
-│   │   ├── store_in_chromadb.py
-│   │   ├── validate_data.py
-│   │   ├── run_pipeline.py
-│   │   └── test_rag_llama.py
-│   ├── tests/
+│
+├── data_pipeline/               # Data ingestion, validation, embedding, bias analysis
+│
+├── ml_pipeline/                 # Model evaluation, experiment tracking, and registry management
+│   ├── evaluation/              # Evaluation modules for RAG, bias, and sensitivity
+│   ├── tracking/                # W&B and registry integration
+│   ├── utils/                   # Logging and helper utilities
+│   ├── eval_pipeline_runner.py  # Orchestrates all evaluation stages
+│   └── __init__.py
+│
+├── models/                      # Temporary model export (from CI/CD)
+├── models_registry/             # Versioned model registry with metadata.json
+├── wandb/                       # W&B run cache for experiment tracking
+│
+├── streamlit_app/               # Streamlit interface for RAG and HR chatbot
+│   ├── core/
+│   │   └── preload.py           # Loads latest model from models_registry and ChromaDB
+│   ├── pages/
+│   │   ├── admin_admins.py
+│   │   ├── admin_companies.py
+│   │   ├── admin_users.py
+│   │   └── user_chat.py
 │   ├── utils/
-│   │   └── logger.py
-│   ├── airflow.cfg
-│   ├── pytest.ini
-│   └── README.md
+│   │   ├── auth_utils.py
+│   │   └── db_utils.py
+│   └── app.py
 │
-├── src/
-│   ├── agents/
-│   ├── api/
-│   ├── rag/
-│   ├── utils/
-│   └── voice/
+├── .github/
+│   └── workflows/
+│       └── ci_cd_pipeline.yml   # Unified GitHub Actions pipeline for CI/CD and notifications
 │
-├── docs/
-│   └── structure.md
-│
-├── models/
-│   └── Meta-Llama-3-8B-Instruct.Q4_K_M.gguf
-│
-├── logs/
-├── .dvcignore
-├── .gitignore
-├── dvc.lock
-├── dvc.yaml
-├── environment.yml
-├── License.md
-├── Makefile
+├── logs/                        # Global logs
+├── requirements.txt
 ├── README.md
-└── requirements.txt
+└── .env
 ```
 
 ---
 
-## 9. End-to-End Pipeline Summary
+## 5. ML Evaluation and Model Registry Pipeline
 
-| Stage | Script | Input | Output | Tools |
-|--------|--------|--------|--------|--------|
-| Extraction | `data_extraction.py` | PDFs (`data/raw/`) | `combined_chunks.json`, `table_chunks.json` | LangChain, Camelot |
-| Preprocessing | `preprocess.py` | Extracted JSON | `cleaned_chunks.csv` | Pandas |
-| Validation | `validate_data.py` | Cleaned CSV | Validated JSON + `validation_report.csv` | Pydantic, LangDetect |
-| Embedding | `store_in_chromadb.py` | Validated JSON | ChromaDB Collection | SentenceTransformer |
-| Test RAG | `test_rag_llama.py` | ChromaDB + Model | Interactive Q&A | LLaMA 3, Chroma |
-| Orchestration | `run_pipeline.py` | — | Logs, Full Run | Python subprocess |
-| Trigger (Airflow) | `dvc_repro_manual_dag.py` | `url.json` | Auto pipeline trigger | Airflow + DVC |
+### Purpose
+The `ml_pipeline/` folder implements an automated model evaluation and versioning system that ensures all models undergo the following processes before being registered.
+
+| Stage | Script | Description |
+|--------|---------|-------------|
+| RAG Evaluation | `rag_eval_metrics.py` | Tests retrieval and contextual understanding using similarity and precision metrics |
+| Bias Detection | `bias_detection.py` | Detects variations in model performance across companies |
+| Sensitivity Analysis | `sensitivity_analysis.py` | Checks model robustness to paraphrased queries |
+| Unified Summary | `unified_eval_summary.py` | Aggregates metrics and logs to Weights & Biases |
+| Model Registry | `push_to_registry.py` | Creates versioned folders under `models_registry/` with metadata and model artifacts |
+
+### Outputs
+- `ml_pipeline/evaluation/eval_results/*.csv` and `.json`
+- `models/Llama-3.2-3B-Instruct-Q4_K_S.gguf` (temporary)
+- `models_registry/llama_3b_instruct_vN/` with `metadata.json` and model weights
+
+Example metadata file:
+```json
+{
+    "model_name": "llama_3b_instruct",
+    "version": "v7",
+    "timestamp": "2025-11-03T09:25:57",
+    "metrics": {
+        "mean_semantic_sim": 0.5425,
+        "mean_precision_at_k": 1.0
+    }
+}
+```
 
 ---
 
-## 10. Cloning and Running the Project
+## 6. CI/CD Workflow (GitHub Actions)
+
+A unified CI/CD pipeline automates training, validation, model registry updates, and notifications.  
+The workflow runs on every push to `main` or via manual dispatch.
+
+### Workflow Stages
+
+```
+                          ┌────────────────────────────┐
+                          │        GitHub Repo          │
+                          │  (FrontShiftAI - main)      │
+                          └────────────┬────────────────┘
+                                       │
+                          ▼──────────────────────────▼
+                 ┌─────────────────────────────────────────┐
+                 │         CI JOB: Train & Validate         │
+                 │─────────────────────────────────────────│
+                 │ Checkout repo with Git LFS               │
+                 │ Install Python + dependencies            │
+                 │ Run eval_pipeline_runner.py              │
+                 │ Compute RAG, Bias, Sensitivity metrics   │
+                 │ Generate unified_summary.json            │
+                 │ Export model and log to W&B              │
+                 │ Upload artifacts to GitHub               │
+                 └─────────────────────────────────────────┘
+                                       │
+                                       ▼
+                 ┌─────────────────────────────────────────┐
+                 │        CD JOB: Deploy to Registry        │
+                 │─────────────────────────────────────────│
+                 │ Download artifacts                      │
+                 │ Verify summary and model files           │
+                 │ Push to local model registry             │
+                 │ Upload models_registry/ as artifact      │
+                 └─────────────────────────────────────────┘
+                                       │
+                                       ▼
+           ┌────────────────────────────────────────────────────┐
+           │         NOTIFY JOB: Email Notification              │
+           │────────────────────────────────────────────────────│
+           │ Runs after both CI + CD                            │
+           │ Sends Gmail SMTP message with results              │
+           │ Includes unified metrics and status summary        │
+           └────────────────────────────────────────────────────┘
+```
+
+### Notifications
+Email notifications are automatically sent using Gmail SMTP credentials stored in GitHub Secrets:
+- `EMAIL_SENDER`
+- `EMAIL_PASSWORD`
+- `EMAIL_RECEIVER`
+
+These contain build results, mean semantic similarity, precision@k, and model registry version.
+
+---
+
+## 7. Streamlit Application Integration
+
+The Streamlit app dynamically loads the **latest registered model** and ChromaDB collection.  
+The preload script now automatically detects the latest version from `models_registry/`:
+
+```python
+# streamlit_app/core/preload.py
+
+def get_latest_model_path():
+    versions = sorted(MODELS_DIR.glob("llama_3b_instruct_v*"), reverse=True)
+    latest = versions[0]
+    model_file = next(latest.glob("*.gguf"), None)
+    return model_file
+```
+
+This ensures that whenever CI/CD registers a new model, the Streamlit application automatically uses it without manual updates.
+
+---
+
+## 8. Running the Pipelines
 
 ```bash
-# Clone repository
+# Clone the repository
 git clone https://github.com/MLOpsGroup9/FrontShiftAI.git
 cd FrontShiftAI
 
-# Create environment
-conda create -n frontshiftai python=3.10 -y
+# Environment setup
+conda create -n frontshiftai python=3.12 -y
 conda activate frontshiftai
 pip install -r requirements.txt
 
-# Pull versioned data
-dvc pull
-
-# Run pipeline manually
-python data_pipeline/scripts/run_pipeline.py
-
-# OR reproduce via DVC
+# Run data pipeline
 dvc repro
 
-# (Optional) Trigger Airflow for automation
-export AIRFLOW_HOME=./data_pipeline/airflow
-airflow db init
-airflow scheduler &
-airflow webserver --port 8080 &
+# Run model evaluation
+python ml_pipeline/eval_pipeline_runner.py
+
+# Launch Streamlit interface
+streamlit run streamlit_app/app.py
 ```
 
 ---
 
-## 11. Success & Acceptance Criteria
+## 9. Testing and Validation
 
-TBD
+Run all pipeline and ML evaluation tests:
+
+```bash
+pytest -v --disable-warnings
+```
+
+To verify coverage:
+
+```bash
+pytest --cov=data_pipeline --cov=ml_pipeline --cov-report=term-missing
+```
 
 ---
 
-## 12. License
+## 10. License
 
-This project is released under the **MIT License**.  
-See `License.md` for full terms.
+This project is released under the MIT License.  
+See `License.md` for details.
 
 ---
 
-## 🔗 Repository
+## 11. Repository
 
-👉 [FrontShiftAI GitHub](https://github.com/MLOpsGroup9/FrontShiftAI)
+https://github.com/MLOpsGroup9/FrontShiftAI

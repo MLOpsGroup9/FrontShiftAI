@@ -1,4 +1,6 @@
 [core]
-    remote = local_store
+    remote = model-registry
 ['remote "local_store"']
     url = /Users/sriks/Documents/Projects/DVC_Store
+['remote "model-registry"']
+    url = gs://frontshiftai-models

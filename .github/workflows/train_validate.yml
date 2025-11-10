@@ -1,0 +1,305 @@
+name: CI/CD - Train, Validate, and Deploy Model
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  train-validate:
+    name: Train & Validate Model
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true 
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Set Environment Variables
+        run: |
+          echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
+          echo "TOKENIZERS_PARALLELISM=false" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Run Evaluation Pipeline
+        env:
+          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+          WANDB_ENTITY: group9mlops-northeastern-university
+          WANDB_PROJECT: FrontShiftAI
+        run: |
+          python ml_pipeline/eval_pipeline_runner.py
+
+      - name: Check Evaluation Metrics
+        id: eval
+        run: |
+          METRIC=$(python3 << 'EOF'
+          import json, pathlib
+          p = pathlib.Path('ml_pipeline/evaluation/eval_results/unified_summary.json')
+          data = json.load(open(p))
+          print(data['rag']['mean_semantic_sim'])
+          EOF
+          )
+          echo "mean_sim=$METRIC" >> $GITHUB_ENV
+          echo "Mean Semantic Similarity: $METRIC"
+          THRESHOLD=0.45
+          if (( $(echo "$METRIC < $THRESHOLD" | bc -l) )); then
+            echo "Model below threshold ($METRIC < $THRESHOLD)"
+            exit 1
+          fi
+
+      - name: Upload Evaluation Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: |
+            ml_pipeline/evaluation/eval_results/
+            models/
+
+  deploy:
+    name: Deploy Model to Registry
+    runs-on: ubuntu-latest
+    needs: train-validate
+    if: success()
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Set Environment Variables
+        run: |
+          echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Download Artifacts from CI
+        uses: actions/download-artifact@v4
+        with:
+          name: eval-results
+          path: .
+
+      - name: Verify Downloaded Artifacts
+        run: |
+          echo "=== Current Working Directory ==="
+          pwd
+          echo -e "\n=== Contents of workspace root ==="
+          ls -la
+          echo -e "\n=== Contents of models directory ==="
+          ls -la models/ || echo "❌ models/ directory not found"
+          echo -e "\n=== Contents of ml_pipeline/evaluation/eval_results ==="
+          ls -la ml_pipeline/evaluation/eval_results/ || echo "❌ eval_results/ directory not found"
+          echo -e "\n=== Searching for .gguf files ==="
+          find . -name "*.gguf" -type f || echo "No .gguf files found"
+          echo -e "\n=== Searching for unified_summary.json ==="
+          find . -name "unified_summary.json" -type f || echo "No unified_summary.json found"
+
+      - name: Push to Model Registry
+        run: |
+          python3 << 'EOF'
+          import json
+          import pathlib
+          import os
+          from ml_pipeline.tracking.push_to_registry import push_to_registry
+          
+          # Debug: Print current working directory and verify paths
+          print(f"Current working directory: {os.getcwd()}")
+          print(f"PYTHONPATH: {os.getenv('PYTHONPATH', 'Not set')}")
+          
+          summary_path = pathlib.Path('ml_pipeline/evaluation/eval_results/unified_summary.json')
+          print(f"\nLooking for summary at: {summary_path.absolute()}")
+          print(f"Summary exists: {summary_path.exists()}")
+          
+          model_path = pathlib.Path('models/Llama-3.2-3B-Instruct-Q4_K_S.gguf')
+          print(f"\nLooking for model at: {model_path.absolute()}")
+          print(f"Model exists: {model_path.exists()}")
+          
+          # Verify files exist before proceeding
+          if not summary_path.exists():
+              raise FileNotFoundError(f'Missing unified summary at: {summary_path.absolute()}')
+          
+          if not model_path.exists():
+              raise FileNotFoundError(f'Missing model file at: {model_path.absolute()}')
+          
+          # Load metrics from summary
+          summary = json.load(open(summary_path))
+          metrics = {
+              'mean_semantic_sim': summary['rag']['mean_semantic_sim'],
+              'mean_precision_at_k': summary['rag']['mean_precision_at_k']
+          }
+          
+          print(f"\nMetrics loaded: {metrics}")
+          
+          # Push to registry
+          push_to_registry(
+              model_name='llama_3b_instruct',
+              model_file='Llama-3.2-3B-Instruct-Q4_K_S.gguf',
+              metrics=metrics
+          )
+          
+          print('\n✅ Model successfully pushed to registry.')
+          EOF
+
+      - name: Upload Model Registry
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-registry
+          path: models_registry/
+          retention-days: 90
+
+  notify:
+    name: Send Email Notification
+    runs-on: ubuntu-latest
+    needs: [train-validate, deploy]
+    if: always()
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download Evaluation Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: eval-results
+          path: .
+        continue-on-error: true
+
+      - name: Send Email Notification
+        env:
+          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+          TRAIN_STATUS: ${{ needs.train-validate.result }}
+          DEPLOY_STATUS: ${{ needs.deploy.result }}
+        run: |
+          echo "Sending email notification..."
+          python3 << 'EOF'
+          import os
+          import json
+          import pathlib
+          import smtplib
+          from email.mime.text import MIMEText
+          from email.mime.multipart import MIMEMultipart
+          
+          sender = os.getenv('EMAIL_SENDER')
+          password = os.getenv('EMAIL_PASSWORD')
+          receiver = os.getenv('EMAIL_RECEIVER')
+          train_status = os.getenv('TRAIN_STATUS', 'unknown')
+          deploy_status = os.getenv('DEPLOY_STATUS', 'unknown')
+          
+          # Determine overall status
+          if train_status == 'success' and deploy_status == 'success':
+              overall_status = 'SUCCESS ✅'
+          elif train_status == 'failure' or deploy_status == 'failure':
+              overall_status = 'FAILURE ❌'
+          elif train_status == 'skipped' or deploy_status == 'skipped':
+              overall_status = 'SKIPPED ⏭️'
+          else:
+              overall_status = 'PARTIAL ⚠️'
+          
+          # Try to get metrics with better error handling
+          mean_sim = 'N/A'
+          mean_precision = 'N/A'
+          
+          summary_path = pathlib.Path('ml_pipeline/evaluation/eval_results/unified_summary.json')
+          print(f"Looking for summary at: {summary_path.absolute()}")
+          print(f"File exists: {summary_path.exists()}")
+          
+          # Debug: List files in current directory
+          print("\nSearching for JSON files:")
+          for root, dirs, files in os.walk('.'):
+              for file in files:
+                  if file.endswith('.json'):
+                      print(f"Found JSON: {os.path.join(root, file)}")
+          
+          try:
+              if summary_path.exists():
+                  with open(summary_path, 'r') as f:
+                      data = json.load(f)
+                      print(f"Loaded summary data keys: {data.keys()}")
+                      mean_sim = data['rag']['mean_semantic_sim']
+                      mean_precision = data['rag'].get('mean_precision_at_k', 'N/A')
+                      print(f"Successfully extracted metrics: sim={mean_sim}, precision={mean_precision}")
+              else:
+                  print(f"Warning: Summary file not found at {summary_path}")
+          except FileNotFoundError as e:
+              print(f"Error: File not found - {e}")
+          except KeyError as e:
+              print(f"Error: Key not found in JSON - {e}")
+          except Exception as e:
+              print(f"Error extracting metrics: {type(e).__name__}: {e}")
+          
+          subject = f"FrontShiftAI CI/CD Pipeline - {overall_status}"
+          
+          body = f"""FrontShiftAI CI/CD Pipeline Run Summary
+          
+          Repository: {os.getenv('GITHUB_REPOSITORY')}
+          Branch: {os.getenv('GITHUB_REF_NAME')}
+          Workflow: {os.getenv('GITHUB_WORKFLOW')}
+          Run ID: {os.getenv('GITHUB_RUN_ID')}
+          Commit: {os.getenv('GITHUB_SHA', 'N/A')[:7]}
+          
+          ═══════════════════════════════════════
+          JOB STATUS
+          ═══════════════════════════════════════
+          • Train & Validate:     {train_status.upper()}
+          • Deploy to Registry:   {deploy_status.upper()}
+          
+          Overall Status: {overall_status}
+          
+          ═══════════════════════════════════════
+          EVALUATION METRICS
+          ═══════════════════════════════════════
+          • Mean Semantic Similarity: {mean_sim}
+          • Mean Precision@K:         {mean_precision}
+          
+          ═══════════════════════════════════════
+          
+          View full run details:
+          https://github.com/{os.getenv('GITHUB_REPOSITORY')}/actions/runs/{os.getenv('GITHUB_RUN_ID')}
+          
+          ---
+          This is an automated message from FrontShiftAI CI/CD Pipeline.
+          """
+          
+          msg = MIMEMultipart()
+          msg['From'] = sender
+          msg['To'] = receiver
+          msg['Subject'] = subject
+          msg.attach(MIMEText(body, 'plain'))
+          
+          try:
+              with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+                  server.login(sender, password)
+                  server.send_message(msg)
+              print(f'\n✅ Email sent successfully to {receiver}')
+          except Exception as e:
+              print(f'\n❌ Failed to send email: {e}')
+              import traceback
+              traceback.print_exc()
+          EOF
