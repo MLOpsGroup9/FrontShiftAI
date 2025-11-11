@@ -1,4 +1,11 @@
-# Project Scoping - FrontShiftAI: AI Copilot for Deskless Workers
+![Python](https://img.shields.io/badge/Python-3.12+-blue)
+![DVC](https://img.shields.io/badge/Data%20Version%20Control-DVC-orange)
+![Pytest](https://img.shields.io/badge/Tests-Passed-green)
+![Coverage](https://img.shields.io/badge/Coverage-100%25-success)
+![ChromaDB](https://img.shields.io/badge/Vector%20DB-ChromaDB-green)
+![Status](https://img.shields.io/badge/Status-Active-brightgreen)
+
+# FrontShiftAI: AI Copilot for Deskless Workers
 
 **Team Members**  
 - Harshitkumar Brahmbhatt  
@@ -11,175 +18,253 @@
 ---
 
 ## 1. Introduction
-Deskless workers face limited access to HR systems due to **irregular schedules, lack of computer access, and fragmented communication**.  
 
-These challenges lead to:  
-- Lower benefits enrollment/utilization  
-- Poor training adoption  
-- High attrition and disengagement  
+Deskless workers often have limited access to HR systems because of irregular schedules, lack of computer access, and fragmented communication channels. These challenges reduce employee engagement and lead to lower utilization of benefits, poor training adoption, and higher attrition.  
 
-**Proposed Solution:**  
-- **RAG core** → Retrieves grounded answers from HR docs and policies.  
-- **Agentic layer** → Executes actions like scheduling, compliance checks, escalation.  
-- **Voice interaction (planned)** → Enables hands-free access for frontline roles.  
+**FrontShiftAI** is designed to address these issues through a context-aware AI copilot that provides retrieval-augmented responses and integrates with existing HR systems.  
 
----
+Key components include:  
+- Retrieval-Augmented Generation (RAG) core for document-grounded answers  
+- An agentic orchestration layer for HR workflow automation (in development)  
+- Voice-based interaction features for hands-free accessibility (in development)  
 
-## 2. Dataset Information
-
-### 2.1 Dataset Card
-| Attribute      | Description |
-|----------------|-------------|
-| **Name**       | Deskless Worker Handbook Q&A Dataset |
-| **Size**       | 200–20,000 Q&A pairs |
-| **Sources**    | Publicly available employee handbooks (healthcare, retail, logistics, hospitality, finance, construction, etc.) |
-| **Formats**    | CSV (exploration), JSONL (fine-tuning), PDF/TXT (retrieval embedding) |
-| **Data Types** | Natural language questions, concise answers, metadata (source, industry, section) |
-
-### 2.2 Example Sources
-- Healthcare: [Crouse Medical Handbook (2019)](https://crousemed.com/media/1449/cmp-employee-handbook.pdf)  
-- Retail: [Lunds & Byerlys Handbook (2019)](https://corporate.lundsandbyerlys.com/wp-content/uploads/2024/05/EmployeeHandbook_20190926.pdf)  
-- Manufacturing: [BG Foods Handbook (2022)](https://bgfood.com/wp-content/uploads/2022/01/BG-Employee-Handbook-2022.pdf)  
-- Construction: [TNT Construction Handbook (2018)](https://www.tntconstructionmn.com/wp-content/uploads/2018/05/TNT-Construction-Inc-Handbook_Final-2018.pdf)  
-- Hospitality: [Alta Peruvian Lodge Handbook (2016)](https://www.altaperuvian.com/wp-content/uploads/2017/01/APL-Empl-Manual-Revised-12-22-16-fixed.pdf)  
-- Finance: [Old National Bank Handbook](https://www.oldnational.com/globalassets/onb-site/onb-documents/onb-about-us/onb-team-member-handbook/team-member-handbook.pdf)  
-
-### 2.3 Rights & Privacy
-- **Source Material**: All handbooks are public PDFs.  
-- **Usage**: Research/educational only.  
-- **Privacy**: No personal data; only policy text.  
-- **Compliance**: GDPR/CCPA principles respected.  
+An optional Airflow DAG (`dvc_repro_manual_dag.py`) in `data_pipeline/dags/` can automatically trigger the pipeline when new URLs are added to `data_pipeline/data/url.json`, or it can be triggered manually via the Airflow UI.
 
 ---
 
-## 3. Data Planning and Splits
+## 2. Automated Data Pipeline Overview
 
-### 3.1 Preprocessing Steps
-- Extract text from PDFs (PyMuPDF, PDFMiner)  
-- Clean headers/footers, remove duplicates  
-- Chunk into policy sections  
-- Generate Q&A pairs (manual + synthetic)  
-- Normalize into JSONL schema  
+The data pipeline is fully modular, test-driven, and reproducible. Each stage is independently testable using `pytest`. The pipeline supports ingestion, preprocessing, validation, and embedding of HR policy documents.
 
-### 3.2 Splitting Strategy
-- **Train (70%)** → Q&A pairs for fine-tuning  
-- **Validation (15%)** → Hyperparameter tuning  
-- **Test (15%)** → Final evaluation  
-- Stratified by industry, deduplicated  
+| Stage | Script | Functionality |
+|--------|--------|----------------|
+| Download | `download_data.py` | Fetches and stores PDFs defined in `url.json` |
+| Extraction | `pdf_parser.py` | Extracts structured text and tables from PDFs |
+| Preprocessing | `preprocess.py` | Cleans and normalizes extracted text |
+| Chunking | `chunker.py` | Splits cleaned text into semantically coherent chunks |
+| Validation | `validate_data.py` | Applies schema checks, deduplication, and language filtering |
+| Embedding | `store_in_chromadb.py` | Converts validated chunks into vector embeddings stored in ChromaDB |
+| Bias Analysis | `data_bias.py` | Performs bias and diversity checks on processed content |
 
----
+All components pass unit and integration tests under `data_pipeline/tests/` using the following command:
 
-## 4. Problems & Current Solutions
-- **HCM Suites** (Workday, SAP) → Admin-focused, vendor-locked  
-- **Enterprise Assistants** (Oracle DA) → Rigid, schema-bound  
-- **LMS Microlearning** (Docebo, Cornerstone) → Static, non-queryable  
-- **Generic Chatbots** (Leena AI, Talla) → FAQ-only, no grounding  
-- **Self-Service Portals** → Desktop-centric, not conversational  
-- **Slack/Teams** → Transient, non-retrievable  
-
----
-
-## 5. Proposed Solution
-- **RAG for grounded answers** (cited, accurate)  
-- **Agentic orchestration** for HR workflows (scheduling, compliance, escalation)  
-- **Personalization & memory** for context-aware Q&A  
-- **System integration** with HRIS, LMS, calendars  
-- **Safe fallback** when confidence is low  
-- **Voice accessibility** for frontline workers  
-
----
-
-## 6. Current Flow & Bottlenecks
-Traditional HR flow → **HR overload, fragmented systems, limited access**.  
-**AI Copilot improves** with:  
-- Automated retrieval (RAG)  
-- Unified query interface  
-- Mobile/voice accessibility  
-- 24/7 availability  
-- Analytics feedback loop  
-
----
-
-## 7. Metrics, Objectives, and Business Goals
-- **Objectives:** Build RAG system, enable agentic actions, provide voice interface, ensure compliance.  
-- **Business Alignment:** HR efficiency, training compliance, engagement, reduced risk, scalable support.  
-
----
-
-## 8. Key Metrics
-- **RAG** → Recall@5 > 90%, Factuality > 85%, F1 > 80%, Hallucination < 5%  
-- **Agentic** → Tool accuracy > 90%, Task success > 85%, Fallback > 95%  
-- **Voice** → WER < 10%, Latency < 3s, Voice success > 80%  
-
----
-
-## 9. Failure Analysis
-- **Data ingestion** → corrupted PDFs → multi-parser fallback  
-- **Retrieval** → poor recall → hybrid retrieval, eval thresholds  
-- **LLM gen** → hallucination → context-only guardrails  
-- **Agents** → wrong tool → JSON schema validation, confirmations  
-- **Infra** → latency spikes → autoscaling, caching, fallback modes  
-
----
-
-## 10. Deployment Infrastructure
-- **Backend**: FastAPI on GKE  
-- **RAG**: Hugging Face embeddings + ChromaDB (GKE)  
-- **LLM**: LLaMA-3 8B (Vertex AI endpoint)  
-- **Agents**: LangChain/LangGraph on GKE  
-- **Voice**: Google Cloud STT/TTS  
-- **Data**: GCS (docs), Cloud SQL (metadata), JSONL/CSV  
-- **Monitoring**: Cloud Monitoring, Prometheus/Grafana, Vertex AI drift detection  
-
----
-
-## 11. Monitoring Plan
-- Track retrieval recall, hallucination, tool accuracy, fallback rate, WER, latency  
-- GCP Cloud Monitoring alerts + Grafana dashboards  
-- Future: drift detection, detailed audit logs  
-
----
-
-## 12. Success & Acceptance Criteria
-- **RAG**: Recall@5 ≥ 90%, Hallucination ≤ 5%  
-- **Agentic**: Task success ≥ 85%  
-- **Voice**: WER ≤ 10%, latency ≤ 3s  
-- **Pilot Study**: ≥ 80% accuracy, ≥ 4/5 satisfaction  
-
----
-
-## 13. Timeline (10 weeks)
-1. **Dataset & Retrieval MVP (Weeks 1–2)**  
-2. **Agentic Layer MVP (Weeks 3–4)**  
-3. **Voice Prototype (Weeks 5–6)**  
-4. **Monitoring & Hardening (Weeks 7–8)**  
-5. **Pilot & Acceptance (Weeks 9–10)**  
-
----
-
-## 14. Additional Information
-The stack may evolve (embedding models, vector DBs, orchestration libs), but changes will be **incremental and non-disruptive**.  
-Core principles (RAG core, agentic orchestration, GCP deployment, voice accessibility) remain unchanged.  
-
----
-
-## 15. Repository Structure
 ```bash
-├── data/ # Raw and processed handbook data
-├── notebooks/ # Exploration & preprocessing notebooks
-├── src/ # Core RAG + agentic pipeline
-│ ├── rag/ # Retrieval-Augmented Generation components
-│ ├── agents/ # Agentic orchestration layer
-│ ├── voice/ # STT/TTS integrations
-│ └── api/ # FastAPI service
-├── infra/ # Deployment configs (Docker, GCP, Kubernetes, Vertex AI)
-├── docs/ # Diagrams, reports, scoping docs
-│ └── Project_Scoping.md
-├── tests/ # Unit and integration tests
-└── README.md # High-level project overview
+pytest -v --disable-warnings
 ```
 
 ---
 
-## 🔗 Repository
-👉 [FrontShiftAI GitHub](https://github.com/MLOpsGroup9/FrontShiftAI)
+## 3. Dataset Information
+
+### 3.1 Dataset Card
+
+| Attribute | Description |
+|------------|-------------|
+| **Name** | Deskless Worker Handbook RAG Dataset |
+| **Size** | 20 public HR handbooks |
+| **Sources** | Employee handbooks from multiple industries |
+| **Formats** | PDF, JSONL, CSV |
+| **Data Types** | Policy text, metadata, extracted tables |
+
+### 3.2 Example Sources
+- Healthcare: [Crouse Medical Handbook (2019)](https://crousemed.com/media/1449/cmp-employee-handbook.pdf)  
+- Retail: [Lunds & Byerlys Handbook (2019)](https://corporate.lundsandbyerlys.com/wp-content/uploads/2024/05/EmployeeHandbook_20190926.pdf)  
+- Manufacturing: [BG Foods Handbook (2022)](https://bgfood.com/wp-content/uploads/2022/01/BG-Employee-Handbook-2022.pdf)  
+- Construction: [TNT Construction Handbook (2018)](https://www.tntconstructionmn.com/wp-content/uploads/2018/05/TNT-Construction-Inc-Handbook_Final-2018.pdf)  
+- Finance: [Old National Bank Handbook](https://www.oldnational.com/globalassets/onb-site/onb-documents/onb-about-us/onb-team-member-handbook/team-member-handbook.pdf)  
+
+### 3.3 Rights and Privacy
+All handbooks are publicly available and used solely for educational and research purposes. No personal or sensitive data is included.
+
+---
+
+## 4. Repository Structure
+
+```bash
+FrontShiftAI/
+├── data_pipeline/
+│   ├── airflow/
+│   │   ├── dags/
+│   │   │   ├── data_pipeline_dag.py              # Main Airflow DAG orchestrating all stages
+│   │   │   ├── data_pipeline_VM_dag.py           # Vision model pipeline (future integration)
+│   │   │   └── dvc_repro_manual_dag.py           # Lightweight DAG that triggers DVC repro
+│   │   ├── airflow.cfg                           # Airflow runtime configuration
+│   │   └── README.md                             # Airflow usage and DAG details
+│   │
+│   ├── config/                                   # Environment and runtime configuration files
+│   │   ├── pipeline_config.yaml                  # Config file specifying pipeline stage parameters
+│   │   ├── chromadb_settings.yaml                # ChromaDB collection and embedding configuration
+│   │   ├── logging_config.yaml                   # Logging format and level configuration
+│   │   └── .env.example                          # Example environment file for local use
+│   │
+│   ├── data/                                     # Data artifacts (auto-created by pipeline)
+│   │   ├── url.json                              # Input list of URLs for PDF downloads
+│   │   ├── raw/                                  # Source PDF documents (downloaded)
+│   │   ├── extracted/                            # Parsed text and table JSON from PDFs
+│   │   ├── cleaned/                              # Normalized text data pre-validation
+│   │   ├── chunked/                              # Tokenized chunks (JSONL) with metadata
+│   │   ├── validated/                            # Final validated chunks + reports (CSV/JSON)
+│   │   ├── vector_db/                            # ChromaDB persistent vector database
+│   │   ├── bias_reports/                         # Optional bias analysis metrics and plots
+│   │   └── tmp/                                  # Temporary working directory for DVC runs
+│   │
+│   ├── docker/                                   # Docker build assets
+│   │   ├── Dockerfile.airflow                    # Airflow scheduler + webserver image
+│   │   ├── Dockerfile.vm_api                     # VM API or OCR microservice
+│   │   ├── Dockerfile.worker                     # Optional Celery worker image
+│   │   └── entrypoint.sh                         # Common startup script for containers
+│   │
+│   ├── logs/                                     # Pipeline execution logs (auto-generated)
+│   │   ├── pipeline_run_YYYYMMDD_HHMM.log        # Run-by-run logs with timestamps
+│   │   ├── preprocessing/                        # Logs for text cleaning stage
+│   │   ├── validation/                           # Logs for data validation stage
+│   │   ├── chromadb/                             # Logs for embedding and storage
+│   │   ├── bias_analysis/                        # Logs for bias computation
+│   │   └── scheduler/                            # Airflow scheduler logs
+│   │
+│   ├── plugins/                                  # Airflow custom plugins (optional, can be empty)
+│   │   └── __init__.py
+│   │
+│   ├── scripts/                                  # Core pipeline scripts
+│   │   ├── chunker.py                            # Converts cleaned text into semantically meaningful chunks
+│   │   ├── data_bias.py                          # Performs bias/fairness analysis (optional)
+│   │   ├── download_data.py                      # Fetches all PDFs listed in `url.json`
+│   │   ├── pdf_parser.py                         # Extracts text/tables using PyMuPDF, pdfplumber, or Tesseract OCR
+│   │   ├── pipeline_runner.py                    # Sequential orchestrator for local/manual runs
+│   │   ├── preprocess.py                         # Cleans, deduplicates, and normalizes extracted text
+│   │   ├── store_in_chromadb.py                  # Embeds validated text chunks and stores them in ChromaDB
+│   │   ├── validate_data.py                      # Validates text chunks, generates quality reports
+│   │   ├── VM_api.py                             # Flask/FastAPI app exposing vision/OCR endpoints
+│   │   ├── test_rag_llama.py                     # Local test harness for RAG with LLaMA models
+│   │   ├── report_generator.py                   # Optional script for summarizing pipeline runs
+│   │   └── utils.py                              # Helper utilities for shared functionality
+│   │
+│   ├── tests/                                    # Pytest-based test suite
+│   │   ├── test_download_data.py
+│   │   ├── test_pdf_parser.py
+│   │   ├── test_preprocess.py
+│   │   ├── test_chunker.py
+│   │   ├── test_validate_data.py
+│   │   ├── test_store_in_chromadb.py
+│   │   ├── test_data_bias.py
+│   │   └── conftest.py                           # Pytest fixtures and shared setup
+│   │
+│   ├── utils/                                    # Shared helper modules
+│   │   ├── logger.py                             # Custom logger setup for all scripts
+│   │   ├── file_ops.py                           # File utilities (safe I/O, hash functions, cleanup)
+│   │   ├── validators.py                         # Schema and language validation helpers
+│   │   └── constants.py                          # Global constants and paths used across modules
+│   │
+│   ├── docker-compose.yml                        # Full Docker Compose stack definition
+│   ├── docker-manage.sh                          # CLI utility to build/start/stop/clean containers
+│   ├── dvc.yaml                                  # DVC stage configuration (extract, preprocess, validate, embed)
+│   ├── .env                                      # Environment variables for Docker and Airflow
+│   ├── pytest.ini                                # Pytest configuration (markers, logging)
+│   ├── requirements.txt                          # Python dependencies
+│   └── README.md                                 # Detailed Data Pipeline documentation (this file)
+│
+├── src/                                          # Future core source modules (e.g., API, agents, RAG)
+│   ├── agents/
+│   ├── api/
+│   ├── rag/
+│   ├── utils/
+│   └── voice/
+│
+├── docs/                                         # Documentation and design assets
+│   ├── architecture_diagram.png
+│   ├── data_flow.md
+│   └── structure.md
+│
+├── models/                                       # Local model weights
+│   └── Meta-Llama-3-8B-Instruct.Q4_K_M.gguf
+│
+├── logs/                                         # Root-level logs (high-level system events)
+│
+├── .dvcignore                                   # Ignore patterns for DVC
+├── .gitignore                                   # Ignore patterns for Git
+├── dvc.lock                                     # Auto-generated DVC pipeline state
+├── environment.yml                              # Conda environment specification
+├── Makefile                                     # Make targets for quick automation
+├── License.md                                   # Project license (MIT)
+└── requirements.txt                             # Root-level dependency list
+
+```
+
+---
+
+## 5. Running the Pipeline
+
+```bash
+# Clone the repository
+git clone https://github.com/MLOpsGroup9/FrontShiftAI.git
+cd FrontShiftAI
+
+# Set up environment
+conda create -n frontshiftai python=3.12 -y
+conda activate frontshiftai
+pip install -r requirements.txt
+
+# Pull versioned data
+dvc pull
+
+# Run the pipeline manually
+python data_pipeline/scripts/pipeline_runner.py
+
+# Or reproduce via DVC
+dvc repro
+
+# Optional: Trigger using Airflow
+export AIRFLOW_HOME=./data_pipeline/airflow
+airflow db init
+airflow scheduler &
+airflow webserver --port 8080 &
+```
+
+All logs and reports are stored under `data_pipeline/logs/`, and validation metrics are written to `validation_report.csv`.
+
+---
+
+## 6. Testing and Continuous Integration
+
+All pipeline stages are validated through automated tests.  
+Run the full test suite:
+
+```bash
+pytest -v --disable-warnings
+```
+
+To view code coverage:
+
+```bash
+pytest --cov=data_pipeline.scripts --cov-report=term-missing
+```
+
+Example CI configuration (GitHub Actions):
+
+```yaml
+name: CI
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: pytest -v --disable-warnings
+```
+
+---
+
+## 7. License
+
+This project is released under the MIT License.  
+See `License.md` for details.
+
+---
+
+## 8. Repository
+
+https://github.com/MLOpsGroup9/FrontShiftAI

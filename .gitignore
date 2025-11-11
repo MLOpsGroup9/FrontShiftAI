@@ -7,25 +7,15 @@ __pycache__/
 
 # Virtual environments
 .venv/
+*venv/
+_venv/
 env/
 .conda/
 .frontshiftai/
 
-# Jupyter
-.ipynb_checkpoints/
-
 # OS
 .DS_Store
 Thumbs.db
-
-# Data (don’t upload raw/processed/chroma_db)
-data/raw/
-data/processed/
-data/chroma_db/
-
-# QnA dataset (keep small JSONL, ignore large variants)
-data/qna/*.csv
-data/qna/*.parquet
 
 # Models (do not push heavy GGUF/finetuned weights)
 models/*.bin
@@ -34,13 +24,29 @@ models/*.safetensors
 models/*.gguf
 models/*-finetuned-*/
 
-# Training outputs
-outputs/
-logs/
-wandb/
-runs/
-
 # Infrastructure / Docker
 *.env
 .env.*
 docker-data/
+
+# Local resources
+MyResources/
+src/api/
+models/
+src/
+.email_config.json
+
+# DVC
+.dvc
+
+#logs
+data_pipeline/logs/
+
+# Data 
+/data/
+
+# Airflow 
+.airflow
+
+
+
