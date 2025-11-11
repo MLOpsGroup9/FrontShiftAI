@@ -62,7 +62,7 @@ with st.expander("➕ Add New Company"):
         if domain and company and url:
             add_company(domain, company, url)
         else:
-            st.error("❌ Please fill all fields")
+            st.error("Please fill all fields")
 
 st.divider()
 
