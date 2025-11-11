@@ -1,6 +1,6 @@
 # ✅ Project Progress Tracker — Multimodal RAG System (Chat-First Phase)
 
-| Section | Deliverable | Status | Owner | File/Script |
+| Section | Deliverable | Status | File/Script |
 |----------|--------------|--------|--------|-------------|
 | **Model Development** | Load versioned corpus & embeddings | ⚙️ In Progress | `rag/rag_query_utils.py` |
 |  | Retriever + Generator (Llama test harness) | ✅ Done | `rag/test_rag_llama.py` |
