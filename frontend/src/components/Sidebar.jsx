@@ -1,0 +1,218 @@
+import React, { useState } from 'react';
+
+const navIcons = {
+  home: (className = '') => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4.5 10.5L12 4l7.5 6.5" />
+      <path d="M6 9.5V20h12V9.5" />
+      <path d="M10 20v-5h4v5" />
+    </svg>
+  ),
+  templates: (className = '') => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4.5" y="4" width="15" height="16" rx="2.2" />
+      <path d="M8 8h8M8 12h5" />
+    </svg>
+  ),
+  explore: (className = '') => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="2" />
+      <path d="M19 5l-5 12-12 5 5-12 12-5z" />
+    </svg>
+  ),
+  history: (className = '') => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12a9 9 0 11-3.2-6.9" />
+      <path d="M21 5v5h-5" />
+      <path d="M12 7v4.5l3 1.8" />
+    </svg>
+  ),
+  wallet: (className = '') => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="6" width="18" height="12" rx="3" />
+      <path d="M17 12h2" />
+      <path d="M3 10h18" />
+    </svg>
+  ),
+};
+
+const Sidebar = ({
+  activeView,
+  setActiveView,
+  width = 320,
+  chatHistory = [],
+  onNewChat,
+  onLoadChat,
+  onDeleteChat,
+  currentChatId,
+}) => {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const menuItems = [
+    { id: 'home', label: 'Home', icon: navIcons.home },
+    { id: 'templates', label: 'Templates', icon: navIcons.templates },
+    { id: 'explore', label: 'Explore', icon: navIcons.explore },
+    { id: 'history', label: 'History', icon: navIcons.history },
+    { id: 'wallet', label: 'Wallet', icon: navIcons.wallet },
+  ];
+
+  // Filter chats based on search query
+  const filteredChatHistory = chatHistory.map(group => ({
+    ...group,
+    chats: group.chats.filter(chat => 
+      chat.title.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  })).filter(group => group.chats.length > 0);
+
+  return (
+    <div 
+      className="fixed left-0 top-0 h-screen flex flex-col z-10 overflow-hidden sidebar-glass"
+      style={{ 
+        width: `${width}px`,
+        background: 'rgba(0, 0, 0, 0.2)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        borderRight: '1px solid rgba(255, 255, 255, 0.05)'
+      }}
+    >
+      {/* Logo */}
+      <div className="px-6 py-5 border-b border-white/5">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-2xl border border-white/15 bg-gradient-to-br from-white/30 via-white/10 to-transparent shadow-[0_10px_30px_rgba(0,0,0,0.45)] relative overflow-hidden">
+            <div className="absolute inset-[3px] rounded-2xl bg-black/30 backdrop-blur-sm border border-white/5"></div>
+            <div className="absolute left-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white/80 blur-sm opacity-80"></div>
+            <div className="absolute right-2 bottom-2 w-2 h-4 rounded-full bg-white/40"></div>
+          </div>
+          <h1 className="text-xl font-semibold text-white tracking-tight">FrontShiftAI</h1>
+        </div>
+      </div>
+
+      {/* Search Bar */}
+      <div className="px-4 py-3 border-b border-white/5">
+        <div className="flex items-center space-x-2">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              placeholder="Search chats"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 pl-8 pr-3 text-sm text-white/90 placeholder-white/35 focus:outline-none focus:border-white/20 focus:bg-white/8 transition-all"
+            />
+            <svg 
+              className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/35 pointer-events-none" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <button
+            onClick={onNewChat}
+            className="flex items-center justify-center w-9 h-9 bg-white/10 hover:bg-white/15 border border-white/10 rounded-lg text-white/80 hover:text-white transition-all cursor-pointer"
+            title="New Chat"
+          >
+            <svg 
+              className="w-5 h-5" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Navigation Menu */}
+      <nav className="px-3 py-3 flex-shrink-0">
+        <ul className="space-y-0.5">
+          {menuItems.map((item) => (
+            <li key={item.id}>
+              <button
+                onClick={() => setActiveView(item.id)}
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all text-left ${
+                  activeView === item.id
+                    ? 'bg-white/10 text-white'
+                    : 'text-white/70 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                {item.icon && (
+                  <span
+                    className={`flex items-center justify-center w-8 h-8 rounded-xl border border-white/10 bg-white/5 ${
+                      activeView === item.id ? 'text-white' : 'text-white/70'
+                    }`}
+                  >
+                    {item.icon('w-4 h-4')}
+                  </span>
+                )}
+                <span className="text-sm font-medium">{item.label}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      {/* Recent Chats */}
+      <div className="px-4 py-4 border-t border-white/5 overflow-y-auto flex-1 min-h-0">
+        <h3 className="text-xs font-semibold text-white/40 mb-3 uppercase tracking-wider px-1">Recent Chats</h3>
+        {filteredChatHistory.length > 0 ? (
+          <div className="space-y-4">
+            {filteredChatHistory.map((group, idx) => (
+              <div key={idx}>
+                <ul className="space-y-0.5">
+                  {group.chats.map((chat) => (
+                    <li
+                      key={chat.id}
+                      className={`text-sm py-1.5 px-2 rounded-lg transition-all truncate flex items-center gap-2 ${
+                        currentChatId === chat.id
+                          ? 'bg-white/10 text-white'
+                          : 'text-white/60 hover:text-white/90 hover:bg-white/5'
+                      }`}
+                    >
+                      <button
+                        className="flex-1 text-left truncate"
+                        onClick={() => onLoadChat && onLoadChat(chat.id)}
+                      >
+                        {chat.title}
+                      </button>
+                      <button
+                        title="Delete chat"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteChat && onDeleteChat(chat.id);
+                        }}
+                        className="w-6 h-6 flex items-center justify-center rounded-md border border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all"
+                      >
+                        <svg
+                          className="w-3.5 h-3.5"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M4 7h16" />
+                          <path d="M10 11v6M14 11v6" />
+                          <path d="M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12" />
+                          <path d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2" />
+                        </svg>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-xs text-white/30 px-1 italic">
+            {searchQuery ? 'No chats found' : 'No recent chats'}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Sidebar;

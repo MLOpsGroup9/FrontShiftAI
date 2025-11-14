@@ -50,4 +50,7 @@ data_pipeline/logs/
 .airflow
 
 
+voice_pipeline 
+
+
 
