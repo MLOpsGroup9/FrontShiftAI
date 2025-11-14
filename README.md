@@ -147,10 +147,26 @@ Example metadata file:
 
 ---
 
-## 6. CI/CD Workflow (GitHub Actions)
+## 6. CI/CD Pipeline (In Review)
+
+The project includes a CI/CD system for automated evaluation, quality gates, and deployment.
+
+**Status:** Implemented but not yet active (awaiting configuration)
+
+**Location:** `ml_pipeline/ci_cd/`
+
+**Documentation:** See `ml_pipeline/ci_cd/README.md` for details
+
+**Activation:** After GitHub Secrets configuration and merge to main branch
+
+---
+
+## 6.1 CI/CD Workflow (GitHub Actions)
 
 A unified CI/CD pipeline automates training, validation, model registry updates, and notifications.  
 The workflow runs on every push to `main` or via manual dispatch.
+
+**Note:** Workflows are currently configured to only trigger on the `main` branch. They will not run automatically on feature branches.
 
 ### Workflow Stages
 

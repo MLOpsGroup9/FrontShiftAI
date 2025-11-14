@@ -18,6 +18,12 @@ def send_email(subject: str, message: str):
     sender = creds.get("sender")
     password = creds.get("password")
     receiver = creds.get("receiver")
+    
+    # Check for placeholder credentials (for CI/CD)
+    if sender and ("placeholder" in sender.lower() or "PLACEHOLDER" in password):
+        print("Email notification skipped - placeholder credentials detected")
+        print("Configure real GitHub Secrets to enable email notifications")
+        return  # Don't fail, just skip
 
     print(f"📧 Attempting to send email via Gmail SSL...")
     msg = MIMEMultipart()
