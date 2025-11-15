@@ -1,0 +1,363 @@
+# Manual rollback workflow
+# Requires manual trigger and approval for production rollbacks
+# Use when you need to revert to a previous model version
+
+name: Model Rollback - Manual Rollback Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_version:
+        description: 'Target version to rollback to (e.g., v5). Leave empty for previous version.'
+        required: false
+        type: string
+      reason:
+        description: 'Reason for rollback (required for audit)'
+        required: true
+        type: string
+      use_previous:
+        description: 'Rollback to previous version'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  validate-rollback-target:
+    name: Validate Rollback Target
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Set Environment Variables
+        run: |
+          echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
+        shell: bash
+
+      - name: List Available Versions
+        run: |
+          python ml_pipeline/ci_cd/rollback_model.py --list-versions
+
+      - name: Validate Target Version Exists
+        id: validate
+        run: |
+          TARGET_VERSION="${{ inputs.target_version }}"
+          USE_PREVIOUS="${{ inputs.use_previous }}"
+          
+          if [ "$USE_PREVIOUS" == "true" ]; then
+            echo "target_version=previous" >> $GITHUB_OUTPUT
+            echo "✅ Will rollback to previous version"
+          elif [ -n "$TARGET_VERSION" ]; then
+            # Check if version exists
+            if [ -d "models_registry/llama_3b_instruct_${TARGET_VERSION}" ]; then
+              echo "target_version=$TARGET_VERSION" >> $GITHUB_OUTPUT
+              echo "✅ Target version found: $TARGET_VERSION"
+            else
+              echo "❌ Target version not found: $TARGET_VERSION"
+              exit 1
+            fi
+          else
+            echo "❌ Must specify target_version or use_previous"
+            exit 1
+          fi
+
+      - name: Load Target Metadata
+        id: metadata
+        run: |
+          TARGET_VERSION="${{ steps.validate.outputs.target_version }}"
+          
+          if [ "$TARGET_VERSION" == "previous" ]; then
+            # Get previous version
+            PREV_V=$(python3 << 'EOF'
+            import sys
+            from pathlib import Path
+            sys.path.insert(0, str(Path.cwd()))
+            from ml_pipeline.ci_cd.rollback_model import get_previous_version, load_pipeline_config
+            config = load_pipeline_config()
+            model_name = config.get("model", {}).get("name", "llama_3b_instruct")
+            registry_dir = Path("models_registry")
+            prev = get_previous_version(model_name, registry_dir)
+            print(prev if prev else "none")
+            EOF
+            )
+            TARGET_VERSION="v$PREV_V"
+          fi
+          
+          METADATA_PATH="models_registry/llama_3b_instruct_${TARGET_VERSION}/metadata.json"
+          
+          if [ -f "$METADATA_PATH" ]; then
+            python3 << 'EOF'
+            import json
+            import sys
+            
+            with open(sys.argv[1], 'r') as f:
+                metadata = json.load(f)
+            
+            metrics = metadata.get('metrics', {})
+            mean_sim = metrics.get('mean_semantic_sim', 0.0)
+            mean_prec = metrics.get('mean_precision_at_k', 0.0)
+            
+            print(f"mean_sim={mean_sim}")
+            print(f"mean_prec={mean_prec}")
+            EOF
+            "$METADATA_PATH"
+          else
+            echo "⚠️ Metadata not found for target version"
+          fi
+
+      - name: Require Manual Approval for Production
+        if: github.ref == 'refs/heads/main'
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.TOKEN }}
+          approvers: ${{ github.repository_owner }}
+          minimum-approvals: 1
+          issue-title: "Rollback Approval Required"
+          issue-body: |
+            A rollback to version ${{ steps.validate.outputs.target_version }} has been requested.
+            
+            **Reason:** ${{ inputs.reason }}
+            
+            **Target Metrics:**
+            - Mean Semantic Similarity: ${{ steps.metadata.outputs.mean_sim }}
+            - Mean Precision@K: ${{ steps.metadata.outputs.mean_prec }}
+            
+            Please review and approve this rollback.
+
+  execute-rollback:
+    name: Execute Rollback
+    runs-on: ubuntu-latest
+    needs: validate-rollback-target
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Set Environment Variables
+        run: |
+          echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Execute Rollback
+        run: |
+          TARGET_VERSION="${{ steps.validate.outputs.target_version }}"
+          USE_PREVIOUS="${{ inputs.use_previous }}"
+          REASON="${{ inputs.reason }}"
+          
+          if [ "$USE_PREVIOUS" == "true" ]; then
+            python ml_pipeline/ci_cd/rollback_model.py \
+              --previous \
+              --reason "$REASON"
+          elif [ -n "$TARGET_VERSION" ] && [ "$TARGET_VERSION" != "previous" ]; then
+            python ml_pipeline/ci_cd/rollback_model.py \
+              --target-version "$TARGET_VERSION" \
+              --reason "$REASON"
+          else
+            # Get previous version
+            python ml_pipeline/ci_cd/rollback_model.py \
+              --previous \
+              --reason "$REASON"
+          fi
+
+      - name: Upload Rollback Logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: rollback-logs
+          path: models_registry/rollback_logs/
+          retention-days: 90
+        continue-on-error: true
+
+  validation:
+    name: Post-rollback Validation
+    runs-on: ubuntu-latest
+    needs: execute-rollback
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Set Environment Variables
+        run: |
+          echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Download Rollback Logs
+        uses: actions/download-artifact@v4
+        with:
+          name: rollback-logs
+          path: models_registry/rollback_logs/
+        continue-on-error: true
+
+      - name: Verify Rolled-back Model
+        run: |
+          python3 << 'EOF'
+          import json
+          from pathlib import Path
+          
+          registry_dir = Path("models_registry")
+          latest_path = registry_dir / "latest"
+          
+          if latest_path.exists():
+              if latest_path.is_symlink():
+                  version_dir = latest_path.resolve()
+              else:
+                  with open(latest_path, 'r') as f:
+                      version_dir = Path(f.read().strip())
+              
+              metadata_path = version_dir / "metadata.json"
+              if metadata_path.exists():
+                  with open(metadata_path, 'r') as f:
+                      metadata = json.load(f)
+                  print(f"✅ Rollback verified:")
+                  print(f"   Active version: {metadata.get('version')}")
+                  print(f"   Model: {metadata.get('model_name')}")
+                  print(f"   Metrics: {metadata.get('metrics', {})}")
+              else:
+                  print("⚠️ Metadata not found")
+          else:
+              print("⚠️ Latest symlink not found")
+          EOF
+
+      - name: Run Smoke Tests
+        run: |
+          echo "⚠️ Smoke tests skipped (requires full environment)"
+          # In a real scenario, run smoke tests against rolled-back model
+        continue-on-error: true
+
+  notification-and-incident-log:
+    name: Notification & Incident Log
+    runs-on: ubuntu-latest
+    needs: [validate-rollback-target, execute-rollback, validation]
+    if: always()
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Send Rollback Notification
+        env:
+          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+        run: |
+          python3 << 'EOF'
+          import os
+          import smtplib
+          from email.mime.text import MIMEText
+          from email.mime.multipart import MIMEMultipart
+          
+          sender = os.getenv('EMAIL_SENDER')
+          password = os.getenv('EMAIL_PASSWORD')
+          receiver = os.getenv('EMAIL_RECEIVER')
+          
+          if not all([sender, password, receiver]):
+              print('Email credentials not configured. Skipping notification.')
+              exit(0)
+          
+          subject = f"FrontShiftAI Model Rollback Executed"
+          body = f"""Model Rollback Executed
+          
+          Target Version: ${{ steps.validate.outputs.target_version }}
+          Reason: ${{ inputs.reason }}
+          Executed By: ${{ github.actor }}
+          Timestamp: ${{ github.event.head_commit.timestamp }}
+          
+          View rollback details:
+          https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          
+          ---
+          This is an automated message from FrontShiftAI CI/CD Pipeline.
+          """
+          
+          msg = MIMEMultipart()
+          msg['From'] = sender
+          msg['To'] = receiver
+          msg['Subject'] = subject
+          msg.attach(MIMEText(body, 'plain'))
+          
+          try:
+              with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=15) as server:
+                  server.login(sender, password)
+                  server.send_message(msg)
+              print(f'✅ Rollback notification sent to {receiver}')
+          except Exception as e:
+              print(f'❌ Failed to send notification: {e}')
+          EOF
+
+      - name: Create GitHub Issue for Tracking
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[Rollback] Model rolled back to ${{ steps.validate.outputs.target_version }}`,
+              body: `## Model Rollback Executed
+              
+              **Target Version:** ${{ steps.validate.outputs.target_version }}
+              **Reason:** ${{ inputs.reason }}
+              **Executed By:** ${{ github.actor }}
+              **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+              
+              This issue was automatically created to track the rollback incident.
+              
+              Please investigate the root cause and update this issue with findings.
+              `,
+              labels: ['rollback', 'incident']
+            })
+

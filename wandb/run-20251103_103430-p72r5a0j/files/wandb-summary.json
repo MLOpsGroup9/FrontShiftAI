@@ -1,1 +1,0 @@
-{"_runtime":1,"rag":{"mean_semantic_sim":0.5425,"mean_precision_at_k":1},"bias":{"avg_similarity":0.5425,"companies_evaluated":1},"sensitivity":{"mean_context_similarity":0.9117,"num_variants":3},"_timestamp":1.7621840705828779e+09,"_step":0,"_wandb":{"runtime":1}}

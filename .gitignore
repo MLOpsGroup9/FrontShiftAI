@@ -38,7 +38,9 @@ MyResources/
 ml_pipeline/utils/email_config.json
 
 # DVC
-.dvc
+# .dvc
+!.dvc
+keys/
 
 #logs
 data_pipeline/logs/
@@ -49,6 +51,22 @@ data_pipeline/logs/
 # Airflow 
 .airflow
 
+# CI/CD temporary files
+ml_pipeline/ci_cd/*.log
+ml_pipeline/ci_cd/rollback_log.json
+ml_pipeline/ci_cd/.pytest_cache/
+quality_gate_result.json
+
+# Local testing artifacts
+.pytest_cache/
+
+# Secrets (never commit)
+*.key
+secrets.yml
+secrets.yaml
+
+# W&B files (already in gitignore, but verify)
+wandb/
 
 voice_pipeline 
 
