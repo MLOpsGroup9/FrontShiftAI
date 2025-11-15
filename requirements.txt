@@ -1,4 +1,5 @@
 # Core LLM & RAG Frameworks
+openai
 langchain>=0.2.0
 langchain-community>=0.2.0
 langchain-core
@@ -50,3 +51,11 @@ apache-airflow-providers-postgres
 
 #exp tracking
 wandb
+
+#config 
+pyyaml
+pyttest
+rank_bm25
+aiohttp
+transformers
+tqdm
