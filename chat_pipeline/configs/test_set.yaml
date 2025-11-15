@@ -1,0 +1,311 @@
+version: "1.0"
+
+prompt_template: |
+  You expand seed questions into exactly ONE new natural-language question.
+  Constraints:
+    - Preserve the domain, intent, and perspective of the provided seed.
+    - Produce a single question (no lists, bullets, prefixes, or commentary).
+    - The output MUST be strict JSON and parseable by a machine.
+    - Use this exact shape (double quotes, lowercase keys):
+        {
+          "new_question": "<single rewritten question>",
+          "new_solution": null
+        }
+    - Do not include explanations, reasoning, markdown, or additional keys.
+  Seed question: {question}
+
+general:
+  num_samples: 40
+  seed_questions:
+    - question: "Summarize the key policies found in this employee handbook."
+      difficulty: medium
+    - question: "What steps should an employee take if they have a concern about workplace behavior?"
+      difficulty: medium
+    - question: "What is the company's stance on attendance, punctuality, and timekeeping?"
+      difficulty: easy
+    - question: "Explain the company’s expectations regarding professional conduct."
+      difficulty: easy
+    - question: "What are the rules related to the use of company equipment and property?"
+      difficulty: medium
+    - question: "Describe the company’s policies regarding harassment or discrimination in the workplace."
+      difficulty: medium
+    - question: "Explain the proper procedure for reporting an on-site injury or hazard."
+      difficulty: medium
+    - question: "What are the attendance and timekeeping expectations for field employees?"
+      difficulty: easy
+    - question: "How should employees request accommodations or policy clarifications?"
+      difficulty: medium
+    - question: "What expectations exist for communication with supervisors and HR?"
+      difficulty: medium
+
+domain:
+  num_samples: 120
+  seed_questions:
+    # Construction / Field Operations
+    - question: "What are the safety requirements employees must follow on a job site?"
+      domain: construction
+      difficulty: easy
+    - question: "What company policies govern the use of vehicles or heavy equipment?"
+      domain: construction
+      difficulty: hard
+    - question: "Explain the proper procedure for reporting an on-site injury or hazard."
+      domain: construction
+      difficulty: medium
+    - question: "How should employees document equipment inspections or maintenance?"
+      domain: construction
+      difficulty: medium
+    - question: "What are the PPE expectations for outdoor construction roles?"
+      domain: construction
+      difficulty: medium
+    # Field Service Technicians
+    - question: "What steps should a technician follow before arriving at a customer’s location?"
+      domain: field_service
+      difficulty: easy
+    - question: "Describe the safety procedures technicians must follow when entering a customer’s premises."
+      domain: field_service
+      difficulty: medium
+    - question: "How should technicians document completed service tasks?"
+      domain: field_service
+      difficulty: easy
+    - question: "What guidelines govern customer communication and professionalism during service calls?"
+      domain: field_service
+      difficulty: medium
+    - question: "What is the expected process when parts need replacement during a job?"
+      domain: field_service
+      difficulty: medium
+    # Manufacturing
+    - question: "What personal protective equipment (PPE) is required in production areas?"
+      domain: manufacturing
+      difficulty: easy
+    - question: "Explain the lockout/tagout procedures described in the handbook."
+      domain: manufacturing
+      difficulty: hard
+    - question: "What steps must employees take to report defective machinery?"
+      domain: manufacturing
+      difficulty: medium
+    - question: "Describe the company’s timekeeping and shift start expectations."
+      domain: manufacturing
+      difficulty: easy
+    - question: "What hygiene or contamination control rules must employees follow?"
+      domain: manufacturing
+      difficulty: medium
+    # Healthcare
+    - question: "What are the guidelines for maintaining patient confidentiality?"
+      domain: healthcare
+      difficulty: hard
+    - question: "Describe the proper infection-control procedures."
+      domain: healthcare
+      difficulty: medium
+    - question: "What safety measures must clinical staff follow when dealing with hazardous materials?"
+      domain: healthcare
+      difficulty: hard
+    - question: "How should staff handle patient complaints or escalation paths?"
+      domain: healthcare
+      difficulty: medium
+    - question: "Explain the attendance and shift expectations for clinical roles."
+      domain: healthcare
+      difficulty: easy
+    # Logistics / Warehouse
+    - question: "What is the procedure for receiving and inspecting inbound shipments?"
+      domain: logistics
+      difficulty: medium
+    - question: "Explain the company’s rules on forklift or equipment operation."
+      domain: logistics
+      difficulty: easy
+    - question: "How should employees document order fulfillment activities?"
+      domain: logistics
+      difficulty: medium
+    - question: "Describe the safety protocols for warehouse environments."
+      domain: logistics
+      difficulty: medium
+    - question: "What rules govern the loading and unloading of trailers?"
+      domain: logistics
+      difficulty: hard
+    # Hospitality
+    - question: "What customer service standards are employees expected to follow?"
+      domain: hospitality
+      difficulty: easy
+    - question: "Describe the dress code or grooming requirements mentioned in the handbook."
+      domain: hospitality
+      difficulty: easy
+    - question: "What steps should staff follow when responding to guest complaints?"
+      domain: hospitality
+      difficulty: medium
+    - question: "Explain the food safety or sanitation guidelines employees must adhere to."
+      domain: hospitality
+      difficulty: hard
+    - question: "What are the company policies regarding shift changes or schedule adjustments?"
+      domain: hospitality
+      difficulty: medium
+    # Retail
+    - question: "What procedures must employees follow when handling customer transactions?"
+      domain: retail
+      difficulty: easy
+    - question: "Explain the store’s rules regarding returns and exchanges."
+      domain: retail
+      difficulty: medium
+    - question: "What expectations exist for stocking, cleaning, and maintaining store displays?"
+      domain: retail
+      difficulty: medium
+    - question: "How should staff respond to suspected shoplifting incidents?"
+      domain: retail
+      difficulty: hard
+    - question: "What safety rules must employees follow while working on the retail floor?"
+      domain: retail
+      difficulty: easy
+    # Cleaning & Maintenance
+    - question: "What chemicals require special handling or PPE?"
+      domain: cleaning
+      difficulty: medium
+    - question: "Explain the correct procedure for cleaning high-touch surfaces."
+      domain: cleaning
+      difficulty: easy
+    - question: "How should cleaning staff report damaged equipment or hazards?"
+      domain: cleaning
+      difficulty: medium
+    - question: "Describe the required steps for end-of-shift cleaning or closing duties."
+      domain: cleaning
+      difficulty: easy
+    - question: "What safety protocols apply when operating industrial cleaning machines?"
+      domain: cleaning
+      difficulty: hard
+    # Finance / Banking
+    - question: "What guidelines are employees expected to follow to maintain financial confidentiality?"
+      domain: finance
+      difficulty: hard
+    - question: "Explain the dress code and professional behavior requirements for customer-facing staff."
+      domain: finance
+      difficulty: easy
+    - question: "What is the procedure for reporting suspicious transactions or fraud?"
+      domain: finance
+      difficulty: hard
+    - question: "How should employees handle customer complaints or escalations?"
+      domain: finance
+      difficulty: medium
+    - question: "What are the attendance and punctuality expectations for branch employees?"
+      domain: finance
+      difficulty: easy
+
+slices:
+  num_samples: 120
+  seed_questions:
+    - question: "What are the policies around attendance and punctuality?"
+      slice: attendance_and_punctuality
+    - question: "What should employees do if they expect to be late?"
+      slice: attendance_and_punctuality
+    - question: "How are unexcused absences handled?"
+      slice: attendance_and_punctuality
+    - question: "What behaviors violate the code of conduct?"
+      slice: code_of_conduct
+    - question: "What happens if an employee breaches professionalism rules?"
+      slice: code_of_conduct
+    - question: "How are workplace conflicts expected to be handled?"
+      slice: code_of_conduct
+    - question: "What PPE is required on job sites?"
+      slice: construction_ppe
+    - question: "When must hard hats and high-visibility vests be worn?"
+      slice: construction_ppe
+    - question: "What are the consequences for ignoring PPE rules?"
+      slice: construction_ppe
+    - question: "How should employees report a site hazard?"
+      slice: construction_hazard_reporting
+    - question: "What is the process for documenting safety incidents?"
+      slice: construction_hazard_reporting
+    - question: "Who must be notified after a job-site injury?"
+      slice: construction_hazard_reporting
+    - question: "What steps must technicians follow when entering customer homes?"
+      slice: technician_customer_protocol
+    - question: "What customer etiquette rules must technicians follow?"
+      slice: technician_customer_protocol
+    - question: "How should technicians document service tasks?"
+      slice: technician_customer_protocol
+    - question: "What equipment safety steps must technicians follow?"
+      slice: technician_equipment_use
+    - question: "What PPE applies when servicing HVAC systems?"
+      slice: technician_equipment_use
+    - question: "What should a technician do if a tool malfunctions?"
+      slice: technician_equipment_use
+    - question: "What is the lockout/tagout procedure?"
+      slice: manufacturing_lockout_tagout
+    - question: "When must machinery be shut down before maintenance?"
+      slice: manufacturing_lockout_tagout
+    - question: "How do employees verify a machine is safe to service?"
+      slice: manufacturing_lockout_tagout
+    - question: "What hygiene rules apply in production zones?"
+      slice: manufacturing_contamination_control
+    - question: "How should contamination risks be reported?"
+      slice: manufacturing_contamination_control
+    - question: "What are the uniform and glove requirements?"
+      slice: manufacturing_contamination_control
+    - question: "What rules govern patient confidentiality?"
+      slice: patient_confidentiality
+    - question: "What information is prohibited from being shared?"
+      slice: patient_confidentiality
+    - question: "How should staff handle patient records securely?"
+      slice: patient_confidentiality
+    - question: "What infection-control procedures must staff follow?"
+      slice: infection_control
+    - question: "How should hazardous materials be handled?"
+      slice: infection_control
+    - question: "What PPE applies to patient-facing environments?"
+      slice: infection_control
+    - question: "What are the forklift operating rules?"
+      slice: warehouse_forklift_safety
+    - question: "Who is authorized to operate powered equipment?"
+      slice: warehouse_forklift_safety
+    - question: "What steps must employees take before moving a forklift?"
+      slice: warehouse_forklift_safety
+    - question: "How must employees document order fulfillment?"
+      slice: warehouse_order_processing
+    - question: "What steps ensure accuracy when picking items?"
+      slice: warehouse_order_processing
+    - question: "What is the process for resolving inventory discrepancies?"
+      slice: warehouse_order_processing
+    - question: "What food-handling sanitation rules apply?"
+      slice: hospitality_food_safety
+    - question: "How must staff prevent contamination?"
+      slice: hospitality_food_safety
+    - question: "What steps ensure safe food temperatures?"
+      slice: hospitality_food_safety
+    - question: "How should staff respond to guest complaints?"
+      slice: hospitality_customer_service
+    - question: "What customer service standards are required?"
+      slice: hospitality_customer_service
+    - question: "How should emergencies involving guests be handled?"
+      slice: hospitality_customer_service
+    - question: "What are the cash-handling rules for retail employees?"
+      slice: retail_cash_handling
+    - question: "How should staff respond to register discrepancies?"
+      slice: retail_cash_handling
+    - question: "What steps must staff follow for returns?"
+      slice: retail_cash_handling
+    - question: "What should employees do during suspected shoplifting?"
+      slice: retail_loss_prevention
+    - question: "What is the store's loss prevention policy?"
+      slice: retail_loss_prevention
+    - question: "When must managers be notified?"
+      slice: retail_loss_prevention
+    - question: "What PPE is needed for chemical use?"
+      slice: chemical_handling
+    - question: "How should hazardous cleaning products be stored?"
+      slice: chemical_handling
+    - question: "What steps apply to chemical spill cleanup?"
+      slice: chemical_handling
+    - question: "What are the safety steps for operating scrubbers?"
+      slice: industrial_equipment
+    - question: "How must staff maintain equipment logs?"
+      slice: industrial_equipment
+    - question: "What should workers do if equipment breaks mid-shift?"
+      slice: industrial_equipment
+    - question: "How should suspicious transactions be reported?"
+      slice: fraud_prevention
+    - question: "What behaviors indicate potential fraud?"
+      slice: fraud_prevention
+    - question: "What steps must staff follow when identifying risks?"
+      slice: fraud_prevention
+    - question: "What rules govern customer financial confidentiality?"
+      slice: confidentiality_financial
+    - question: "When may customer information be disclosed?"
+      slice: confidentiality_financial
+    - question: "What steps ensure secure document handling?"
+      slice: confidentiality_financial

@@ -27,13 +27,13 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 # Import and patch rag_query_utils to use dynamic project root
-import ml_pipeline.rag.rag_query_utils as rag_utils
+import chat_pipeline.rag.rag_query_utils as rag_utils
 
 # Update PROJECT_ROOT and CHROMA_DIR to use current project root
 rag_utils.PROJECT_ROOT = project_root
 rag_utils.CHROMA_DIR = project_root / "data_pipeline" / "data" / "vector_db"
 
-from ml_pipeline.rag.rag_query_utils import retrieve_context
+from chat_pipeline.rag.rag_query_utils import retrieve_context
 
 # # Optional local LLaMA inference support
 # try:

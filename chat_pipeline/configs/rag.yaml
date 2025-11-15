@@ -1,0 +1,30 @@
+vector_store:
+  local_path: data_pipeline/data/vector_db
+  remote_uri: null
+  collection: frontshift_handbooks
+  embedding_model: all-MiniLM-L6-v2
+  max_documents: null
+
+pipeline:
+  retriever:
+    name: vector            # options: vector, bm25
+    top_k: 5
+    max_documents: null     # only used by lexical retrievers such as BM25
+  reranker:
+    enabled: false
+    strategy: two_stage     # maps to rag.reranker.two_stage_reranker
+    rerank_k: null
+    batch_size: 16
+  generation:
+    template_key: general_prompt_1
+    stream: false
+    streaming_overrides: {}
+
+streaming:
+  max_tokens: 1024
+  temperature: 0.6
+  top_p: 0.9
+  repeat_penalty: 1.1
+  stop:
+    - "---"
+    - "Thank you"
