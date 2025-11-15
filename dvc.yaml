@@ -39,6 +39,14 @@ stages:
     outs:
     - data_pipeline/data/validated
 
+  bias_analysis:
+    cmd: python data_pipeline/scripts/data_bias.py
+    deps:
+    - data_pipeline/scripts/data_bias.py
+    - data_pipeline/data/validated/valid_chunks.jsonl
+    outs:
+    - data_pipeline/data/bias_analysis
+
   store_in_chromadb:
     cmd: python data_pipeline/scripts/store_in_chromadb.py
     deps:
