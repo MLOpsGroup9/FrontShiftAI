@@ -50,3 +50,19 @@ apache-airflow-providers-postgres
 
 #exp tracking
 wandb
+
+#sst,tts,sts
+gTTS
+pygame
+sounddevice
+scipy
+faster-whisper
+groq
+python-dotenv
+edge-tts
+simpleaudio
+pydub
+
+
+
+#brew install portaudio ffmpeg

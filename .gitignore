@@ -38,7 +38,9 @@ MyResources/
 ml_pipeline/utils/email_config.json
 
 # DVC
-.dvc
+# .dvc
+!.dvc
+keys/
 
 #logs
 data_pipeline/logs/
