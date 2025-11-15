@@ -1,0 +1,120 @@
+{"seed": "What are the policies around attendance and punctuality?", "question": "How do the attendance and punctuality policies impact employee performance evaluations?", "category": "slices"}
+{"seed": "What should employees do if they expect to be late?", "question": "How should employees communicate their tardiness to their supervisors?", "category": "slices"}
+{"seed": "How are unexcused absences handled?", "question": "What are the consequences for students who have unexcused absences?", "category": "slices"}
+{"seed": "What behaviors violate the code of conduct?", "question": "What specific actions are considered breaches of the code of conduct?", "category": "slices"}
+{"seed": "What happens if an employee breaches professionalism rules?", "question": "What are the potential consequences for an employee who violates professionalism standards?", "category": "slices"}
+{"seed": "How are workplace conflicts expected to be handled?", "question": "What strategies should be implemented to effectively resolve conflicts in the workplace?", "category": "slices"}
+{"seed": "What PPE is required on job sites?", "question": "What specific types of personal protective equipment are mandated for different job site environments?", "category": "slices"}
+{"seed": "When must hard hats and high-visibility vests be worn?", "question": "In what situations are hard hats and high-visibility vests required to be worn on a construction site?", "category": "slices"}
+{"seed": "What are the consequences for ignoring PPE rules?", "question": "What penalties might be faced for failing to comply with PPE regulations?", "category": "slices"}
+{"seed": "How should employees report a site hazard?", "question": "What steps should employees follow to report a hazard they encounter on site?", "category": "slices"}
+{"seed": "What is the process for documenting safety incidents?", "question": "How should safety incidents be recorded and reported within an organization?", "category": "slices"}
+{"seed": "Who must be notified after a job-site injury?", "question": "What are the required notifications following an injury that occurs on a job site?", "category": "slices"}
+{"seed": "What steps must technicians follow when entering customer homes?", "question": "What procedures should technicians adhere to when visiting customers' residences?", "category": "slices"}
+{"seed": "What customer etiquette rules must technicians follow?", "question": "What are the essential etiquette guidelines that technicians should adhere to when interacting with customers?", "category": "slices"}
+{"seed": "How should technicians document service tasks?", "question": "What best practices should technicians follow when documenting service tasks?", "category": "slices"}
+{"seed": "What equipment safety steps must technicians follow?", "question": "What specific safety protocols should technicians adhere to when using equipment?", "category": "slices"}
+{"seed": "What PPE applies when servicing HVAC systems?", "question": "What specific personal protective equipment is required for technicians working on HVAC systems?", "category": "slices"}
+{"seed": "What should a technician do if a tool malfunctions?", "question": "What steps should a technician take to troubleshoot a malfunctioning tool?", "category": "slices"}
+{"seed": "What is the lockout/tagout procedure?", "question": "Can you explain the steps involved in the lockout/tagout procedure?", "category": "slices"}
+{"seed": "When must machinery be shut down before maintenance?", "question": "What are the specific safety protocols for shutting down machinery prior to maintenance?", "category": "slices"}
+{"seed": "How do employees verify a machine is safe to service?", "question": "What steps do employees take to ensure a machine is safe before servicing it?", "category": "slices"}
+{"seed": "What hygiene rules apply in production zones?", "question": "What specific hygiene practices should be followed in production zones?", "category": "slices"}
+{"seed": "How should contamination risks be reported?", "question": "What are the best practices for reporting contamination risks in various industries?", "category": "slices"}
+{"seed": "What are the uniform and glove requirements?", "question": "What specific uniforms and gloves are required for this role?", "category": "slices"}
+{"seed": "What rules govern patient confidentiality?", "question": "What are the legal and ethical guidelines that protect patient confidentiality in healthcare?", "category": "slices"}
+{"seed": "What information is prohibited from being shared?", "question": "What types of information are considered confidential and cannot be disclosed?", "category": "slices"}
+{"seed": "How should staff handle patient records securely?", "question": "What best practices should staff follow to ensure the security of patient records?", "category": "slices"}
+{"seed": "What infection-control procedures must staff follow?", "question": "What specific protocols should staff adhere to for effective infection control?", "category": "slices"}
+{"seed": "How should hazardous materials be handled?", "question": "What are the best practices for safely managing hazardous materials?", "category": "slices"}
+{"seed": "What PPE applies to patient-facing environments?", "question": "What types of personal protective equipment are required for healthcare workers in direct contact with patients?", "category": "slices"}
+{"seed": "What are the forklift operating rules?", "question": "What guidelines should be followed when operating a forklift?", "category": "slices"}
+{"seed": "Who is authorized to operate powered equipment?", "question": "What qualifications are required for someone to be authorized to operate powered equipment?", "category": "slices"}
+{"seed": "What steps must employees take before moving a forklift?", "question": "What safety protocols should employees follow prior to operating a forklift?", "category": "slices"}
+{"seed": "How must employees document order fulfillment?", "question": "What specific methods should employees use to record the details of order fulfillment?", "category": "slices"}
+{"seed": "What steps ensure accuracy when picking items?", "question": "What methods can be implemented to verify the accuracy of item selection during the picking process?", "category": "slices"}
+{"seed": "What is the process for resolving inventory discrepancies?", "question": "How can businesses effectively address and correct inventory discrepancies?", "category": "slices"}
+{"seed": "What food-handling sanitation rules apply?", "question": "What specific sanitation practices should be followed when handling food?", "category": "slices"}
+{"seed": "How must staff prevent contamination?", "question": "What specific measures should staff take to avoid contamination in their work environment?", "category": "slices"}
+{"seed": "What steps ensure safe food temperatures?", "question": "What practices can be implemented to maintain safe food temperatures during storage and preparation?", "category": "slices"}
+{"seed": "How should staff respond to guest complaints?", "question": "What are the best practices for staff to effectively address and resolve guest complaints?", "category": "slices"}
+{"seed": "What customer service standards are required?", "question": "What are the essential customer service standards that businesses should adhere to?", "category": "slices"}
+{"seed": "How should emergencies involving guests be handled?", "question": "What protocols should be followed to manage emergencies that involve guests at an event?", "category": "slices"}
+{"seed": "What are the cash-handling rules for retail employees?", "question": "What guidelines should retail employees follow when handling cash transactions?", "category": "slices"}
+{"seed": "How should staff respond to register discrepancies?", "question": "What steps should staff take when they encounter discrepancies in the register?", "category": "slices"}
+{"seed": "What steps must staff follow for returns?", "question": "What procedures should employees adhere to when processing returns?", "category": "slices"}
+{"seed": "What should employees do during suspected shoplifting?", "question": "How should staff respond if they suspect someone is shoplifting?", "category": "slices"}
+{"seed": "What is the store's loss prevention policy?", "question": "How does the store handle theft and loss prevention measures?", "category": "slices"}
+{"seed": "When must managers be notified?", "question": "Under what circumstances should managers be informed?", "category": "slices"}
+{"seed": "What PPE is needed for chemical use?", "question": "What specific personal protective equipment should be worn when handling chemicals?", "category": "slices"}
+{"seed": "How should hazardous cleaning products be stored?", "question": "What are the best practices for safely storing hazardous cleaning products?", "category": "slices"}
+{"seed": "What steps apply to chemical spill cleanup?", "question": "What procedures should be followed for safely cleaning up a chemical spill?", "category": "slices"}
+{"seed": "What are the safety steps for operating scrubbers?", "question": "What precautions should be taken to ensure safe operation of scrubbers?", "category": "slices"}
+{"seed": "How must staff maintain equipment logs?", "question": "What procedures should staff follow to ensure accurate maintenance of equipment logs?", "category": "slices"}
+{"seed": "What should workers do if equipment breaks mid-shift?", "question": "How can employees effectively respond to equipment failures during their work shift?", "category": "slices"}
+{"seed": "How should suspicious transactions be reported?", "question": "What steps should be taken to report transactions that appear suspicious?", "category": "slices"}
+{"seed": "What behaviors indicate potential fraud?", "question": "What signs or actions might suggest that fraud is occurring?", "category": "slices"}
+{"seed": "What steps must staff follow when identifying risks?", "question": "What procedures should employees adhere to when assessing potential risks?", "category": "slices"}
+{"seed": "What rules govern customer financial confidentiality?", "question": "What regulations are in place to protect the financial confidentiality of customers?", "category": "slices"}
+{"seed": "When may customer information be disclosed?", "question": "Under what circumstances is it permissible to share customer information?", "category": "slices"}
+{"seed": "What steps ensure secure document handling?", "question": "What best practices should be followed to maintain the security of sensitive documents during handling?", "category": "slices"}
+{"seed": "What should employees do if they expect to be late?", "question": "How should employees communicate their expected lateness to their supervisors?", "category": "slices"}
+{"seed": "What behaviors violate the code of conduct?", "question": "Which specific actions are considered violations of the code of conduct?", "category": "slices"}
+{"seed": "What PPE is required on job sites?", "question": "What specific types of personal protective equipment are mandated for different job sites?", "category": "slices"}
+{"seed": "What are the consequences for ignoring PPE rules?", "question": "What penalties might a company face for failing to enforce PPE regulations?", "category": "slices"}
+{"seed": "How should employees report a site hazard?", "question": "What is the proper procedure for employees to follow when reporting a hazard at the workplace?", "category": "slices"}
+{"seed": "Who must be notified after a job-site injury?", "question": "What are the reporting requirements following an injury that occurs on a job site?", "category": "slices"}
+{"seed": "What steps must technicians follow when entering customer homes?", "question": "What protocols should technicians adhere to when visiting customer residences?", "category": "slices"}
+{"seed": "What customer etiquette rules must technicians follow?", "question": "What are the essential customer service etiquette guidelines that technicians should adhere to?", "category": "slices"}
+{"seed": "What PPE applies when servicing HVAC systems?", "question": "What specific personal protective equipment is recommended for technicians working on HVAC systems?", "category": "slices"}
+{"seed": "What hygiene rules apply in production zones?", "question": "What specific hygiene practices should be followed in production zones to ensure safety?", "category": "slices"}
+{"seed": "How should contamination risks be reported?", "question": "What are the best practices for reporting contamination risks in various environments?", "category": "slices"}
+{"seed": "What rules govern patient confidentiality?", "question": "How do different laws and regulations impact the enforcement of patient confidentiality in healthcare settings?", "category": "slices"}
+{"seed": "How should staff handle patient records securely?", "question": "What best practices should staff follow to ensure the secure handling of patient records?", "category": "slices"}
+{"seed": "What PPE applies to patient-facing environments?", "question": "What types of personal protective equipment are required in environments where healthcare workers interact directly with patients?", "category": "slices"}
+{"seed": "What should workers do if equipment breaks mid-shift?", "question": "How should employees respond when machinery malfunctions during their shift?", "category": "slices"}
+{"seed": "What behaviors indicate potential fraud?", "question": "What signs or patterns might suggest that fraudulent activity is occurring?", "category": "slices"}
+{"seed": "What customer etiquette rules must technicians follow?", "question": "What are the essential customer etiquette guidelines that technicians should adhere to?", "category": "slices"}
+{"seed": "What hygiene rules apply in production zones?", "question": "What specific hygiene regulations must be followed in production areas?", "category": "slices"}
+{"seed": "How must employees document order fulfillment?", "question": "What specific procedures should employees follow to accurately document the order fulfillment process?", "category": "slices"}
+{"seed": "What food-handling sanitation rules apply?", "question": "What are the specific sanitation guidelines for handling food safely?", "category": "slices"}
+{"seed": "What PPE is needed for chemical use?", "question": "What specific personal protective equipment should be worn when handling hazardous chemicals?", "category": "slices"}
+{"seed": "What steps must staff follow when identifying risks?", "question": "What procedures should staff adhere to when assessing potential risks?", "category": "slices"}
+{"seed": "When must hard hats and high-visibility vests be worn?", "question": "Under what circumstances are hard hats and high-visibility vests required to be worn on a construction site?", "category": "slices"}
+{"seed": "Who must be notified after a job-site injury?", "question": "What are the procedures for notifying the appropriate parties after a job-site injury occurs?", "category": "slices"}
+{"seed": "What rules govern patient confidentiality?", "question": "What are the legal and ethical guidelines that protect patient confidentiality in healthcare settings?", "category": "slices"}
+{"seed": "What infection-control procedures must staff follow?", "question": "What specific infection-control protocols are required for staff to adhere to?", "category": "slices"}
+{"seed": "What should employees do during suspected shoplifting?", "question": "How should staff respond if they believe someone is attempting to shoplift?", "category": "slices"}
+{"seed": "What should workers do if equipment breaks mid-shift?", "question": "How should employees respond when machinery malfunctions during their work hours?", "category": "slices"}
+{"seed": "What steps ensure secure document handling?", "question": "What best practices should be followed to maintain the security of documents during handling?", "category": "slices"}
+{"seed": "What is the lockout/tagout procedure?", "question": "How is the lockout/tagout procedure implemented in a workplace?", "category": "slices"}
+{"seed": "What rules govern patient confidentiality?", "question": "What are the legal and ethical standards that protect patient confidentiality in healthcare?", "category": "slices"}
+{"seed": "What steps must employees take before moving a forklift?", "question": "What safety precautions should employees follow prior to operating a forklift?", "category": "slices"}
+{"seed": "How should emergencies involving guests be handled?", "question": "What protocols should be followed to manage emergencies that occur with guests present?", "category": "slices"}
+{"seed": "What PPE is needed for chemical use?", "question": "What specific personal protective equipment is required when handling hazardous chemicals?", "category": "slices"}
+{"seed": "How should hazardous cleaning products be stored?", "question": "What are the best practices for safely storing hazardous cleaning products in a household?", "category": "slices"}
+{"seed": "What PPE is required on job sites?", "question": "What types of personal protective equipment are necessary for different job site environments?", "category": "slices"}
+{"seed": "How should hazardous materials be handled?", "question": "What are the best practices for safely managing hazardous materials in the workplace?", "category": "slices"}
+{"seed": "What customer service standards are required?", "question": "What are the essential customer service standards that businesses must adhere to?", "category": "slices"}
+{"seed": "What behaviors violate the code of conduct?", "question": "Which specific actions are considered breaches of the code of conduct?", "category": "slices"}
+{"seed": "What is the process for documenting safety incidents?", "question": "How should safety incidents be recorded and reported in an organization?", "category": "slices"}
+{"seed": "How should technicians document service tasks?", "question": "What best practices should technicians follow when documenting their service tasks?", "category": "slices"}
+{"seed": "What food-handling sanitation rules apply?", "question": "What specific guidelines should be followed to ensure proper food-handling sanitation?", "category": "slices"}
+{"seed": "What is the store's loss prevention policy?", "question": "How does the store handle incidents of theft or shoplifting?", "category": "slices"}
+{"seed": "What steps ensure secure document handling?", "question": "What best practices should be followed to maintain the security of sensitive documents?", "category": "slices"}
+{"seed": "When must hard hats and high-visibility vests be worn?", "question": "Under what circumstances are hard hats and high-visibility vests required to be worn on a job site?", "category": "slices"}
+{"seed": "When must machinery be shut down before maintenance?", "question": "What are the safety protocols for shutting down machinery prior to maintenance?", "category": "slices"}
+{"seed": "What steps ensure accuracy when picking items?", "question": "What methods can be implemented to verify the accuracy of item selection?", "category": "slices"}
+{"seed": "What food-handling sanitation rules apply?", "question": "What specific guidelines should be followed for maintaining food safety and sanitation in a kitchen environment?", "category": "slices"}
+{"seed": "What steps ensure safe food temperatures?", "question": "How can individuals maintain safe food temperatures during meal preparation and storage?", "category": "slices"}
+{"seed": "What PPE is required on job sites?", "question": "What specific personal protective equipment is mandated for workers on construction job sites?", "category": "slices"}
+{"seed": "What steps must technicians follow when entering customer homes?", "question": "What procedures should technicians adhere to when visiting customer residences?", "category": "slices"}
+{"seed": "What should workers do if equipment breaks mid-shift?", "question": "How can workers effectively respond to equipment failures that occur during their shift?", "category": "slices"}
+{"seed": "What steps ensure secure document handling?", "question": "What best practices should be followed to maintain the security of document handling processes?", "category": "slices"}
+{"seed": "What customer etiquette rules must technicians follow?", "question": "What are the essential customer etiquette guidelines that technicians should adhere to during service calls?", "category": "slices"}
+{"seed": "How should emergencies involving guests be handled?", "question": "What procedures should be followed to manage emergencies that involve guests at an event?", "category": "slices"}
+{"seed": "What should employees do during suspected shoplifting?", "question": "What actions are recommended for employees to take if they suspect someone is shoplifting?", "category": "slices"}
+{"seed": "What PPE is required on job sites?", "question": "What specific types of personal protective equipment are mandated for use on construction job sites?", "category": "slices"}
+{"seed": "Who must be notified after a job-site injury?", "question": "What are the procedures for notifying authorities after a job-site injury occurs?", "category": "slices"}
+{"seed": "How must employees document order fulfillment?", "question": "What are the required steps for employees to properly document the order fulfillment process?", "category": "slices"}
+{"seed": "How should contamination risks be reported?", "question": "What are the best practices for reporting contamination risks in a timely manner?", "category": "slices"}
