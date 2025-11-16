@@ -14,15 +14,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-from rag.config_manager import load_rag_config
-from rag.generator import (
+from chat_pipeline.rag.config_manager import load_rag_config
+from chat_pipeline.rag.generator import (
     DEFAULT_MODEL_PATH,
     HF_MODEL_NAME,
     INCEPTION_API_KEY,
     generation,
 )
-from rag.reranker import two_stage_reranker
-from rag.retriever import bm25_retrieval, vector_retrieval
+from chat_pipeline.rag.reranker import two_stage_reranker
+from chat_pipeline.rag.retriever import bm25_retrieval, vector_retrieval
 
 
 logger = logging.getLogger(__name__)

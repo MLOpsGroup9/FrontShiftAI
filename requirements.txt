@@ -51,6 +51,7 @@ apache-airflow-providers-postgres
 
 #exp tracking
 wandb
+mlflow>=2.10.0
 
 #sst,tts,sts
 gTTS

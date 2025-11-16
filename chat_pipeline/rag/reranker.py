@@ -13,7 +13,7 @@ from typing import Dict, List, Literal, Optional
 
 from sentence_transformers import CrossEncoder
 
-from rag.retriever import bm25_retrieval, vector_retrieval
+from chat_pipeline.rag.retriever import bm25_retrieval, vector_retrieval
 
 
 logger = logging.getLogger(__name__)
