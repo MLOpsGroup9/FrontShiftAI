@@ -2,7 +2,7 @@
 
 from typing import Dict, List, Optional, Tuple
 from langchain_community.retrievers import BM25Retriever
-from rag.data_loader import CompanyCorpus, load_data_company
+from chat_pipeline.rag.data_loader import CompanyCorpus, load_data_company
 
 
 def vector_retrieval(

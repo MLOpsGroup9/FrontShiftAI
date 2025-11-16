@@ -9,10 +9,10 @@ from dotenv import load_dotenv
 from pathlib import Path
 from typing import Any, Dict, Generator, Iterable, List, Literal, Optional, Tuple
 
-from rag.config_manager import get_streaming_config
-from rag.prompt_templates import prompt_templates
-from rag.reranker import two_stage_reranker
-from rag.retriever import bm25_retrieval, vector_retrieval
+from chat_pipeline.rag.config_manager import get_streaming_config
+from chat_pipeline.rag.prompt_templates import prompt_templates
+from chat_pipeline.rag.reranker import two_stage_reranker
+from chat_pipeline.rag.retriever import bm25_retrieval, vector_retrieval
 
 load_dotenv()
 
@@ -155,6 +155,7 @@ def _get_hf_client():
             client_kwargs["token"] = HF_API_TOKEN
         if HF_API_BASE:
             client_kwargs["base_url"] = HF_API_BASE
+        # The InferenceClient will handle the API endpoint automatically
         _HF_CLIENT = InferenceClient(**client_kwargs)
     return _HF_CLIENT
 
@@ -180,24 +181,42 @@ def _stream_from_hf(prompt: str, params: Dict[str, Any]) -> Generator[str, None,
     """Yield tokens from the Hugging Face Inference API."""
 
     client = _get_hf_client()
-    stream = client.text_generation(
-        prompt,
-        max_new_tokens=params.get("max_tokens"),
-        temperature=params.get("temperature"),
-        top_p=params.get("top_p"),
-        stream=True,
-        return_full_text=False,
-    )
+    try:
+        # Try chat completion API (works with Llama models)
+        response = client.chat_completion(
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=params.get("max_tokens", 1024),
+            temperature=params.get("temperature", 0.7),
+            top_p=params.get("top_p", 0.9),
+            stream=True,
+        )
+        
+        for chunk in response:
+            if hasattr(chunk, 'choices') and chunk.choices:
+                content = chunk.choices[0].delta.content
+                if content:
+                    yield content
+    except Exception as e:
+        # Fallback to text_generation if chat fails
+        logger.warning(f"Chat completion failed, trying text_generation: {e}")
+        stream = client.text_generation(
+            prompt,
+            max_new_tokens=params.get("max_tokens"),
+            temperature=params.get("temperature"),
+            top_p=params.get("top_p"),
+            stream=True,
+            return_full_text=False,
+        )
 
-    for chunk in stream:
-        if isinstance(chunk, str):
-            token = chunk
-        else:  # huggingface_hub returns TextGenerationStreamResponse objects
-            token = getattr(chunk, "token", None)
-            if token is not None:
-                token = getattr(token, "text", None)
-        if token and token.strip():
-            yield token
+        for chunk in stream:
+            if isinstance(chunk, str):
+                token = chunk
+            else:  # huggingface_hub returns TextGenerationStreamResponse objects
+                token = getattr(chunk, "token", None)
+                if token is not None:
+                    token = getattr(token, "text", None)
+            if token and token.strip():
+                yield token
 
 
 def _call_mercury_api(prompt: str, params: Dict[str, Any]) -> str:
@@ -266,7 +285,7 @@ def stream_response(
         yield from _stream_from_hf(prompt, params)
         return
     except Exception as exc:  # pragma: no cover - optional dependency
-        logger.debug("HF fallback unavailable: %s", exc)
+        logger.debug("HF API failed: %s", exc)
 
     yield _call_mercury_api(prompt, params)
 
