@@ -161,7 +161,15 @@ def evaluate_with_llm(
             logger.info("Submitting judge request (attempt %d).", attempts + 1)
             raw_scores = judge_client.score(prompt, model_name=model)
             logger.debug("Judge raw response: %s", raw_scores)
-            return _validate_scores(raw_scores)
+            
+            validated_scores = _validate_scores(raw_scores)
+            
+            # Add backend info to scores
+            backend_info = judge_client.get_backend_info()
+            validated_scores["_backend_used"] = backend_info["backend"]
+            validated_scores["_model_used"] = backend_info["model"]
+            
+            return validated_scores
         except Exception as exc:
             logger.warning("Judge attempt %d failed: %s", attempts + 1, exc)
             last_exception = exc

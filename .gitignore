@@ -65,8 +65,9 @@ quality_gate_result.json
 secrets.yml
 secrets.yaml
 
-# W&B files (already in gitignore, but verify)
+# Experiment tracking
 wandb/
+mlruns/
 
 voice_pipeline 
 

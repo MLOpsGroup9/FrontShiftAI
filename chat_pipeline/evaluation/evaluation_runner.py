@@ -8,6 +8,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -166,7 +167,12 @@ class WandbTracker:
             return
         project = config.wandb_project or os.getenv("WANDB_PROJECT") or "rag-eval"
         entity = config.wandb_entity or os.getenv("WANDB_ENTITY")
-        self._run = wandb.init(project=project, entity=entity, config={"test_dir": str(config.test_questions_dir)})
+        try:
+            self._run = wandb.init(project=project, entity=entity, config={"test_dir": str(config.test_questions_dir)})
+        except Exception as exc:
+            logger.warning("W&B initialization failed: %s. Continuing without W&B tracking.", exc)
+            self.enabled = False
+            self._run = None
 
     def log(self, payload: Dict[str, Any]) -> None:
         if not self.enabled or self._run is None:
@@ -189,6 +195,120 @@ class WandbTracker:
             logger.warning("Failed to finish W&B run: %s", exc)
 
 
+class MLflowTracker:
+    """MLflow tracking integration wrapper"""
+    
+    def __init__(self, config: EvaluationConfig):
+        self.enabled = True
+        self.tracker = None
+        
+        try:
+            from chat_pipeline.tracking.mlflow_tracking import MLflowTracker as MLflowTrackerImpl
+            
+            self.tracker = MLflowTrackerImpl(
+                experiment_name="FrontShiftAI-RAG-Evaluation"
+            )
+            
+            if not self.tracker.enabled:
+                self.enabled = False
+                return
+            
+            run_name = f"eval_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            
+            tags = {
+                "test_questions_dir": str(config.test_questions_dir),
+                "environment": os.getenv("GITHUB_REF_NAME", "local"),
+            }
+            
+            git_commit = os.getenv("GITHUB_SHA", "")
+            if git_commit:
+                tags["git_commit"] = git_commit[:7]
+            
+            self.tracker.start_run(run_name=run_name, tags=tags)
+            
+            # Store reference for backend tracking (will be updated after first evaluation)
+            self.judge_backend_actual = None
+            self.judge_model_actual = None
+            
+            # Initial params (will be updated after first evaluation)
+            params = {
+                "test_questions_dir": str(config.test_questions_dir),
+                "max_examples": str(config.max_examples) if config.max_examples else "all",
+                "output_dir": str(config.output_dir),
+                "judge_model_requested": "gpt-4o-mini",
+                "judge_model_actual": "to_be_determined",
+                "judge_backend": "to_be_determined",
+            }
+            
+            self.tracker.log_params(params)
+            
+            logger.info("MLflow tracking initialized")
+            
+        except ImportError:
+            logger.warning("mlflow not installed; skipping MLflow tracking")
+            self.enabled = False
+        except Exception as e:
+            logger.warning(f"MLflow initialization failed: {e}")
+            self.enabled = False
+    
+    def log(self, payload: Dict[str, Any]) -> None:
+        """Log metrics to MLflow"""
+        if not self.enabled or self.tracker is None:
+            return
+        
+        try:
+            numeric_metrics = {
+                k: v for k, v in payload.items()
+                if isinstance(v, (int, float)) and k != "question"
+            }
+            
+            if numeric_metrics:
+                self.tracker.log_metrics(numeric_metrics)
+        except Exception as e:
+            logger.warning(f"Failed to log to MLflow: {e}")
+    
+    def log_artifacts(self, artifact_dir: str) -> None:
+        """Log artifacts directory to MLflow"""
+        if not self.enabled or self.tracker is None:
+            return
+        
+        try:
+            self.tracker.log_artifacts(artifact_dir)
+        except Exception as e:
+            logger.warning(f"Failed to log artifacts to MLflow: {e}")
+    
+    def update_judge_info(self, backend: str, model: str) -> None:
+        """Update MLflow with actual judge backend used."""
+        if not self.enabled or self.tracker is None:
+            return
+        
+        if self.judge_backend_actual is None:
+            # First time - log the actual backend
+            self.judge_backend_actual = backend
+            self.judge_model_actual = model
+            
+            try:
+                # Update params with actual values
+                self.tracker.log_params({
+                    "judge_backend_actual": backend,
+                    "judge_model_final": model
+                })
+                logger.info(f"Updated MLflow: judge using {backend} backend with {model}")
+            except Exception as e:
+                logger.warning(f"Failed to update judge info: {e}")
+    
+    def finish(self) -> None:
+        """End MLflow run"""
+        if not self.enabled or self.tracker is None:
+            return
+        
+        try:
+            self.tracker.end_run()
+            logger.info("MLflow tracking finished")
+        except Exception as e:
+            logger.warning(f"Failed to finish MLflow run: {e}")
+
+
 class EvaluationRunner:
     """Coordinates dataset loading, judge execution, and metric aggregation."""
 
@@ -197,6 +317,7 @@ class EvaluationRunner:
         self.results: List[MetricResult] = []
         self._judge_client = JudgeClient()
         self._wandb = WandbTracker(config)
+        self._mlflow = MLflowTracker(config)
 
     def run(self) -> None:
         examples = _load_test_examples(self.config.test_questions_dir, self.config.max_examples)
@@ -213,7 +334,12 @@ class EvaluationRunner:
                 logger.debug("Processed example %s in %.2fs", idx, duration)
 
         self._export_summary()
+
+        if self._mlflow.enabled:
+            self._mlflow.log_artifacts(str(self.config.output_dir))
+
         self._wandb.finish()
+        self._mlflow.finish()
 
     def _evaluate_example(self, example: EvaluationExample) -> MetricResult:
         answer, contexts, pipeline_result = build_rag_inputs(example.query, example.metadata.get("company_name"))
@@ -224,6 +350,14 @@ class EvaluationRunner:
             model="gpt-4o-mini",
             judge_client=self._judge_client,
         )
+        
+        # Extract and log actual backend used
+        backend_used = scores.pop("_backend_used", "unknown")
+        model_used = scores.pop("_model_used", "unknown")
+        
+        # Update MLflow with actual backend (first time only)
+        self._mlflow.update_judge_info(backend_used, model_used)
+        
         perf = compute_performance_metrics(pipeline_result, answer, contexts)
         combined = {**scores, **perf}
         wandb_payload = {
@@ -232,6 +366,7 @@ class EvaluationRunner:
             **combined,
         }
         self._wandb.log(wandb_payload)
+        self._mlflow.log(wandb_payload)
         latency_total = perf.get("latency")
         metric = MetricResult(
             precision=scores.get("precision"),
@@ -269,12 +404,15 @@ class EvaluationRunner:
             json.dump(record, handle, indent=2, ensure_ascii=False)
 
     def _export_summary(self) -> None:
+        """Export evaluation summary with nested structure for quality gates."""
         if not self.results:
             logger.warning("No evaluation results to summarize.")
             return
-        summary = {}
+        
         count = len(self.results)
-        for field in (
+        
+        # Quality metrics from LLM judge (0-5 scale)
+        quality_fields = [
             "precision",
             "recall",
             "retrieval_diversity",
@@ -288,19 +426,88 @@ class EvaluationRunner:
             "factual_correctness",
             "hallucination_score",
             "structure_adherence",
+        ]
+        
+        # Performance metrics
+        performance_fields = [
+            "latency_total",
             "cost_per_query",
             "memory_utilization",
             "throughput_qps",
-            "latency_total",
-        ):
-            values = [getattr(result, field) for result in self.results if getattr(result, field) is not None]
+        ]
+        
+        # Calculate average quality scores
+        average_scores = {}
+        for field in quality_fields:
+            values = [
+                getattr(result, field)
+                for result in self.results
+                if getattr(result, field) is not None
+            ]
             if values:
-                summary[field] = sum(values) / len(values)
-        summary["examples"] = count
+                average_scores[field] = sum(values) / len(values)
+        
+        # Calculate average performance metrics
+        performance = {}
+        for field in performance_fields:
+            values = [
+                getattr(result, field)
+                for result in self.results
+                if getattr(result, field) is not None
+            ]
+            if values:
+                performance[field] = sum(values) / len(values)
+        
+        # Add latency breakdown if available
+        all_breakdowns = [
+            r.latency_breakdown
+            for r in self.results
+            if r.latency_breakdown
+        ]
+        if all_breakdowns:
+            avg_breakdown = {}
+            for key in all_breakdowns[0].keys():
+                values = [
+                    bd.get(key, 0)
+                    for bd in all_breakdowns
+                    if key in bd
+                ]
+                if values:
+                    avg_breakdown[key] = sum(values) / len(values)
+            performance["latency_breakdown"] = avg_breakdown
+        
+        # Add token usage
+        total_tokens = sum(
+            r.token_usage.get("total", 0)
+            for r in self.results
+            if r.token_usage
+        )
+        performance["token_usage_total"] = total_tokens
+        performance["token_usage_avg"] = (
+            total_tokens / count if count > 0 else 0
+        )
+        
+        # Structure for quality gates compatibility
+        summary = {
+            "average_scores": average_scores,
+            "performance": performance,
+            "metadata": {
+                "total_examples": count,
+                "timestamp": datetime.now().isoformat(),
+                "test_questions_dir": str(self.config.test_questions_dir),
+            },
+        }
+        
         summary_path = self.config.output_dir / "summary.json"
         with summary_path.open("w", encoding="utf-8") as handle:
             json.dump(summary, handle, indent=2, ensure_ascii=False)
+        
         logger.info("Wrote evaluation summary to %s", summary_path)
+        logger.info(
+            "Summary contains %d quality metrics and %d performance metrics",
+            len(average_scores),
+            len(performance),
+        )
 
 
 

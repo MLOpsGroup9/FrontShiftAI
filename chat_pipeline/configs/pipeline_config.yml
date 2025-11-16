@@ -1,0 +1,84 @@
+# Pipeline Configuration for FrontShiftAI ML Pipeline
+# Defines paths, settings, and parameters for the ML evaluation pipeline
+
+# Vector Database Configuration
+vector_db:
+  path: "data_pipeline/data/vector_db"
+  collection_name: "frontshift_handbooks"
+  embedding_model: "all-MiniLM-L6-v2"
+  description: "ChromaDB vector store containing embedded company handbooks"
+
+# RAG Evaluation Settings
+rag_evaluation:
+  top_k: 5
+  queries_file: null  # Currently uses hardcoded queries in rag_eval_metrics.py
+  semantic_similarity_model: "all-MiniLM-L6-v2"
+  description: "Settings for RAG retrieval and evaluation"
+
+# Model Configuration
+model:
+  name: "llama_3b_instruct"
+  file_name: "Llama-3.2-3B-Instruct-Q4_K_S.gguf"
+  path: "models/Llama-3.2-3B-Instruct-Q4_K_S.gguf"
+  type: "gguf"
+  description: "Pre-trained Llama 3.2 3B Instruct model in GGUF format"
+
+# Evaluation Results Paths
+evaluation:
+  results_dir: "ml_pipeline/evaluation/eval_results"
+  rag_results_file: "ml_pipeline/evaluation/eval_results/rag_eval_results.csv"
+  bias_report_file: "ml_pipeline/evaluation/eval_results/bias_report.csv"
+  sensitivity_report_file: "ml_pipeline/evaluation/eval_results/sensitivity_report.csv"
+  unified_summary_file: "ml_pipeline/evaluation/eval_results/unified_summary.json"
+  unified_summary_csv: "ml_pipeline/evaluation/eval_results/unified_summary.csv"
+  unified_summary_plot: "ml_pipeline/evaluation/eval_results/unified_summary_plot.png"
+  description: "Paths to evaluation result files"
+
+# Model Registry Configuration
+registry:
+  path: "models_registry"
+  metadata_file: "metadata.json"
+  latest_symlink: "latest"
+  description: "Versioned model registry for storing evaluated models"
+
+# Experiment Tracking (Weights & Biases)
+tracking:
+  platform: "wandb"
+  entity: "${WANDB_ENTITY}"
+  project: "${WANDB_PROJECT}"
+  api_key_env: "WANDB_API_KEY"
+  description: "W&B tracking configuration (uses environment variables)"
+
+# Pipeline Runner Configuration
+pipeline_runner:
+  script: "ml_pipeline/eval_pipeline_runner.py"
+  stages:
+    - "RAG Evaluation"
+    - "Bias Detection"
+    - "Sensitivity Analysis"
+    - "Unified Evaluation Summary"
+  description: "Main pipeline orchestrator and stage definitions"
+
+# Environment Variables Required
+required_env_vars:
+  - "WANDB_API_KEY"
+  - "WANDB_ENTITY"
+  - "WANDB_PROJECT"
+  - "PYTHONPATH"
+optional_env_vars:
+  - "TOKENIZERS_PARALLELISM"
+  - "EMAIL_SENDER"
+  - "EMAIL_PASSWORD"
+  - "EMAIL_RECEIVER"
+
+# Path Resolution
+# All paths are relative to project root
+path_base: "."
+
+# Logging Configuration
+logging:
+  log_dir: "ml_pipeline/logs"
+  log_format: "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+  date_format: "%Y-%m-%d %H:%M:%S"
+  level: "INFO"
+

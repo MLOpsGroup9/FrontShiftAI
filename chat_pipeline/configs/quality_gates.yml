@@ -1,0 +1,124 @@
+version: "2.0"
+
+environments:
+  development:
+    critical_thresholds:
+      precision:
+        min: 3.0
+        description: "Minimum retrieval precision score"
+      recall:
+        min: 3.0
+        description: "Minimum retrieval recall score"
+      groundedness:
+        min: 3.0
+        description: "Answer must be grounded in retrieved context"
+      answer_relevance:
+        min: 3.0
+        description: "Answer relevance to query"
+      factual_correctness:
+        min: 3.0
+        description: "Factual accuracy of answer"
+      hallucination_score:
+        max: 2.5
+        description: "Maximum acceptable hallucination score"
+    
+    warning_thresholds:
+      precision:
+        min: 3.5
+      recall:
+        min: 3.5
+      coherence:
+        min: 3.5
+      conciseness:
+        min: 3.0
+      structure_adherence:
+        min: 3.0
+      latency_total:
+        max: 6000
+        description: "Maximum total latency in milliseconds"
+      cost_per_query:
+        max: 0.06
+        description: "Maximum cost per query in USD"
+    
+    deployment_decision:
+      require_all_critical: true
+      allow_warnings: true
+      block_on_hallucination: true
+  
+  staging:
+    critical_thresholds:
+      precision: {min: 3.5}
+      recall: {min: 3.5}
+      groundedness: {min: 3.5}
+      answer_relevance: {min: 3.5}
+      factual_correctness: {min: 3.5}
+      hallucination_score: {max: 2.0}
+    
+    warning_thresholds:
+      precision: {min: 4.0}
+      recall: {min: 4.0}
+      coherence: {min: 4.0}
+      conciseness: {min: 3.5}
+      structure_adherence: {min: 3.5}
+      latency_total: {max: 5000}
+      cost_per_query: {max: 0.05}
+    
+    deployment_decision:
+      require_all_critical: true
+      allow_warnings: true
+      block_on_hallucination: true
+  
+  production:
+    critical_thresholds:
+      precision: {min: 3.5}
+      recall: {min: 3.5}
+      groundedness: {min: 3.5}
+      answer_relevance: {min: 3.5}
+      factual_correctness: {min: 3.5}
+      hallucination_score: {max: 2.0}
+    
+    warning_thresholds:
+      precision: {min: 4.0}
+      recall: {min: 4.0}
+      coherence: {min: 4.0}
+      conciseness: {min: 3.5}
+      structure_adherence: {min: 3.5}
+      latency_total: {max: 5000}
+      cost_per_query: {max: 0.05}
+    
+    deployment_decision:
+      require_all_critical: true
+      allow_warnings: false
+      block_on_hallucination: true
+
+metric_mapping:
+  precision: "average_scores.precision"
+  recall: "average_scores.recall"
+  retrieval_diversity: "average_scores.retrieval_diversity"
+  reranker_gain: "average_scores.reranker_gain"
+  context_precision: "average_scores.context_precision"
+  context_recall: "average_scores.context_recall"
+  groundedness: "average_scores.groundedness"
+  answer_relevance: "average_scores.answer_relevance"
+  factual_correctness: "average_scores.factual_correctness"
+  hallucination_score: "average_scores.hallucination_score"
+  coherence: "average_scores.coherence"
+  conciseness: "average_scores.conciseness"
+  structure_adherence: "average_scores.structure_adherence"
+  latency_total: "performance.latency_total"
+  cost_per_query: "performance.cost_per_query"
+  memory_utilization: "performance.memory_utilization"
+  throughput_qps: "performance.throughput_qps"
+
+alerts:
+  critical_failures:
+    - metric: hallucination_score
+      condition: ">"
+      message: "CRITICAL: Hallucination score exceeds maximum threshold"
+      action: "block_deployment"
+  
+  performance_degradation:
+    - metric: latency_total
+      condition: ">"
+      message: "WARNING: Latency exceeds target threshold"
+      action: "send_warning"
