@@ -26,6 +26,14 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('chat_pipeline/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -35,7 +43,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install pip
           pip install -r chat_pipeline/requirements.txt
           pip install pytest pytest-cov
 
@@ -52,7 +60,7 @@ jobs:
           else
             echo "⚠️ No unit tests found under chat_pipeline/tests/"
           fi
-        continue-on-error: False
+        continue-on-error: false
 
   code-quality:
     name: Code Quality
@@ -63,6 +71,14 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('chat_pipeline/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -72,20 +88,20 @@ jobs:
 
       - name: Install Code Quality Tools
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install pip
           pip install black flake8
 
       - name: Check Code Formatting with Black
         run: |
           # Check formatting without modifying files
           black --check chat_pipeline/ --exclude=".*" || echo "⚠️ Code formatting issues found (non-blocking)"
-        continue-on-error: true
+        continue-on-error: false
 
       - name: Run Flake8 Linting
         run: |
           # Run flake8 with basic configuration
           flake8 chat_pipeline/ --max-line-length=120 --exclude=".*,__pycache__" --count --statistics || echo "⚠️ Linting issues found (non-blocking)"
-        continue-on-error: true
+        continue-on-error: false
 
   summary:
     name: Test Summary
