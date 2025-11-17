@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from rag import reranker
+from chat_pipeline.rag import reranker
 
 
 class DummyEncoder:
@@ -15,8 +15,8 @@ class DummyEncoder:
 
 
 def test_two_stage_reranker_vector(monkeypatch):
-    monkeypatch.setattr("rag.reranker.vector_retrieval", lambda **_: (["doc1", "doc2"], [{"meta": 1}]))
-    monkeypatch.setattr("rag.reranker._get_cross_encoder", lambda model_name=reranker.DEFAULT_CROSS_ENCODER: DummyEncoder([0.1, 0.9]))
+    monkeypatch.setattr("chat_pipeline.rag.reranker.vector_retrieval", lambda **_: (["doc1", "doc2"], [{"meta": 1}]))
+    monkeypatch.setattr("chat_pipeline.rag.reranker._get_cross_encoder", lambda model_name=reranker.DEFAULT_CROSS_ENCODER: DummyEncoder([0.1, 0.9]))
 
     ranked = reranker.two_stage_reranker("question", retrieval="vector", top_k=2, rerank_k=1)
 
@@ -26,7 +26,7 @@ def test_two_stage_reranker_vector(monkeypatch):
 
 
 def test_two_stage_reranker_handles_empty(monkeypatch):
-    monkeypatch.setattr("rag.reranker.vector_retrieval", lambda **_: ([], []))
+    monkeypatch.setattr("chat_pipeline.rag.reranker.vector_retrieval", lambda **_: ([], []))
 
     result = reranker.two_stage_reranker("question", retrieval="vector")
 
@@ -39,8 +39,8 @@ def test_two_stage_reranker_invalid_backend():
 
 
 def test_two_stage_reranker_pads_metadata(monkeypatch):
-    monkeypatch.setattr("rag.reranker.vector_retrieval", lambda **_: (["a", "b"], [{}]))
-    monkeypatch.setattr("rag.reranker._get_cross_encoder", lambda model_name=reranker.DEFAULT_CROSS_ENCODER: DummyEncoder([0.3, 0.2]))
+    monkeypatch.setattr("chat_pipeline.rag.reranker.vector_retrieval", lambda **_: (["a", "b"], [{}]))
+    monkeypatch.setattr("chat_pipeline.rag.reranker._get_cross_encoder", lambda model_name=reranker.DEFAULT_CROSS_ENCODER: DummyEncoder([0.3, 0.2]))
 
     ranked = reranker.two_stage_reranker("q", retrieval="vector", top_k=2)
 

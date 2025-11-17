@@ -6,7 +6,7 @@ name: Component Test - Fast Feedback for Feature Branches
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, raghav-branch ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -46,10 +46,10 @@ jobs:
       - name: Run Unit Tests
         run: |
           # Run tests if they exist
-          if [ -d "ml_pipeline/tests" ] && [ "$(find ml_pipeline/tests -name 'test_*.py' | wc -l)" -gt 0 ]; then
-            pytest ml_pipeline/tests/ -v --tb=short || echo "No tests found or tests failed"
+          if [ -d "chat_pipeline/tests" ] && [ "$(find chat_pipeline/tests -name 'test_*.py' | wc -l)" -gt 0 ]; then
+            pytest chat_pipeline/tests/ -v --tb=short || echo "Tests failed"
           else
-            echo "⚠️ No unit tests found in ml_pipeline/tests/"
+            echo "⚠️ No unit tests found under chat_pipeline/tests/"
           fi
         continue-on-error: true
 
@@ -188,4 +188,3 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "These are fast feedback tests for feature branches." >> $GITHUB_STEP_SUMMARY
           echo "Full pipeline runs on merge to main." >> $GITHUB_STEP_SUMMARY
-

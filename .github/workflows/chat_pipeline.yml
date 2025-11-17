@@ -3,11 +3,11 @@
 # To test manually, use the "Run workflow" button after configuring secrets
 # See ml_pipeline/ci_cd/docs/SECRETS_SETUP.md for secret configuration
 
-name: RAG Pipeline - Train, Validate, and Deploy
+name: Chat Pipeline - Train, Validate, and Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, raghav-branch ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -410,4 +410,3 @@ jobs:
               print(f'❌ Failed to send email: {e}')
               exit(0)  # Don't fail the workflow if email fails
           EOF
-
