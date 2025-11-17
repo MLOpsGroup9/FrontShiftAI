@@ -52,7 +52,7 @@ jobs:
           else
             echo "⚠️ No unit tests found under chat_pipeline/tests/"
           fi
-        continue-on-error: true
+        continue-on-error: False
 
   code-quality:
     name: Code Quality
@@ -78,13 +78,13 @@ jobs:
       - name: Check Code Formatting with Black
         run: |
           # Check formatting without modifying files
-          black --check ml_pipeline/ --exclude=".*" || echo "⚠️ Code formatting issues found (non-blocking)"
+          black --check chat_pipeline/ --exclude=".*" || echo "⚠️ Code formatting issues found (non-blocking)"
         continue-on-error: true
 
       - name: Run Flake8 Linting
         run: |
           # Run flake8 with basic configuration
-          flake8 ml_pipeline/ --max-line-length=120 --exclude=".*,__pycache__" --count --statistics || echo "⚠️ Linting issues found (non-blocking)"
+          flake8 chat_pipeline/ --max-line-length=120 --exclude=".*,__pycache__" --count --statistics || echo "⚠️ Linting issues found (non-blocking)"
         continue-on-error: true
 
   summary:
