@@ -9,10 +9,10 @@ from dotenv import load_dotenv
 from pathlib import Path
 from typing import Any, Dict, Generator, Iterable, List, Literal, Optional, Tuple
 
-from rag.config_manager import get_streaming_config
-from rag.prompt_templates import prompt_templates
-from rag.reranker import two_stage_reranker
-from rag.retriever import bm25_retrieval, vector_retrieval
+from chat_pipeline.rag.config_manager import get_streaming_config
+from chat_pipeline.rag.prompt_templates import prompt_templates
+from chat_pipeline.rag.reranker import two_stage_reranker
+from chat_pipeline.rag.retriever import bm25_retrieval, vector_retrieval
 
 load_dotenv()
 
