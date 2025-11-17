@@ -65,5 +65,4 @@ simpleaudio
 pydub
 
 
-
-#brew install portaudio ffmpeg
+dvc[gs]
