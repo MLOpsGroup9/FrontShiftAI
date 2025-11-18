@@ -481,6 +481,33 @@ class RAGPipeline:
             "mercury_enabled": bool(INCEPTION_API_KEY),
             "hf_model": HF_MODEL_NAME,
         }
+    
+    def _run_retrieval_only(self, query: str):
+        """Internal helper to run retrieval without generation."""
+        settings = self.config
+
+        retriever_name = settings.retriever.name
+        top_k = settings.retriever.top_k
+        company_name = None
+        reranker = settings.reranker.strategy if settings.reranker.enabled else None
+        rerank_k = settings.reranker.rerank_k
+        max_documents = settings.retriever.max_documents
+
+        from chat_pipeline.rag.generator import _run_retrieval
+
+        docs, metadata = _run_retrieval(
+            query=query,
+            retriever=retriever_name,
+            top_k=top_k,
+            company_name=company_name,
+            reranker=reranker,
+            rerank_k=rerank_k,
+            max_documents=max_documents,
+        )
+        return docs, metadata
+
+    
+    
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
@@ -528,6 +555,9 @@ def _stream_to_stdout(stream: Iterable[str]) -> str:
         collected.append(token)
     print()
     return "".join(collected).strip()
+
+
+
 
 
 def main() -> None:  # pragma: no cover - CLI glue

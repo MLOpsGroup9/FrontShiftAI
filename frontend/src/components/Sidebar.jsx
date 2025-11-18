@@ -1,41 +1,5 @@
 import React, { useState } from 'react';
 
-const navIcons = {
-  home: (className = '') => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4.5 10.5L12 4l7.5 6.5" />
-      <path d="M6 9.5V20h12V9.5" />
-      <path d="M10 20v-5h4v5" />
-    </svg>
-  ),
-  templates: (className = '') => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="4.5" y="4" width="15" height="16" rx="2.2" />
-      <path d="M8 8h8M8 12h5" />
-    </svg>
-  ),
-  explore: (className = '') => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="2" />
-      <path d="M19 5l-5 12-12 5 5-12 12-5z" />
-    </svg>
-  ),
-  history: (className = '') => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 12a9 9 0 11-3.2-6.9" />
-      <path d="M21 5v5h-5" />
-      <path d="M12 7v4.5l3 1.8" />
-    </svg>
-  ),
-  wallet: (className = '') => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="6" width="18" height="12" rx="3" />
-      <path d="M17 12h2" />
-      <path d="M3 10h18" />
-    </svg>
-  ),
-};
-
 const Sidebar = ({
   activeView,
   setActiveView,
@@ -47,14 +11,6 @@ const Sidebar = ({
   currentChatId,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-
-  const menuItems = [
-    { id: 'home', label: 'Home', icon: navIcons.home },
-    { id: 'templates', label: 'Templates', icon: navIcons.templates },
-    { id: 'explore', label: 'Explore', icon: navIcons.explore },
-    { id: 'history', label: 'History', icon: navIcons.history },
-    { id: 'wallet', label: 'Wallet', icon: navIcons.wallet },
-  ];
 
   // Filter chats based on search query
   const filteredChatHistory = chatHistory.map(group => ({
@@ -124,37 +80,8 @@ const Sidebar = ({
         </div>
       </div>
 
-      {/* Navigation Menu */}
-      <nav className="px-3 py-3 flex-shrink-0">
-        <ul className="space-y-0.5">
-          {menuItems.map((item) => (
-            <li key={item.id}>
-              <button
-                onClick={() => setActiveView(item.id)}
-                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all text-left ${
-                  activeView === item.id
-                    ? 'bg-white/10 text-white'
-                    : 'text-white/70 hover:bg-white/5 hover:text-white'
-                }`}
-              >
-                {item.icon && (
-                  <span
-                    className={`flex items-center justify-center w-8 h-8 rounded-xl border border-white/10 bg-white/5 ${
-                      activeView === item.id ? 'text-white' : 'text-white/70'
-                    }`}
-                  >
-                    {item.icon('w-4 h-4')}
-                  </span>
-                )}
-                <span className="text-sm font-medium">{item.label}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      {/* Recent Chats */}
-      <div className="px-4 py-4 border-t border-white/5 overflow-y-auto flex-1 min-h-0">
+      {/* Recent Chats - Now takes full remaining space */}
+      <div className="px-4 py-4 overflow-y-auto flex-1 min-h-0">
         <h3 className="text-xs font-semibold text-white/40 mb-3 uppercase tracking-wider px-1">Recent Chats</h3>
         {filteredChatHistory.length > 0 ? (
           <div className="space-y-4">

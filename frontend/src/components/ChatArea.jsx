@@ -115,13 +115,13 @@ const ChatArea = ({ messages, isLoading }) => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 p-8 relative min-h-0 overflow-hidden">
+      <div className="flex-1 p-8 relative min-h-0 overflow-hidden flex flex-col">
         {/* Floating Orb Background */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 orb-gradient rounded-full blur-3xl opacity-30 animate-float-orb pointer-events-none z-0"></div>
+        <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 orb-gradient rounded-full blur-3xl opacity-30 animate-float-orb pointer-events-none z-0"></div>
 
         {messages.length === 0 ? (
           /* Empty State */
-          <div className="relative z-10 flex flex-col items-center justify-center h-full">
+          <div className="relative z-10 flex flex-col items-center pt-16 flex-1">
             {/* Central Orb */}
             <div className="mb-8 relative">
               <div className="w-32 h-32 rounded-full bg-gradient-to-br from-white/20 via-white/10 to-black/20 blur-2xl animate-pulse-glow absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
