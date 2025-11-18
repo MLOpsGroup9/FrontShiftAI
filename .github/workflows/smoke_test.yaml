@@ -1,0 +1,43 @@
+name: Chat Pipeline Smoke Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+
+      - name: Install Dependencies (smoke)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r chat_pipeline/requirements.txt
+          pip install pytest
+
+      - name: Set Env for Tiny Fixtures / Mock LLM
+        run: |
+          echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
+          echo "TOKENIZERS_PARALLELISM=false" >> $GITHUB_ENV
+          # Force tests to avoid real backends
+          echo "GENERATION_BACKEND=auto" >> $GITHUB_ENV
+          echo "HF_API_TOKEN=dummy" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Run Smoke Tests (unit-level, mocked LLM + tiny DB fixtures)
+        run: |
+          pytest chat_pipeline/tests -q

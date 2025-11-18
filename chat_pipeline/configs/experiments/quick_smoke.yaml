@@ -9,7 +9,7 @@ wandb:
 
 eval:
   summary_output: chat_pipeline/results/smoke_test_summary.json
-  slice_fields: [category, company_name]
+  slice_fields: [slice]
   pipeline_overrides:
     generation:
       backend: auto

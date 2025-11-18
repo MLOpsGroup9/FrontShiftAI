@@ -112,7 +112,7 @@ class GenerationSettings:
 @dataclass
 class CategoryConfig:
     canonical_name: str
-    seeds: List[str]
+    seeds: List[Dict[str, Any]]
     num_samples: int
     prompt: str
     output_path: Path
@@ -174,16 +174,22 @@ def _iter_category_sections(config: Dict[str, Any]) -> Iterable[Tuple[str, Any]]
             yield key, value
 
 
-def _extract_seed_list(data: Any) -> List[str]:
-    def _parse_collection(collection: Sequence[Any]) -> List[str]:
-        seeds: List[str] = []
+def _extract_seed_list(data: Any) -> List[Dict[str, Any]]:
+    def _parse_collection(collection: Sequence[Any]) -> List[Dict[str, Any]]:
+        seeds: List[Dict[str, Any]] = []
         for item in collection:
             candidate = item
+            meta: Dict[str, Any] = {}
             if isinstance(item, dict):
                 candidate = item.get("question") or item.get("q") or item.get("seed")
+                for key in ("domain", "slice", "difficulty", "company"):
+                    if item.get(key):
+                        meta[key] = item[key]
             normalized = normalize_question(candidate)
             if normalized:
-                seeds.append(normalized)
+                entry = {"question": normalized}
+                entry.update(meta)
+                seeds.append(entry)
         return seeds
 
     if isinstance(data, list):
@@ -419,18 +425,22 @@ class LLMEngine:
 
 async def expand_questions_batch(
     engine: LLMEngine,
-    batch_questions: List[str],
+    batch_questions: List[Dict[str, Any]],
     prompt_template: str,
     existing_questions: Set[str],
 ) -> List[Dict[str, Any]]:
-    async def _run(question: str) -> Dict[str, Any]:
-        formatted_prompt = prompt_template.replace("{question}", question)
+    async def _run(seed: Dict[str, Any]) -> Dict[str, Any]:
+        formatted_prompt = prompt_template.replace("{question}", seed["question"])
         try:
             model_output = await engine.generate(formatted_prompt)
-            return parse_model_output(question, model_output)
+            record = parse_model_output(seed["question"], model_output)
+            record["metadata"] = {k: v for k, v in seed.items() if k != "question"}
+            return record
         except Exception as exc:
-            logger.error("Failed to expand question '%s': %s", question, exc)
-            return fallback_record(question, str(exc))
+            logger.error("Failed to expand question '%s': %s", seed["question"], exc)
+            failure = fallback_record(seed["question"], str(exc))
+            failure["metadata"] = {k: v for k, v in seed.items() if k != "question"}
+            return failure
 
     responses = await asyncio.gather(*[_run(question) for question in batch_questions])
     unique_records: List[Dict[str, Any]] = []
@@ -440,7 +450,13 @@ async def expand_questions_batch(
         if not candidate or candidate in existing_questions or candidate in seen_batch:
             continue
         seen_batch.add(candidate)
-        unique_records.append({"seed": record.get("seed"), "new_question": candidate})
+        unique_records.append(
+            {
+                "seed": record.get("seed"),
+                "new_question": candidate,
+                "metadata": record.get("metadata") or {},
+            }
+        )
     existing_questions.update(seen_batch)
     return unique_records
 
@@ -450,8 +466,8 @@ async def generate_category(
     spec: CategoryConfig,
     batch_size: int,
 ) -> List[Dict[str, Any]]:
-    question_queue: deque[str] = deque(spec.seeds)
-    generated_questions: Set[str] = set(spec.seeds)
+    question_queue: deque[Dict[str, Any]] = deque(spec.seeds)
+    generated_questions: Set[str] = {seed["question"] for seed in spec.seeds}
     dataset: List[Dict[str, Any]] = []
     max_attempts = spec.num_samples * 10
     attempts = 0
@@ -461,13 +477,13 @@ async def generate_category(
     with tqdm(total=spec.num_samples, desc=f"{spec.canonical_name.title()} samples") as progress:
         while len(dataset) < spec.num_samples and attempts < max_attempts:
             batch_target = min(batch_size, spec.num_samples - len(dataset))
-            current_batch: List[str] = []
+            current_batch: List[Dict[str, Any]] = []
             while len(current_batch) < batch_target:
                 if not question_queue:
                     raise RuntimeError(f"Question pool exhausted for category {spec.canonical_name}")
-                question = question_queue.popleft()
-                current_batch.append(question)
-                question_queue.append(question)
+                seed = question_queue.popleft()
+                current_batch.append(seed)
+                question_queue.append(seed)
 
             batch_records = await expand_questions_batch(
                 engine,
@@ -481,11 +497,13 @@ async def generate_category(
                 question_text = record.get("new_question")
                 if not question_text:
                     continue
+                meta = record.get("metadata") or {}
                 dataset.append(
                     {
                         "seed": record.get("seed"),
                         "question": question_text,
                         "category": spec.canonical_name,
+                        **meta,
                     }
                 )
                 progress.update(1)

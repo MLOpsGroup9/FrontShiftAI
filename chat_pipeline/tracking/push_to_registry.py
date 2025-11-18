@@ -1,66 +1,170 @@
+"""Production-grade model registry writer for LLM-based RAG models.
+
+Stores only lightweight artifacts and metadata – never the model weights.
+Intended for use with a versioned registry directory that can later be
+synced to remote storage (e.g., GCS bucket).
+"""
+
+from __future__ import annotations
+
+import hashlib
 import json
 import logging
-import shutil
-from datetime import datetime
+import os
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict
-
-from chat_pipeline.utils.logger import setup_logging
+from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-# --- PATH CONFIG ---
-BASE_DIR = Path(__file__).resolve().parents[2]  # /FrontShiftAI
-MODEL_SOURCE_DIR = BASE_DIR / "models"
-REGISTRY_DIR = BASE_DIR / "models_registry"
-REGISTRY_DIR.mkdir(parents=True, exist_ok=True)  # ensure registry exists
+PROJECT_ROOT = Path(os.getenv("PROJECT_ROOT", Path(__file__).resolve().parents[2]))
+REGISTRY_DIR = Path(os.getenv("MODEL_REGISTRY_DIR", PROJECT_ROOT / "models_registry"))
 
-def get_next_version(model_name: str) -> str:
-    """Find the next available version folder (v1, v2, etc.)."""
-    versions = []
-    for d in REGISTRY_DIR.glob(f"{model_name}_v*"):
-        if d.is_dir():
+
+def _ensure_registry_dir() -> Path:
+    REGISTRY_DIR.mkdir(parents=True, exist_ok=True)
+    return REGISTRY_DIR
+
+
+def _compute_sha256(path: Path, chunk_size: int = 1024 * 1024) -> str:
+    if not path.exists():
+        raise FileNotFoundError(f"Model file not found for hashing: {path}")
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(chunk_size), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _next_version(model_name: str, registry: Path) -> str:
+    existing = []
+    prefix = f"{model_name}_v"
+    for entry in registry.glob(f"{prefix}*"):
+        if entry.is_dir() and entry.name.startswith(prefix):
             try:
-                versions.append(int(d.name.split("_v")[-1]))
+                existing.append(int(entry.name.split("_v")[-1]))
             except ValueError:
                 continue
-    next_ver = max(versions, default=0) + 1
-    return f"v{next_ver}"
+    return f"v{max(existing, default=0) + 1}"
 
-def push_to_registry(model_name: str, model_file: str, metrics: Dict):
-    """
-    Save model file and its evaluation metrics in a versioned registry folder.
-    """
-    version = get_next_version(model_name)
-    dest_dir = REGISTRY_DIR / f"{model_name}_{version}"
+
+def _copy_artifact(src: Path, dest_dir: Path) -> Optional[str]:
+    if not src or not src.exists():
+        return None
     dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / src.name
+    dest.write_bytes(src.read_bytes())
+    return dest.name
 
-    # --- Copy model file from /models ---
-    src_path = MODEL_SOURCE_DIR / model_file
-    if not src_path.exists():
-        raise FileNotFoundError(f"Model file not found: {src_path}")
-    shutil.copy2(src_path, dest_dir / src_path.name)  # preserves metadata (mtime, etc.)
 
-    # --- Save metadata JSON ---
+def _write_json(path: Path, payload: Dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2, ensure_ascii=False)
+
+
+def _update_latest_symlink(registry: Path, version_dir: Path) -> None:
+    latest = registry / "latest"
+    try:
+        if latest.exists() or latest.is_symlink():
+            latest.unlink()
+        latest.symlink_to(version_dir.name)
+    except OSError:
+        # Fallback for filesystems that don’t support symlinks: write a text file.
+        latest.write_text(str(version_dir), encoding="utf-8")
+
+
+def push_to_registry(
+    model_name: str,
+    model_path: str,
+    pipeline_config: Dict,
+    evaluation_metrics: Dict,
+    artifacts: Dict[str, str],
+) -> Dict:
+    """Register a new RAG model version with lightweight artifacts only.
+
+    Parameters
+    ----------
+    model_name:
+        Logical name of the model (used for versioned folder naming).
+    model_path:
+        Full path to the model weights on disk (referenced, not copied).
+    pipeline_config:
+        Dict describing the pipeline configuration to persist.
+    evaluation_metrics:
+        Dict containing evaluation scores (expects groundedness, answer_relevance,
+        factual_correctness, latency_avg_ms keys).
+    artifacts:
+        Mapping of artifact labels to file paths to copy (e.g.,
+        {"eval_summary": "/path/to/summary.json", "bias_report": "/path/to/bias.json"}).
+    """
+
+    registry = _ensure_registry_dir()
+    model_file = Path(model_path).expanduser().resolve()
+    if not model_file.exists():
+        raise FileNotFoundError(f"Model file not found: {model_file}")
+
+    version = _next_version(model_name, registry)
+    version_dir = registry / f"{model_name}_{version}"
+    version_dir.mkdir(parents=True, exist_ok=True)
+
+    # Compute hash of the referenced model weights (do not copy).
+    model_sha = _compute_sha256(model_file)
+
+    # Copy allowed artifacts.
+    copied_artifacts: Dict[str, str] = {}
+    for key, path_str in (artifacts or {}).items():
+        if not path_str:
+            continue
+        src = Path(path_str).expanduser().resolve()
+        copied_name = _copy_artifact(src, version_dir)
+        if copied_name:
+            copied_artifacts[key] = copied_name
+
+    # Persist pipeline_config as an artifact if provided.
+    pipeline_config_path = None
+    if pipeline_config:
+        pipeline_config_path = version_dir / "pipeline_config.json"
+        _write_json(pipeline_config_path, pipeline_config)
+        copied_artifacts["pipeline_config"] = pipeline_config_path.name
+
     metadata = {
         "model_name": model_name,
         "version": version,
-        "timestamp": datetime.now().isoformat(),
-        "metrics": metrics,
-        "artifact_path": str(dest_dir / src_path.name),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "model_reference": {
+            "path": str(model_file),
+            "sha256": model_sha,
+        },
+        "pipeline_config": pipeline_config or {},
+        "evaluation": {
+            "groundedness": evaluation_metrics.get("groundedness"),
+            "answer_relevance": evaluation_metrics.get("answer_relevance"),
+            "factual_correctness": evaluation_metrics.get("factual_correctness"),
+            "latency_avg_ms": evaluation_metrics.get("latency_avg_ms"),
+        },
+        "artifacts": {
+            "eval_summary": copied_artifacts.get("eval_summary"),
+            "bias_report": copied_artifacts.get("bias_report"),
+            "pipeline_config": copied_artifacts.get("pipeline_config"),
+        },
+        "previous_version": None,
     }
 
-    with open(dest_dir / "metadata.json", "w") as f:
-        json.dump(metadata, f, indent=4)
+    # Find previous version (if any).
+    prev_versions = sorted(
+        [d for d in registry.glob(f"{model_name}_v*") if d.is_dir() and d.name != version_dir.name]
+    )
+    if prev_versions:
+        prev = prev_versions[-1].name.split("_v")[-1]
+        metadata["previous_version"] = f"v{prev}"
 
-    logger.info("Model '%s' registered as %s", model_name, version)
-    logger.info("Saved to: %s", dest_dir)
+    metadata_path = version_dir / "metadata.json"
+    _write_json(metadata_path, metadata)
+    _update_latest_symlink(registry, version_dir)
+
+    logger.info("Registered model '%s' as %s in %s", model_name, version, registry)
     return metadata
 
-if __name__ == "__main__":
-    setup_logging()
-    # Manual test
-    model_name = "llama_3b_instruct"
-    model_file = "Llama-3.2-3B-Instruct-Q4_K_S.gguf"
-    metrics = {"mean_semantic_sim": 0.5425, "mean_precision_at_k": 1.0}
-    push_to_registry(model_name, model_file, metrics)
+
+__all__ = ["push_to_registry"]

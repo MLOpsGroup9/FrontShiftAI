@@ -160,9 +160,26 @@ def ensure_chroma_store(chroma_dir: Path = CHROMA_DIR, remote_uri: Optional[str]
     if chroma_dir.exists():
         return chroma_dir
 
+    # # Try DVC first (common when the store is tracked via data versioning).
+    # dvc_cmd = os.getenv("DVC", "dvc")
+    # if not remote_uri:
+    #     try:
+    #         subprocess.run(
+    #             [dvc_cmd, "pull", str(chroma_dir)],
+    #             check=True,
+    #             capture_output=True,
+    #         )
+    #         if chroma_dir.exists():
+    #             return chroma_dir
+    #     except FileNotFoundError:
+    #         logger.debug("dvc not installed; skipping DVC pull for %s", chroma_dir)
+    #     except subprocess.CalledProcessError as exc:
+    #         logger.debug("DVC pull failed for %s: %s", chroma_dir, exc.stderr.decode().strip())
+
     if not remote_uri:
         raise FileNotFoundError(
-            f"Chroma store not found at {chroma_dir}. Set CHROMA_DIR or provide CHROMA_REMOTE_URI."
+            f"Chroma store not found at {chroma_dir}. Set CHROMA_DIR, use DVC to pull it, "
+            "or provide CHROMA_REMOTE_URI."
         )
 
     chroma_dir.mkdir(parents=True, exist_ok=True)
