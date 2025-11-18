@@ -7,7 +7,7 @@ name: Chat Pipeline - Train, Validate, and Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, raghav-branch ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
