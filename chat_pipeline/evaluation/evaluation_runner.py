@@ -30,6 +30,8 @@ class EvaluationConfig:
     wandb_project: Optional[str] = None
     wandb_entity: Optional[str] = None
     disable_wandb: bool = False
+    dataset_label: Optional[str] = None
+    slice_fields: List[str] = field(default_factory=lambda: ["category", "company_name"])
 
 
 @dataclass
@@ -192,20 +194,23 @@ class WandbTracker:
 class EvaluationRunner:
     """Coordinates dataset loading, judge execution, and metric aggregation."""
 
-    def __init__(self, config: EvaluationConfig):
+    def __init__(self, config: EvaluationConfig, config_overrides: Optional[Dict[str, Any]] = None):
         self.config = config
         self.results: List[MetricResult] = []
+        self._examples: List[Tuple[EvaluationExample, MetricResult]] = []
         self._judge_client = JudgeClient()
         self._wandb = WandbTracker(config)
+        self._config_overrides = config_overrides or {}
 
     def run(self) -> None:
         examples = _load_test_examples(self.config.test_questions_dir, self.config.max_examples)
         for idx, example in enumerate(examples, start=1):
             start = time.perf_counter()
             try:
-                metrics = self._evaluate_example(example)
+                metrics, answer, contexts = self._evaluate_example(example)
                 self.results.append(metrics)
-                self._persist_intermediate(example, metrics, idx)
+                self._examples.append((example, metrics))
+                self._persist_intermediate(example, metrics, answer, contexts, idx)
             except Exception as exc:
                 logger.exception("Evaluation failed for query '%s': %s", example.query, exc)
             finally:
@@ -213,10 +218,15 @@ class EvaluationRunner:
                 logger.debug("Processed example %s in %.2fs", idx, duration)
 
         self._export_summary()
+        self._export_bias_report()
         self._wandb.finish()
 
-    def _evaluate_example(self, example: EvaluationExample) -> MetricResult:
-        answer, contexts, pipeline_result = build_rag_inputs(example.query, example.metadata.get("company_name"))
+    def _evaluate_example(self, example: EvaluationExample) -> Tuple[MetricResult, str, List[str]]:
+        answer, contexts, pipeline_result = build_rag_inputs(
+            example.query,
+            example.metadata.get("company_name"),
+            config_overrides=self._config_overrides,
+        )
         scores = evaluate_with_llm(
             example.query,
             contexts,
@@ -254,14 +264,24 @@ class EvaluationRunner:
             throughput_qps=perf.get("throughput"),
             token_usage={"total": int(perf.get("token_usage", 0))},
         )
-        return metric
+        return metric, answer, contexts
 
-    def _persist_intermediate(self, example: EvaluationExample, metrics: MetricResult, index: int) -> None:
+    def _persist_intermediate(
+        self,
+        example: EvaluationExample,
+        metrics: MetricResult,
+        answer: str,
+        contexts: List[str],
+        index: int,
+    ) -> None:
         self.config.output_dir.mkdir(parents=True, exist_ok=True)
         record = {
             "index": index,
             "question": example.query,
             "category": example.metadata.get("category"),
+            "metadata": example.metadata,
+            "answer": answer,
+            "contexts": contexts,
             "metrics": metrics.__dict__,
         }
         output_file = self.config.output_dir / f"example_{index:04d}.json"
@@ -302,13 +322,68 @@ class EvaluationRunner:
             json.dump(summary, handle, indent=2, ensure_ascii=False)
         logger.info("Wrote evaluation summary to %s", summary_path)
 
+    def _export_bias_report(self) -> None:
+        if not self._examples:
+            logger.info("No examples to compute bias report.")
+            return
+
+        slice_fields = self.config.slice_fields or []
+        dataset_label = self.config.dataset_label or self.config.test_questions_dir.name
+        bias_metrics = ("groundedness", "answer_relevance", "factual_correctness")
+
+        # Build per-slice aggregates.
+        aggregates: Dict[str, Dict[str, Dict[str, float]]] = {}
+        counts: Dict[str, Dict[str, int]] = {}
+
+        for example, metrics in self._examples:
+            for field in slice_fields:
+                value = (example.metadata or {}).get(field)
+                if value in (None, ""):
+                    continue
+                aggregates.setdefault(field, {}).setdefault(value, {})
+                counts.setdefault(field, {}).setdefault(value, 0)
+                counts[field][value] += 1
+                for metric_name in bias_metrics:
+                    metric_value = getattr(metrics, metric_name, None)
+                    if metric_value is None:
+                        continue
+                    aggregates[field][value].setdefault(metric_name, 0.0)
+                    aggregates[field][value][metric_name] += float(metric_value)
+
+        # Convert sums to averages.
+        report: Dict[str, Any] = {
+            "dataset": dataset_label,
+            "slice_fields": slice_fields,
+            "metrics": {},
+        }
+
+        for field, values in aggregates.items():
+            field_report = []
+            for value, metric_sums in values.items():
+                count = counts[field][value]
+                averaged = {name: total / count for name, total in metric_sums.items() if count > 0}
+                field_report.append(
+                    {
+                        "slice_value": value,
+                        "count": count,
+                        "metrics": averaged,
+                    }
+                )
+            report["metrics"][field] = field_report
+
+        bias_path = self.config.output_dir / "bias_report.json"
+        self.config.output_dir.mkdir(parents=True, exist_ok=True)
+        with bias_path.open("w", encoding="utf-8") as handle:
+            json.dump(report, handle, indent=2, ensure_ascii=False)
+        logger.info("Wrote bias report to %s", bias_path)
+
 
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="RAG evaluation harness.")
     parser.add_argument(
         "--test-dir",
-        default=Path("ml_pipeline/evaluation/test_questions"),
+        default=Path("chat_pipeline/evaluation/test_questions"),
         type=Path,
         help="Directory containing generated test question folders.",
     )
@@ -317,12 +392,20 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--wandb-project", help="Weights & Biases project name.")
     parser.add_argument("--wandb-entity", help="Weights & Biases entity/team.")
     parser.add_argument("--disable-wandb", action="store_true", help="Disable Weights & Biases logging.")
+    parser.add_argument(
+        "--dataset-label",
+        help="Optional label to include in reports (e.g., 'main', 'slices'). Defaults to test-dir name.",
+    )
+    parser.add_argument(
+        "--slice-fields",
+        help="Comma-separated metadata fields to slice bias metrics on (e.g., category,company_name).",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
-    if not logging.getLogger().handlers:
-        logging.basicConfig(level=os.getenv("EVAL_RUNNER_LOG_LEVEL", "INFO").upper())
+    from chat_pipeline.utils.logger import setup_logging
+    setup_logging(level=os.getenv("EVAL_RUNNER_LOG_LEVEL"))
     args = _parse_args()
     config = EvaluationConfig(
         test_questions_dir=args.test_dir,
@@ -331,6 +414,8 @@ def main() -> None:
         wandb_project=args.wandb_project,
         wandb_entity=args.wandb_entity,
         disable_wandb=args.disable_wandb,
+        dataset_label=args.dataset_label,
+        slice_fields=[item.strip() for item in args.slice_fields.split(",")] if args.slice_fields else ["category", "company_name"],
     )
     runner = EvaluationRunner(config)
     runner.run()

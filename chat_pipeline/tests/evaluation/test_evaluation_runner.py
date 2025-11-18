@@ -5,6 +5,8 @@ import pytest
 
 from chat_pipeline.evaluation.evaluation_runner import (
     EvaluationConfig,
+    EvaluationRunner,
+    MetricResult,
     _load_test_examples,
     _record_to_example,
     WandbTracker,
@@ -58,3 +60,29 @@ def test_wandb_tracker_respects_disable_flag(monkeypatch):
     tracker = WandbTracker(cfg)
     # Should be disabled without attempting any wandb import/calls.
     assert tracker.enabled is False
+
+
+def test_persist_intermediate_writes_answer_and_contexts(tmp_path: Path):
+    runner = object.__new__(EvaluationRunner)
+    runner.config = EvaluationConfig(
+        test_questions_dir=tmp_path,
+        output_dir=tmp_path,
+    )
+
+    example = _record_to_example(
+        "category",
+        {"question": "q", "answer": "a", "company": "ACME"},
+    )
+    metrics = MetricResult(precision=1.0)
+
+    runner._persist_intermediate(
+        example=example,
+        metrics=metrics,
+        answer="answer text",
+        contexts=["ctx1", "ctx2"],
+        index=1,
+    )
+
+    written = json.loads((tmp_path / "example_0001.json").read_text(encoding="utf-8"))
+    assert written["answer"] == "answer text"
+    assert written["contexts"] == ["ctx1", "ctx2"]

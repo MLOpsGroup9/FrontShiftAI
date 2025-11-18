@@ -7,7 +7,7 @@ import json
 import logging
 import os
 import sys
-from typing import Dict, List, Sequence
+from typing import Dict, List, Sequence, Optional
 
 from chat_pipeline.rag.pipeline import PipelineConfig, PipelineResult, RAGPipeline
 from chat_pipeline.evaluation.judge_client import JudgeClient
@@ -90,9 +90,13 @@ def _normalize_answer(answer: object) -> str:
     return str(answer)
 
 
-def build_rag_inputs(query: str, company_name: str | None) -> tuple[str, List[str], PipelineResult]:
+def build_rag_inputs(
+    query: str,
+    company_name: str | None,
+    config_overrides: Optional[Dict[str, Any]] = None,
+) -> tuple[str, List[str], PipelineResult]:
     logger.info("Running RAG pipeline for evaluation question.")
-    pipeline = RAGPipeline()
+    pipeline = RAGPipeline(config_overrides=config_overrides)
     result: PipelineResult = pipeline.run(query=query, company_name=company_name, stream=False)
     answer = _normalize_answer(result.answer)
     contexts = _collect_contexts(pipeline, query, company_name, result.config)
@@ -223,11 +227,8 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = _parse_args()
-    if not logging.getLogger().handlers:
-        logging.basicConfig(
-            level=os.getenv("EVAL_JUDGE_LOG_LEVEL", "INFO").upper(),
-            format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        )
+    from chat_pipeline.utils.logger import setup_logging
+    setup_logging(level=os.getenv("EVAL_JUDGE_LOG_LEVEL"))
     logger.info("Initializing JudgeClient.")
     judge_client = JudgeClient()
     logger.info("Running evaluation for question: %s", args.question)

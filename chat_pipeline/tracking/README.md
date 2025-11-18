@@ -1,20 +1,8 @@
-# 📁 Tracking Module
+# Tracking
 
-### Purpose
-Logs all experiments, metrics, and model registry events.
+Lightweight experiment tracking and model registry helpers.
 
----
+- `exp_tracking.py`: Defensive W&B wrappers (`start_run`, `log_metrics`, `log_artifacts`, `finish_run`, `log_stage`) that no-op when W&B is unavailable or disabled.
+- `push_to_registry.py`: Copies a model artifact from `models/` into a versioned folder under `models_registry/` and saves accompanying metadata.
 
-### ✅ Existing Scripts
-| File | Description |
-|------|--------------|
-| `exp_tracking.py` | MLflow integration for logging parameters, metrics, and artifacts. |
-| `push_to_registry.py` | Handles pushing validated models to GCP Artifact Registry. |
-
----
-
-### 🧠 To-Do
-- [ ] Add artifact upload (plots and config files) to MLflow.
-- [ ] Log hyperparameter search results.
-- [ ] Add helper for fetching best-performing runs.
-- [ ] Connect MLflow run status to Slack/email via `utils/email_notifier.py`.
+Both modules are optional helpers; they are safe to skip in environments without W&B or where a registry is not configured.

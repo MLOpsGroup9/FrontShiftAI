@@ -1,19 +1,8 @@
-# 📁 Utils Module
+# Utils
 
-### Purpose
-Contains shared utilities such as logging, configuration management, and notifications.
+Shared helpers used across the chat pipeline.
 
----
+- `logger.py`: Structured logging setup used by CLI, evaluation runner, and registry helpers.
+- `email_notifier.py`: Simple SMTP notifier for sending run summaries/alerts.
 
-### ✅ Existing Scripts
-| File | Description |
-|------|--------------|
-| `email_notifier.py` | Sends email alerts for evaluation or bias failures. |
-| `logger.py` | Structured logger for pipeline-level events. |
-
----
-
-### 🧠 To-Do
-- [ ] Add `config_loader.py` for centralized YAML loading (rag.yaml, eval.yaml).
-- [ ] Add Slack alert integration for CI/CD failures.
-- [ ] Wrap all major pipeline events in `logger.py` calls (run_id, step, latency).
+These modules are dependency-light and safe to import from any stage (RAG pipeline, evaluation, or tracking).

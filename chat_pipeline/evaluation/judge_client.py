@@ -8,6 +8,7 @@ import os
 from typing import Any, Dict
 
 import torch
+import requests
 from openai import OpenAI
 from transformers import pipeline
 
@@ -42,11 +43,17 @@ class JudgeClient:
             )
             text = response.choices[0].message.content.strip()
         else:
-            try:
-                text = self._run_pipeline("llama", "meta-llama/Meta-Llama-3.1-8B-Instruct", judge_prompt)
-            except Exception as exc:
-                logger.warning("Llama 3.1 judge failed: %s", exc)
-                text = self._run_pipeline("qwen", "Qwen/Qwen2.5-3B-Instruct", judge_prompt)
+            mercury_key = os.getenv("INCEPTION_API_KEY")
+            if mercury_key:
+                try:
+                    text = self._call_mercury(judge_prompt, mercury_key)
+                except Exception as exc:
+                    logger.warning("Mercury judge failed: %s; falling back to HF.", exc)
+                    model = os.getenv("JUDGE_MODEL", "Qwen/Qwen2.5-3B-Instruct")
+                    text = self._run_pipeline("hf-judge", model, judge_prompt)
+            else:
+                model = os.getenv("JUDGE_MODEL", "Qwen/Qwen2.5-3B-Instruct")
+                text = self._run_pipeline("hf-judge", model, judge_prompt)
 
         try:
             return json.loads(self._extract_json(text))
@@ -89,6 +96,33 @@ class JudgeClient:
         if not text:
             raise RuntimeError(f"{model_name} returned empty output.")
         return text
+
+    def _call_mercury(self, prompt: str, api_key: str) -> str:
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": os.getenv("MERCURY_MODEL", "mercury"),
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 512,
+            "temperature": 0,
+            "top_p": 0.9,
+        }
+        resp = requests.post(
+            os.getenv("INCEPTION_API_BASE", "https://api.inceptionlabs.ai/v1") + "/chat/completions",
+            json=payload,
+            headers=headers,
+            timeout=60,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        if "choices" in data and data["choices"]:
+            message = data["choices"][0].get("message", {})
+            return (message.get("content") or "").strip()
+        if "content" in data:
+            return (data.get("content") or "").strip()
+        raise RuntimeError(f"Unexpected Mercury response: {data}")
 
 
 __all__ = ["JudgeClient"]

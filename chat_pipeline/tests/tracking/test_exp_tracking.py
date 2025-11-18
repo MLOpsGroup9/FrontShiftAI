@@ -22,7 +22,7 @@ class DummyWandb:
 
     def init(self, **kwargs):
         self.init_calls.append(kwargs)
-        return SimpleNamespace()
+        return SimpleNamespace(log_artifact=self.log_artifact, finish=self.finish)
 
     def log(self, payload):
         self.logs.append(payload)
@@ -37,27 +37,28 @@ class DummyWandb:
         self.finished += 1
 
 
-def test_setup_wandb_records_config(monkeypatch):
+def test_start_run_records_config(monkeypatch):
     dummy = DummyWandb()
     monkeypatch.setattr(exp_tracking, "wandb", dummy)
 
-    run = exp_tracking.setup_wandb(stage_name="eval", model_name="demo")
+    run = exp_tracking.start_run(stage_name="eval", model_name="demo", tags=["t1"])
 
     assert isinstance(run, SimpleNamespace)
     assert dummy.init_calls
     call = dummy.init_calls[0]
     assert call["job_type"] == "eval"
     assert call["config"]["model_name"] == "demo"
+    assert call["tags"] == ["t1"]
 
 
-def test_log_metrics_logs_and_artifacts(monkeypatch, tmp_path):
+def test_log_stage_handles_metrics_and_artifacts(monkeypatch, tmp_path):
     dummy = DummyWandb()
     monkeypatch.setattr(exp_tracking, "wandb", dummy)
 
     artifact_file = tmp_path / "metrics.json"
     artifact_file.write_text("{}", encoding="utf-8")
 
-    exp_tracking.log_metrics(
+    exp_tracking.log_stage(
         stage_name="stage",
         model_name="demo",
         metrics={"m": 1},
@@ -65,5 +66,5 @@ def test_log_metrics_logs_and_artifacts(monkeypatch, tmp_path):
     )
 
     assert dummy.logs == [{"m": 1}]
-    assert dummy.artifacts == ["metrics_demo"]
+    assert dummy.artifacts == ["metrics"]
     assert dummy.finished == 1

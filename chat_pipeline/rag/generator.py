@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from pathlib import Path
 from typing import Any, Dict, Generator, Iterable, List, Literal, Optional, Tuple
 
-from chat_pipeline.rag.config_manager import get_streaming_config
+from chat_pipeline.rag.config_manager import get_streaming_config, get_generation_config
 from chat_pipeline.rag.prompt_templates import prompt_templates
 from chat_pipeline.rag.reranker import two_stage_reranker
 from chat_pipeline.rag.retriever import bm25_retrieval, vector_retrieval
@@ -40,7 +40,7 @@ except ImportError:  # pragma: no cover - optional dependency
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_MODEL_PATH = PROJECT_ROOT / "models" / "Llama-3.2-3B-Instruct-Q4_K_S.gguf"
+DEFAULT_MODEL_PATH = PROJECT_ROOT / "models" / "Llama-3.2-3B-Instruct-Q4_K_M.gguf"
 DEFAULT_PROMPT_KEY = "general_prompt_1"
 MAX_CONTEXT_CHARS = 6000
 MAX_CONTEXT_TOKENS = int(os.getenv("MAX_CONTEXT_TOKENS", "2000"))
@@ -58,6 +58,7 @@ INCEPTION_API_BASE = os.getenv("INCEPTION_API_BASE", "https://api.inceptionlabs.
 INCEPTION_API_KEY = os.getenv("INCEPTION_API_KEY")
 MERCURY_MODEL = os.getenv("MERCURY_MODEL", "mercury")
 
+GENERATION_BACKEND = os.getenv("GENERATION_BACKEND")
 HF_MODEL_NAME = os.getenv("HF_MODEL_NAME")
 HF_API_TOKEN = os.getenv("HF_API_TOKEN")
 HF_API_BASE = os.getenv("HF_API_BASE")
@@ -85,6 +86,7 @@ def _llm_init_kwargs(overrides: Optional[Dict[str, Any]] = None) -> Dict[str, An
         "temperature": float(os.getenv("LLAMA_TEMPERATURE", "0.7")),
         "top_p": float(os.getenv("LLAMA_TOP_P", "0.9")),
         "max_tokens": int(os.getenv("LLAMA_MAX_TOKENS", "1024")),
+        "n_gpu": int(os.getenv("LLAMA_N_GPU_LAYERS", "-1")),
         "verbose": False,
     }
     if overrides:
@@ -142,15 +144,16 @@ def _get_streaming_hyperparameters(overrides: Optional[Dict[str, Any]] = None) -
 def _get_hf_client():
     """Return a shared Hugging Face inference client (if configured)."""
 
-    if not HF_MODEL_NAME:
+    model_name = HF_MODEL_NAME or get_generation_config().get("hf_model_name")
+    if not model_name:
         raise RuntimeError("HF_MODEL_NAME is not set.")
     if InferenceClient is None:
         raise RuntimeError("huggingface_hub is not installed.")
 
     global _HF_CLIENT
     if _HF_CLIENT is None:
-        logger.info("Connecting to Hugging Face Inference API model %s", HF_MODEL_NAME)
-        client_kwargs: Dict[str, Any] = {"model": HF_MODEL_NAME}
+        logger.info("Connecting to Hugging Face Inference API model %s", model_name)
+        client_kwargs: Dict[str, Any] = {"model": model_name}
         if HF_API_TOKEN:
             client_kwargs["token"] = HF_API_TOKEN
         if HF_API_BASE:
@@ -249,26 +252,35 @@ def stream_response(
     """Stream the model output token-by-token as it is generated."""
 
     params = _get_streaming_hyperparameters(stream_overrides)
+    gen_cfg = get_generation_config()
+    backend = (GENERATION_BACKEND or gen_cfg.get("backend") or "auto").lower()
 
     local_llm: Optional[Any] = llm
-    if local_llm is None:
+    if backend in ("auto", "local") and local_llm is None:
         try:
             local_llm = load_llm()
         except Exception as exc:  # pragma: no cover - depends on env
-            logger.info("Local LLaMA unavailable (%s). Falling back to Mercury API.", exc)
+            logger.info("Local LLaMA unavailable (%s). Falling back to next backend.", exc)
             local_llm = None
 
-    if local_llm is not None:
+    if backend in ("auto", "local") and local_llm is not None:
         yield from _stream_from_local_llm(local_llm, prompt, params)
         return
 
-    try:
-        yield from _stream_from_hf(prompt, params)
-        return
-    except Exception as exc:  # pragma: no cover - optional dependency
-        logger.debug("HF fallback unavailable: %s", exc)
+    if backend in ("hf", "qwen", "llama", "auto"):
+        try:
+            yield from _stream_from_hf(prompt, params)
+            return
+        except Exception as exc:  # pragma: no cover - optional dependency
+            logger.debug("HF backend unavailable: %s", exc)
+            if backend != "auto":
+                raise
 
-    yield _call_mercury_api(prompt, params)
+    if backend in ("mercury", "auto"):
+        yield _call_mercury_api(prompt, params)
+        return
+
+    raise RuntimeError(f"Unsupported generation backend: {backend}")
 
 
 def _select_prompt_template(template_key: Optional[str]) -> str:

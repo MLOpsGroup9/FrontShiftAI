@@ -1,40 +1,46 @@
-# ml_pipeline/utils/logger.py
+"""Central logging setup for chat_pipeline."""
+
+from __future__ import annotations
+
 import logging
-from datetime import datetime
+import os
 from pathlib import Path
+from typing import Optional
 
-def get_logger(script_name: str):
-    """
-    Returns a logger configured to log both to console and file.
-    Each script (rag_eval, bias_detection, sensitivity_analysis)
-    will have its own daily log file.
-    """
-    base_dir = Path(__file__).resolve().parents[2]  # /FrontShiftAI
-    log_dir = base_dir / "ml_pipeline" / "logs"
-    log_dir.mkdir(parents=True, exist_ok=True)
+DEFAULT_FORMAT = "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+DEFAULT_LOG_DIR_ENV = "CHAT_PIPELINE_LOG_DIR"
 
-    # One log file per script per day
-    timestamp = datetime.now().strftime("%Y-%m-%d")
-    log_file = log_dir / f"{script_name}_{timestamp}.log"
 
-    logger = logging.getLogger(script_name)
+def setup_logging(
+    *,
+    level: Optional[str] = None,
+    to_file: bool = False,
+    log_dir: Optional[Path] = None,
+) -> logging.Logger:
+    """Configure root logging once; return the root logger."""
 
-    # Avoid duplicate handlers (in case of multiple imports)
-    if not logger.handlers:
-        logger.setLevel(logging.INFO)
-        formatter = logging.Formatter(
-            "%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S"
-        )
+    root = logging.getLogger()
+    if root.handlers:
+        return root
 
-        # Console handler
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
+    log_level = (level or os.getenv("LOG_LEVEL", "INFO")).upper()
+    root.setLevel(log_level)
 
-        # File handler
-        file_handler = logging.FileHandler(log_file)
+    formatter = logging.Formatter(DEFAULT_FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
+
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    root.addHandler(console_handler)
+
+    if to_file:
+        env_dir = os.getenv(DEFAULT_LOG_DIR_ENV)
+        target_dir = log_dir or (Path(env_dir) if env_dir else Path.cwd() / "logs")
+        target_dir.mkdir(parents=True, exist_ok=True)
+        file_handler = logging.FileHandler(target_dir / "chat_pipeline.log")
         file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
+        root.addHandler(file_handler)
 
-    return logger
+    return root
+
+
+__all__ = ["setup_logging"]
