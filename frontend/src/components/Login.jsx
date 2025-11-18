@@ -1,0 +1,131 @@
+import React, { useState } from 'react';
+import { login } from '../services/api';
+
+const Login = ({ onLoginSuccess }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const response = await login(email, password);
+      
+      // Store auth data in localStorage
+      localStorage.setItem('access_token', response.access_token);
+      localStorage.setItem('user_email', response.email);
+      localStorage.setItem('user_company', response.company);
+      
+      // Notify parent component
+      onLoginSuccess(response);
+    } catch (err) {
+      console.error('Login error:', err);
+      if (err.response?.status === 401) {
+        setError('Invalid email or password');
+      } else {
+        setError('Login failed. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#0a0a0f] via-[#1a1a24] to-[#0a0a0f] flex items-center justify-center p-4">
+      {/* Floating Orb Background */}
+      <div className="fixed top-1/4 right-1/4 w-96 h-96 bg-gradient-to-r from-white/10 to-gray-500/10 rounded-full blur-3xl opacity-20 animate-float-orb pointer-events-none"></div>
+
+      <div className="w-full max-w-md relative z-10">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center space-x-3 mb-4">
+            <div className="w-12 h-12 rounded-2xl border border-white/15 bg-gradient-to-br from-white/30 via-white/10 to-transparent shadow-[0_10px_30px_rgba(0,0,0,0.45)] relative overflow-hidden">
+              <div className="absolute inset-[3px] rounded-2xl bg-black/30 backdrop-blur-sm border border-white/5"></div>
+              <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/80 blur-sm opacity-80"></div>
+              <div className="absolute right-2.5 bottom-2.5 w-2.5 h-5 rounded-full bg-white/40"></div>
+            </div>
+            <h1 className="text-2xl font-semibold text-white tracking-tight">FrontShiftAI</h1>
+          </div>
+          <p className="text-white/60 text-sm">Sign in to access your company's handbook</p>
+        </div>
+
+        {/* Login Card */}
+        <div className="glass-card bg-white/10 backdrop-blur-xl p-8">
+          <h2 className="text-xl font-semibold text-white mb-6">Welcome Back</h2>
+          
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Email Input */}
+            <div>
+              <label className="block text-sm font-medium text-white/80 mb-2">
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="user@company.com"
+                required
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-white/30 focus:bg-white/8 transition-all"
+              />
+            </div>
+
+            {/* Password Input */}
+            <div>
+              <label className="block text-sm font-medium text-white/80 mb-2">
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                required
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-white/30 focus:bg-white/8 transition-all"
+              />
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                <p className="text-sm text-red-300">{error}</p>
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 bg-gradient-to-br from-white/90 to-white/60 text-black font-medium rounded-lg shadow-[0_12px_25px_rgba(15,15,20,0.55)] hover:shadow-[0_15px_30px_rgba(15,15,20,0.65)] disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+            >
+              {isLoading ? 'Signing in...' : 'Sign In'}
+            </button>
+          </form>
+
+          {/* Demo Credentials */}
+          <div className="mt-6 pt-6 border-t border-white/10">
+            <p className="text-xs text-white/40 mb-2">Demo Credentials:</p>
+            <div className="space-y-1">
+              <p className="text-xs text-white/50">
+                Email: <span className="text-white/70">user@crousemedical.com</span>
+              </p>
+              <p className="text-xs text-white/50">
+                Password: <span className="text-white/70">password123</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <p className="text-center text-xs text-white/30 mt-6">
+          Secure access to company handbooks and policies
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default Login;
