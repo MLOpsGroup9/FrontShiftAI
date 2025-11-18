@@ -274,7 +274,7 @@ jobs:
   notify:
     name: Send Email Notification
     runs-on: ubuntu-latest
-    needs: [setup-and-validation, run-evaluation, quality-gate-check, deploy-model]
+    needs: [setup-and-validation, run-evaluation, quality-gate-check]
     if: always()
     timeout-minutes: 5
 
