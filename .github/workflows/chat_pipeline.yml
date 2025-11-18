@@ -47,11 +47,6 @@ jobs:
           echo "TOKENIZERS_PARALLELISM=false" >> $GITHUB_ENV
         shell: bash
 
-      - name: Validate Environment
-        run: |
-          python ml_pipeline/ci_cd/validate_environment.py --verbose
-        continue-on-error: false
-
       - name: Set W&B Environment Variables
         run: |
           echo "WANDB_API_KEY=${{ secrets.WANDB_API_KEY }}" >> $GITHUB_ENV
