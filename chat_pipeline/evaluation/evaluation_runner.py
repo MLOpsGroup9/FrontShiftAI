@@ -77,8 +77,11 @@ def _iter_question_records(root: Path) -> Iterable[Tuple[str, Dict[str, Any]]]:
         if not category_dir.is_dir():
             continue
         dataset_file = category_dir / "dataset.json"
+        jsonl_file = category_dir / "dataset.jsonl"
+        if not dataset_file.exists() and jsonl_file.exists():
+            dataset_file = jsonl_file
         if not dataset_file.exists():
-            logger.debug("Skipping %s (dataset.json not found)", category_dir)
+            logger.debug("Skipping %s (dataset.json/jsonl not found)", category_dir)
             continue
         try:
             with dataset_file.open("r", encoding="utf-8") as handle:
