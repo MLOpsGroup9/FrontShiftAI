@@ -25,14 +25,8 @@ LOG_DIR = Path(__file__).resolve().parent / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 LOG_FILE = LOG_DIR / f"generation_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.log"
 
-logging.basicConfig(
-    level=os.getenv("GENERATION_LOG_LEVEL", "INFO").upper(),
-    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(LOG_FILE, encoding="utf-8"),
-    ],
-)
+from chat_pipeline.utils.logger import setup_logging
+setup_logging(level=os.getenv("GENERATION_LOG_LEVEL"), to_file=True, log_dir=LOG_DIR)
 logger = logging.getLogger(__name__)
 
 

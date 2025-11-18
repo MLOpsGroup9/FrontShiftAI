@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from rag.retriever import CompanyCorpus, vector_retrieval, bm25_retrieval
+from chat_pipeline.rag.retriever import CompanyCorpus, vector_retrieval, bm25_retrieval
 
 
 class DummyCollection:
@@ -25,7 +25,7 @@ def test_vector_retrieval_returns_documents(monkeypatch):
     def fake_loader(company_name=None, max_documents=None):
         return CompanyCorpus(collection=collection, documents=[], filter_kwargs={"where": {"company": company_name}})
 
-    monkeypatch.setattr("rag.retriever.load_data_company", fake_loader)
+    monkeypatch.setattr("chat_pipeline.rag.retriever.load_data_company", fake_loader)
 
     docs, metadata = vector_retrieval("hello", top_k=2, company_name="ACME")
 
@@ -41,7 +41,7 @@ def test_vector_retrieval_handles_empty(monkeypatch):
     def fake_loader(company_name=None, max_documents=None):
         return CompanyCorpus(collection=collection, documents=[], filter_kwargs={})
 
-    monkeypatch.setattr("rag.retriever.load_data_company", fake_loader)
+    monkeypatch.setattr("chat_pipeline.rag.retriever.load_data_company", fake_loader)
 
     docs, metadata = vector_retrieval("empty")
 
@@ -70,8 +70,8 @@ def test_bm25_retrieval(monkeypatch):
     def fake_loader(company_name=None, max_documents=None):
         return CompanyCorpus(collection=None, documents=documents, filter_kwargs={})
 
-    monkeypatch.setattr("rag.retriever.load_data_company", fake_loader)
-    monkeypatch.setattr("rag.retriever.BM25Retriever", DummyBM25)
+    monkeypatch.setattr("chat_pipeline.rag.retriever.load_data_company", fake_loader)
+    monkeypatch.setattr("chat_pipeline.rag.retriever.BM25Retriever", DummyBM25)
 
     docs, metadata = bm25_retrieval("query", top_k=2)
 

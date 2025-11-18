@@ -3,7 +3,7 @@ from pathlib import Path
 
 import yaml
 
-from rag import config_manager
+from chat_pipeline.rag import config_manager
 
 
 def _write_config(tmp_path: Path, data: dict) -> Path:

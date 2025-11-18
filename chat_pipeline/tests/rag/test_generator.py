@@ -2,7 +2,7 @@ import types
 
 import pytest
 
-from rag import generator
+from chat_pipeline.rag import generator
 
 
 def test_align_metadata_extends_shorter_list():

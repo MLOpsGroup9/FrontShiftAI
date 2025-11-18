@@ -5,7 +5,7 @@ import pytest
 
 chromadb = pytest.importorskip("chromadb")
 
-from rag import data_loader
+from chat_pipeline.rag import data_loader
 
 
 def test_resolve_path_handles_relative(monkeypatch, tmp_path):

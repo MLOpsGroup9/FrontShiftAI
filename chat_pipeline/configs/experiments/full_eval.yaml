@@ -1,0 +1,48 @@
+logging:
+  level: INFO
+  to_file: true
+  log_dir: logs
+
+wandb:
+  project: FrontShiftAI
+  entity: group9mlops-northeastern-university
+  disable: false
+
+eval:
+  summary_output: chat_pipeline/results/experiment_summary.json
+  slice_fields: [category, company_name]
+  pipeline_overrides:
+    generation:
+      backend: mercury
+      hf_model_name: Qwen/Qwen2.5-3B-Instruct
+  main:
+    test_dir: chat_pipeline/evaluation/test_questions
+    output_dir: chat_pipeline/results/eval_main
+    max_examples: null
+  slices:
+    enabled: True
+    test_dir: chat_pipeline/evaluation/test_questions/slices
+    output_dir: chat_pipeline/results/eval_slices
+    max_examples: null
+
+tuning:
+  enabled: true
+  output_dir: chat_pipeline/results/tuning
+  max_examples: null
+  grid:
+    - name: baseline
+      overrides: {}
+    - name: topk5
+      overrides:
+        retriever:
+          top_k: 5
+    - name: rerank_on
+      overrides:
+        reranker:
+          enabled: true
+          rerank_k: 3
+    - name: qwen_backend
+      overrides:
+        generation:
+          backend: hf
+          hf_model_name: Qwen/Qwen2.5-3B-Instruct

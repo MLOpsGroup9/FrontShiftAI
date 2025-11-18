@@ -1,10 +1,13 @@
-# /Users/sriks/Documents/Projects/FrontShiftAI/ml_pipeline/tracking/push_to_registry.py
-
 import json
+import logging
 import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Dict
+
+from chat_pipeline.utils.logger import setup_logging
+
+logger = logging.getLogger(__name__)
 
 # --- PATH CONFIG ---
 BASE_DIR = Path(__file__).resolve().parents[2]  # /FrontShiftAI
@@ -50,11 +53,12 @@ def push_to_registry(model_name: str, model_file: str, metrics: Dict):
     with open(dest_dir / "metadata.json", "w") as f:
         json.dump(metadata, f, indent=4)
 
-    print(f"✅ Model '{model_name}' registered as {version}")
-    print(f"📁 Saved to: {dest_dir}")
+    logger.info("Model '%s' registered as %s", model_name, version)
+    logger.info("Saved to: %s", dest_dir)
     return metadata
 
 if __name__ == "__main__":
+    setup_logging()
     # Manual test
     model_name = "llama_3b_instruct"
     model_file = "Llama-3.2-3B-Instruct-Q4_K_S.gguf"

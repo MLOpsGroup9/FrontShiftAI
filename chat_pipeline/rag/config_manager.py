@@ -93,6 +93,13 @@ def get_streaming_config() -> Dict[str, Any]:
     return load_rag_config().get("streaming", {})
 
 
+def get_generation_config() -> Dict[str, Any]:
+    """Shortcut to the ``pipeline.generation`` section of ``rag.yaml``."""
+
+    pipeline_cfg = load_rag_config().get("pipeline", {}) or {}
+    return pipeline_cfg.get("generation", {}) or {}
+
+
 def _validate_config(config: Dict[str, Any]) -> None:
     allowed_top_level = {"vector_store", "pipeline", "streaming"}
     unknown = set(config) - allowed_top_level

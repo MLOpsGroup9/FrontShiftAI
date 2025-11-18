@@ -6,7 +6,7 @@ name: Component Test - Fast Feedback for Feature Branches
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, raghav-branch ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -31,11 +31,12 @@ jobs:
         with:
           python-version: "3.12"
           cache: 'pip'
+          cache-dependency-path: chat_pipeline/requirements.txt
 
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r chat_pipeline/requirements.txt
           pip install pytest pytest-cov
 
       - name: Set Environment Variables
@@ -46,96 +47,12 @@ jobs:
       - name: Run Unit Tests
         run: |
           # Run tests if they exist
-          if [ -d "ml_pipeline/tests" ] && [ "$(find ml_pipeline/tests -name 'test_*.py' | wc -l)" -gt 0 ]; then
-            pytest ml_pipeline/tests/ -v --tb=short || echo "No tests found or tests failed"
+          if [ -d "chat_pipeline/tests" ] && [ "$(find chat_pipeline/tests -name 'test_*.py' | wc -l)" -gt 0 ]; then
+            pytest chat_pipeline/tests/ -v --tb=short
           else
-            echo "⚠️ No unit tests found in ml_pipeline/tests/"
+            echo "⚠️ No unit tests found under chat_pipeline/tests/"
           fi
-        continue-on-error: true
-
-  integration-smoke-test:
-    name: Integration Smoke Test
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          lfs: true
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: 'pip'
-
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Set Environment Variables
-        run: |
-          echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
-          echo "TOKENIZERS_PARALLELISM=false" >> $GITHUB_ENV
-        shell: bash
-
-      - name: Quick ChromaDB Connectivity Test
-        run: |
-          python3 << 'EOF'
-          import sys
-          from pathlib import Path
-          
-          try:
-              import chromadb
-              vector_db_path = Path("data_pipeline/data/vector_db")
-              
-              if not vector_db_path.exists():
-                  print("⚠️ ChromaDB path does not exist (expected in CI)")
-                  sys.exit(0)  # Don't fail if DB doesn't exist in CI
-              
-              client = chromadb.PersistentClient(path=str(vector_db_path))
-              collection_name = "frontshift_handbooks"
-              
-              try:
-                  collection = client.get_collection(collection_name)
-                  count = collection.count()
-                  print(f"✅ ChromaDB connected: {count} documents")
-              except Exception as e:
-                  print(f"⚠️ Collection not found: {e}")
-                  sys.exit(0)  # Don't fail if collection doesn't exist
-          except ImportError:
-              print("⚠️ chromadb not installed")
-              sys.exit(0)
-          except Exception as e:
-              print(f"⚠️ ChromaDB test skipped: {e}")
-              sys.exit(0)
-          EOF
-        continue-on-error: true
-
-      - name: Single RAG Query Test
-        run: |
-          python3 << 'EOF'
-          import sys
-          from pathlib import Path
-          
-          # Add project root to path
-          project_root = Path.cwd()
-          if str(project_root) not in sys.path:
-              sys.path.insert(0, str(project_root))
-          
-          try:
-              from ml_pipeline.rag.rag_query_utils import retrieve_context
-              
-              # Test single query
-              docs, metas = retrieve_context("test query", None, top_k=2)
-              print(f"✅ RAG query test passed: Retrieved {len(docs)} documents")
-          except Exception as e:
-              print(f"⚠️ RAG query test skipped: {e}")
-              # Don't fail - this is a smoke test
-          EOF
-        continue-on-error: true
+        continue-on-error: false
 
   code-quality:
     name: Code Quality
@@ -151,6 +68,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: 'pip'
+          cache-dependency-path: chat_pipeline/requirements.txt
 
       - name: Install Code Quality Tools
         run: |
@@ -160,19 +78,19 @@ jobs:
       - name: Check Code Formatting with Black
         run: |
           # Check formatting without modifying files
-          black --check ml_pipeline/ --exclude=".*" || echo "⚠️ Code formatting issues found (non-blocking)"
-        continue-on-error: true
+          black --check chat_pipeline/ --exclude=".*" || echo "⚠️ Code formatting issues found (non-blocking)"
+        continue-on-error: false
 
       - name: Run Flake8 Linting
         run: |
           # Run flake8 with basic configuration
-          flake8 ml_pipeline/ --max-line-length=120 --exclude=".*,__pycache__" --count --statistics || echo "⚠️ Linting issues found (non-blocking)"
-        continue-on-error: true
+          flake8 chat_pipeline/ --max-line-length=120 --exclude=".*,__pycache__" --count --statistics || echo "⚠️ Linting issues found (non-blocking)"
+        continue-on-error: false
 
   summary:
     name: Test Summary
     runs-on: ubuntu-latest
-    needs: [unit-tests, integration-smoke-test, code-quality]
+    needs: [unit-tests, code-quality]
     if: always()
 
     steps:
@@ -183,9 +101,7 @@ jobs:
           echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Unit Tests | ${{ needs.unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Integration Smoke Test | ${{ needs.integration-smoke-test.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Code Quality | ${{ needs.code-quality.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "These are fast feedback tests for feature branches." >> $GITHUB_STEP_SUMMARY
           echo "Full pipeline runs on merge to main." >> $GITHUB_STEP_SUMMARY
-

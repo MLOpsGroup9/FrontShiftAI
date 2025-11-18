@@ -1,0 +1,29 @@
+logging:
+  level: INFO
+  to_file: false
+
+wandb:
+  project: FrontShiftAI
+  entity: group9mlops-northeastern-university
+  disable: true
+
+eval:
+  summary_output: chat_pipeline/results/smoke_test_summary.json
+  slice_fields: [category, company_name]
+  pipeline_overrides:
+    generation:
+      backend: auto
+  main:
+    test_dir: chat_pipeline/evaluation/test_questions
+    output_dir: chat_pipeline/results/smoke_test_main
+    max_examples: 5
+  slices:
+    enabled: false
+    test_dir: chat_pipeline/evaluation/test_questions/slices
+    output_dir: chat_pipeline/results/smoke_test_slices
+    max_examples: 5
+
+tuning:
+  enabled: false
+  output_dir: chat_pipeline/results/smoke_test_tuning
+  max_examples: 3

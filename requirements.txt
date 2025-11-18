@@ -51,12 +51,18 @@ apache-airflow-providers-postgres
 
 #exp tracking
 wandb
-mlflow>=2.10.0
 
-#config 
-pyyaml
-pyttest
-rank_bm25
-aiohttp
-transformers
-tqdm
+#sst,tts,sts
+gTTS
+pygame
+sounddevice
+scipy
+faster-whisper
+groq
+python-dotenv
+edge-tts
+simpleaudio
+pydub
+
+
+dvc[gs]

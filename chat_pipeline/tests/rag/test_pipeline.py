@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from rag import pipeline
+from chat_pipeline.rag import pipeline
 
 
 def test_call_component_filters_kwargs():

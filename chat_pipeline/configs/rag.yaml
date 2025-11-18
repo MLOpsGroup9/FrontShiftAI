@@ -18,6 +18,8 @@ pipeline:
   generation:
     template_key: general_prompt_1
     stream: false
+    backend: mercury          # options: auto, local, hf, mercury, qwen
+    hf_model_name: Qwen/Qwen2.5-3B-Instruct
     streaming_overrides: {}
 
 streaming:
