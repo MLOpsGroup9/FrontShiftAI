@@ -49,8 +49,8 @@ jobs:
       - name: Sync vector DB from GCS
         run: |
           mkdir -p chat_pipeline/data_pipeline/data/vector_db
-          gsutil -m rsync -r gs://frontshiftai-data/vector_db chat_pipeline/data_pipeline/data/vector_db
-          echo "CHROMA_DIR=chat_pipeline/data_pipeline/data/vector_db" >> $GITHUB_ENV
+          gsutil -m rsync -r gs://frontshiftai-data/vector_db/ chat_pipeline/data_pipeline/data/vector_db
+          echo "CHROMA_DIR=chat_pipeline/data_pipeline/data/vector_db/" >> $GITHUB_ENV
         shell: bash
 
       - name: Run Smoke Tests (unit-level, mocked LLM + tiny DB fixtures)
