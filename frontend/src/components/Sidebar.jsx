@@ -9,6 +9,8 @@ const Sidebar = ({
   onLoadChat,
   onDeleteChat,
   currentChatId,
+  userInfo,
+  onLogout,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -42,6 +44,41 @@ const Sidebar = ({
           <h1 className="text-xl font-semibold text-white tracking-tight">FrontShiftAI</h1>
         </div>
       </div>
+
+      {/* User Info */}
+      {userInfo && (
+        <div className="px-4 py-3 border-b border-white/5 bg-white/5">
+          <div className="flex items-center justify-between">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white/90 truncate">
+                {userInfo.email}
+              </p>
+              <p className="text-xs text-white/50 truncate mt-0.5">
+                {userInfo.company}
+              </p>
+            </div>
+            <button
+              onClick={onLogout}
+              className="ml-2 p-2 hover:bg-white/10 rounded-lg transition-all group"
+              title="Logout"
+            >
+              <svg 
+                className="w-4 h-4 text-white/60 group-hover:text-white transition-colors" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" 
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Search Bar */}
       <div className="px-4 py-3 border-b border-white/5">

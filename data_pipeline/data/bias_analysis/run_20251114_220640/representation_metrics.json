@@ -1,0 +1,55 @@
+{
+  "industry": {
+    "unique": 2,
+    "gini": 0.06647398843853769,
+    "entropy": 0.9872122362466582,
+    "ratio_imbalance": 1.3066666666492444,
+    "top_5": {
+      "Retail": 98,
+      "Healthcare": 75
+    }
+  },
+  "org": {
+    "unique": 1,
+    "gini": 0.0,
+    "entropy": -0.0,
+    "ratio_imbalance": 0.9999999999942197,
+    "top_5": {
+      "General Business": 173
+    }
+  },
+  "doc_type": {
+    "unique": 1,
+    "gini": 0.0,
+    "entropy": -0.0,
+    "ratio_imbalance": 0.9999999999942197,
+    "top_5": {
+      "handbook": 173
+    }
+  },
+  "company": {
+    "unique": 4,
+    "gini": 0.08815028901530275,
+    "entropy": 1.9811654934315437,
+    "ratio_imbalance": 1.5757575757098257,
+    "top_5": {
+      "Lunds Byerlys": 52,
+      "Holiday Market": 46,
+      "Crouse Medical Practice": 42,
+      "Healthcare Services Group": 33
+    }
+  },
+  "policy_tags": {
+    "unique": 53,
+    "gini": 0.5625477149547172,
+    "entropy": 4.688377601374348,
+    "ratio_imbalance": 31.999999967999997,
+    "top_5": {
+      "": 32,
+      "REST": 29,
+      "HARASSMENT": 9,
+      "PTO": 8,
+      "FMLA": 7
+    }
+  }
+}

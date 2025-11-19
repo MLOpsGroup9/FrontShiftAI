@@ -15,10 +15,13 @@ const Login = ({ onLoginSuccess }) => {
     try {
       const response = await login(email, password);
       
+      console.log('🔐 Login response:', response);  // DEBUG
+      
       // Store auth data in localStorage
       localStorage.setItem('access_token', response.access_token);
       localStorage.setItem('user_email', response.email);
       localStorage.setItem('user_company', response.company);
+      localStorage.setItem('user_role', response.role);  // ← ADDED THIS LINE
       
       // Notify parent component
       onLoginSuccess(response);
@@ -107,14 +110,20 @@ const Login = ({ onLoginSuccess }) => {
 
           {/* Demo Credentials */}
           <div className="mt-6 pt-6 border-t border-white/10">
-            <p className="text-xs text-white/40 mb-2">Demo Credentials:</p>
-            <div className="space-y-1">
-              <p className="text-xs text-white/50">
-                Email: <span className="text-white/70">user@crousemedical.com</span>
-              </p>
-              <p className="text-xs text-white/50">
-                Password: <span className="text-white/70">password123</span>
-              </p>
+            <p className="text-xs text-white/40 mb-3">Demo Credentials:</p>
+            <div className="space-y-3">
+              <div className="bg-white/5 p-3 rounded-lg">
+                <p className="text-xs text-white/50 mb-1">Regular User:</p>
+                <p className="text-xs text-white/70">user@crousemedical.com / password123</p>
+              </div>
+              <div className="bg-white/5 p-3 rounded-lg">
+                <p className="text-xs text-white/50 mb-1">Company Admin:</p>
+                <p className="text-xs text-white/70">admin@crousemedical.com / admin123</p>
+              </div>
+              <div className="bg-white/5 p-3 rounded-lg">
+                <p className="text-xs text-white/50 mb-1">Super Admin:</p>
+                <p className="text-xs text-white/70">admin@group9.com / admin123</p>
+              </div>
             </div>
           </div>
         </div>

@@ -4,6 +4,8 @@ import ChatArea from './components/ChatArea';
 import MessageInput from './components/MessageInput';
 import ConnectionStatus from './components/ConnectionStatus';
 import Login from './components/Login';
+import SuperAdminDashboard from './components/SuperAdminDashboard';
+import CompanyAdminDashboard from './components/CompanyAdminDashboard';
 import { ragQuery, logout, getUserInfo } from './services/api';
 
 function App() {
@@ -32,7 +34,7 @@ function App() {
       const email = localStorage.getItem('user_email');
       const company = localStorage.getItem('user_company');
       
-      if (token && email && company) {
+      if (token && email) {
         try {
           // Verify token is still valid
           const userData = await getUserInfo();
@@ -65,7 +67,8 @@ function App() {
   const handleLoginSuccess = (loginData) => {
     setUserInfo({
       email: loginData.email,
-      company: loginData.company
+      company: loginData.company,
+      role: loginData.role
     });
     setIsAuthenticated(true);
   };
@@ -190,7 +193,7 @@ function App() {
 
     try {
       console.log('📤 Sending query to backend:', message);
-      const response = await ragQuery(message, null, 4);
+      const response = await ragQuery(message, null, 2);
       console.log('📥 Received response:', response);
       
       const assistantMessage = {
@@ -227,10 +230,9 @@ function App() {
       let errorMsg = 'Sorry, I encountered an error.';
       if (error.message === 'Not authenticated') {
         errorMsg = '🔒 Session expired. Please log in again.';
-        // Auto logout after 2 seconds
         setTimeout(() => handleLogout(), 2000);
       } else if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
-        errorMsg = '🔌 Cannot connect to backend. Please ensure the backend server is running on port 8001.';
+        errorMsg = '🔌 Cannot connect to backend. Please ensure the backend server is running on port 8000.';
       } else if (error.response?.data?.detail) {
         errorMsg = `Backend error: ${error.response.data.detail}`;
       }
@@ -282,7 +284,16 @@ function App() {
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
-  // Main app (authenticated)
+  // Route based on user role
+  if (userInfo?.role === 'super_admin') {
+    return <SuperAdminDashboard onLogout={handleLogout} userInfo={userInfo} />;
+  }
+
+  if (userInfo?.role === 'company_admin') {
+    return <CompanyAdminDashboard onLogout={handleLogout} userInfo={userInfo} />;
+  }
+
+  // Regular user - show chat interface
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0a0f] via-[#1a1a24] to-[#0a0a0f] relative overflow-hidden">
       <div className="fixed top-1/4 right-1/4 w-96 h-96 bg-gradient-to-r from-white/10 to-gray-500/10 rounded-full blur-3xl opacity-20 animate-float-orb pointer-events-none z-0"></div>
@@ -333,7 +344,6 @@ function App() {
         </div>
       </div>
 
-      {/* Connection Status Indicator */}
       <ConnectionStatus />
     </div>
   );

@@ -1,0 +1,19 @@
+filename,total,valid,invalid,issues,timestamp
+Finance_Home_Bank_chunks.jsonl,49,49,0,,2025-11-18 19:09:44
+Construction_Kinyon_Construction_chunks.jsonl,36,36,0,,2025-11-18 19:09:44
+FieldServiceTechnicians_CRA_Staffing_chunks.jsonl,15,15,0,,2025-11-18 19:09:44
+Retail_Holiday_Market_chunks.jsonl,46,46,0,,2025-11-18 19:09:45
+Hospitality_Alta_Peruvian_Lodge_chunks.jsonl,28,28,0,,2025-11-18 19:09:45
+Cleaning_Maintenance_AFL_Cleaning_Services_chunks.jsonl,20,20,0,,2025-11-18 19:09:45
+Finance_Old_National_Bank_chunks.jsonl,66,66,0,,2025-11-18 19:09:45
+FieldServiceTechnicians_Jacob_Heating_and_Cooling_chunks.jsonl,47,47,0,,2025-11-18 19:09:45
+Logistics_O_Neill_Logistics_chunks.jsonl,40,40,0,,2025-11-18 19:09:45
+Healthcare_Crouse_Medical_Practice_chunks.jsonl,42,40,2,NonEnglish,2025-11-18 19:09:45
+Manufacturing_B_G_Foods_chunks.jsonl,56,56,0,,2025-11-18 19:09:46
+Logistics_Buchheit_Logistics_chunks.jsonl,94,93,1,DuplicateHash,2025-11-18 19:09:46
+Manufacturing_End_Policies_Manufacturing_chunks.jsonl,36,36,0,,2025-11-18 19:09:46
+Hospitality_Western_University_Hospitality_Services_chunks.jsonl,24,23,1,DuplicateHash,2025-11-18 19:09:46
+Retail_Lunds___Byerlys_chunks.jsonl,52,52,0,,2025-11-18 19:09:46
+Healthcare_Healthcare_Services_Group_chunks.jsonl,33,33,0,,2025-11-18 19:09:46
+Construction_TNT_Construction_chunks.jsonl,68,68,0,,2025-11-18 19:09:47
+Cleaning_Maintenance_Prestige_Janitorial_Service_chunks.jsonl,16,15,1,DuplicateHash,2025-11-18 19:09:47

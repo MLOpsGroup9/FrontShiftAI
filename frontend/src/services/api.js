@@ -10,7 +10,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000, // 30 second timeout for long RAG queries
+  timeout: 120000, // 120 second timeout for long RAG queries
 });
 
 // Add request interceptor for debugging
