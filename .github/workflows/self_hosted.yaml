@@ -32,6 +32,13 @@ jobs:
           echo "TOKENIZERS_PARALLELISM=false" >> $GITHUB_ENV
         shell: bash
 
+      - name: Load local env file
+        run: |
+          set -a
+          source chat_pipeline/.env
+          set +a
+        shell: bash
+
       - name: Auth to GCP
         uses: google-github-actions/auth@v2
         with:
