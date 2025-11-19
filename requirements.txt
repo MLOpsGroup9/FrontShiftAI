@@ -1,4 +1,5 @@
 # Core LLM & RAG Frameworks
+openai
 langchain>=0.2.0
 langchain-community>=0.2.0
 langchain-core
@@ -7,6 +8,7 @@ sentence-transformers>=2.6.0
 # llama-cpp-python>=0.2.84
 huggingface_hub>=0.23.0
 torch
+streamlit
 
 # ML / Data Science Utilities
 scikit-learn>=1.5.0
@@ -39,10 +41,28 @@ PyPDF2>=3.0.1
 # Data Versioning & Validation
 dvc
 great_expectations
-
+gcsfs
 
 # Airflow Orchestration
 apache-airflow==3.0.0
 apache-airflow-providers-sqlite
 apache-airflow-providers-http
 apache-airflow-providers-postgres
+
+#exp tracking
+wandb
+
+#sst,tts,sts
+gTTS
+pygame
+sounddevice
+scipy
+faster-whisper
+groq
+python-dotenv
+edge-tts
+simpleaudio
+pydub
+
+
+dvc[gs]

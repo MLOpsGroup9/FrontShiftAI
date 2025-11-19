@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+
+=======
+>>>>>>> f4be250ff65f7a0c0977bc35eae49f0207aa0faa
 ![Python](https://img.shields.io/badge/Python-3.12+-blue)
 ![DVC](https://img.shields.io/badge/Data%20Version%20Control-DVC-orange)
 ![Pytest](https://img.shields.io/badge/Tests-Passed-green)
@@ -28,13 +32,21 @@ Key components include:
 - An agentic orchestration layer for HR workflow automation (in development)  
 - Voice-based interaction features for hands-free accessibility (in development)  
 
+<<<<<<< HEAD
+The platform integrates a fully automated **data pipeline**, an **evaluation and registry pipeline**, and a **Streamlit-based AI interface**, all orchestrated through CI/CD workflows.
+=======
 An optional Airflow DAG (`dvc_repro_manual_dag.py`) in `data_pipeline/dags/` can automatically trigger the pipeline when new URLs are added to `data_pipeline/data/url.json`, or it can be triggered manually via the Airflow UI.
+>>>>>>> f4be250ff65f7a0c0977bc35eae49f0207aa0faa
 
 ---
 
 ## 2. Automated Data Pipeline Overview
 
+<<<<<<< HEAD
+The data pipeline is modular, test-driven, and reproducible. Each stage is independently testable using `pytest`. The pipeline supports ingestion, preprocessing, validation, and embedding of HR policy documents.
+=======
 The data pipeline is fully modular, test-driven, and reproducible. Each stage is independently testable using `pytest`. The pipeline supports ingestion, preprocessing, validation, and embedding of HR policy documents.
+>>>>>>> f4be250ff65f7a0c0977bc35eae49f0207aa0faa
 
 | Stage | Script | Functionality |
 |--------|--------|----------------|
@@ -55,8 +67,11 @@ pytest -v --disable-warnings
 ---
 
 ## 3. Dataset Information
+<<<<<<< HEAD
+=======
 
 ### 3.1 Dataset Card
+>>>>>>> f4be250ff65f7a0c0977bc35eae49f0207aa0faa
 
 | Attribute | Description |
 |------------|-------------|
@@ -66,6 +81,10 @@ pytest -v --disable-warnings
 | **Formats** | PDF, JSONL, CSV |
 | **Data Types** | Policy text, metadata, extracted tables |
 
+<<<<<<< HEAD
+Example sources include healthcare, retail, manufacturing, construction, and finance company handbooks.
+
+=======
 ### 3.2 Example Sources
 - Healthcare: [Crouse Medical Handbook (2019)](https://crousemed.com/media/1449/cmp-employee-handbook.pdf)  
 - Retail: [Lunds & Byerlys Handbook (2019)](https://corporate.lundsandbyerlys.com/wp-content/uploads/2024/05/EmployeeHandbook_20190926.pdf)  
@@ -74,10 +93,52 @@ pytest -v --disable-warnings
 - Finance: [Old National Bank Handbook](https://www.oldnational.com/globalassets/onb-site/onb-documents/onb-about-us/onb-team-member-handbook/team-member-handbook.pdf)  
 
 ### 3.3 Rights and Privacy
+>>>>>>> f4be250ff65f7a0c0977bc35eae49f0207aa0faa
 All handbooks are publicly available and used solely for educational and research purposes. No personal or sensitive data is included.
 
 ---
 
+<<<<<<< HEAD
+## 4. Repository Structure (Updated)
+
+```bash
+FrontShiftAI/
+│
+├── data_pipeline/               # Data ingestion, validation, embedding, bias analysis
+│
+├── ml_pipeline/                 # Model evaluation, experiment tracking, and registry management
+│   ├── evaluation/              # Evaluation modules for RAG, bias, and sensitivity
+│   ├── tracking/                # W&B and registry integration
+│   ├── utils/                   # Logging and helper utilities
+│   ├── eval_pipeline_runner.py  # Orchestrates all evaluation stages
+│   └── __init__.py
+│
+├── models/                      # Temporary model export (from CI/CD)
+├── models_registry/             # Versioned model registry with metadata.json
+├── wandb/                       # W&B run cache for experiment tracking
+│
+├── streamlit_app/               # Streamlit interface for RAG and HR chatbot
+│   ├── core/
+│   │   └── preload.py           # Loads latest model from models_registry and ChromaDB
+│   ├── pages/
+│   │   ├── admin_admins.py
+│   │   ├── admin_companies.py
+│   │   ├── admin_users.py
+│   │   └── user_chat.py
+│   ├── utils/
+│   │   ├── auth_utils.py
+│   │   └── db_utils.py
+│   └── app.py
+│
+├── .github/
+│   └── workflows/
+│       └── ci_cd_pipeline.yml   # Unified GitHub Actions pipeline for CI/CD and notifications
+│
+├── logs/                        # Global logs
+├── requirements.txt
+├── README.md
+└── .env
+=======
 ## 4. Repository Structure
 
 ```bash
@@ -188,22 +249,194 @@ FrontShiftAI/
 ├── License.md                                   # Project license (MIT)
 └── requirements.txt                             # Root-level dependency list
 
+>>>>>>> f4be250ff65f7a0c0977bc35eae49f0207aa0faa
 ```
 
 ---
 
+<<<<<<< HEAD
+## 5. ML Evaluation and Model Registry Pipeline
+
+### Purpose
+The `ml_pipeline/` folder implements an automated model evaluation and versioning system that ensures all models undergo the following processes before being registered.
+
+| Stage | Script | Description |
+|--------|---------|-------------|
+| RAG Evaluation | `rag_eval_metrics.py` | Tests retrieval and contextual understanding using similarity and precision metrics |
+| Bias Detection | `bias_detection.py` | Detects variations in model performance across companies |
+| Sensitivity Analysis | `sensitivity_analysis.py` | Checks model robustness to paraphrased queries |
+| Unified Summary | `unified_eval_summary.py` | Aggregates metrics and logs to Weights & Biases |
+| Model Registry | `push_to_registry.py` | Creates versioned folders under `models_registry/` with metadata and model artifacts |
+
+### Outputs
+- `ml_pipeline/evaluation/eval_results/*.csv` and `.json`
+- `models/Llama-3.2-3B-Instruct-Q4_K_S.gguf` (temporary)
+- `models_registry/llama_3b_instruct_vN/` with `metadata.json` and model weights
+
+Example metadata file:
+```json
+{
+    "model_name": "llama_3b_instruct",
+    "version": "v7",
+    "timestamp": "2025-11-03T09:25:57",
+    "metrics": {
+        "mean_semantic_sim": 0.5425,
+        "mean_precision_at_k": 1.0
+    }
+}
+```
+
+---
+
+## 6. CI/CD Pipeline (In Review)
+
+The project includes a CI/CD system for automated evaluation, quality gates, and deployment.
+
+**Status:** Implemented but not yet active (awaiting configuration)
+
+**Location:** `ml_pipeline/ci_cd/`
+
+**Documentation:** See `ml_pipeline/ci_cd/README.md` for details
+
+**Activation:** After GitHub Secrets configuration and merge to main branch
+
+---
+
+## 6.1 CI/CD Workflow (GitHub Actions)
+
+A unified CI/CD pipeline automates training, validation, model registry updates, and notifications.  
+The workflow runs on every push to `main` or via manual dispatch.
+
+**Note:** Workflows are currently configured to only trigger on the `main` branch. They will not run automatically on feature branches.
+
+### Workflow Stages
+
+```
+                          ┌────────────────────────────┐
+                          │        GitHub Repo          │
+                          │  (FrontShiftAI - main)      │
+                          └────────────┬────────────────┘
+                                       │
+                          ▼──────────────────────────▼
+                 ┌─────────────────────────────────────────┐
+                 │         CI JOB: Train & Validate         │
+                 │─────────────────────────────────────────│
+                 │ Checkout repo with Git LFS               │
+                 │ Install Python + dependencies            │
+                 │ Run eval_pipeline_runner.py              │
+                 │ Compute RAG, Bias, Sensitivity metrics   │
+                 │ Generate unified_summary.json            │
+                 │ Export model and log to W&B              │
+                 │ Upload artifacts to GitHub               │
+                 └─────────────────────────────────────────┘
+                                       │
+                                       ▼
+                 ┌─────────────────────────────────────────┐
+                 │        CD JOB: Deploy to Registry        │
+                 │─────────────────────────────────────────│
+                 │ Download artifacts                      │
+                 │ Verify summary and model files           │
+                 │ Push to local model registry             │
+                 │ Upload models_registry/ as artifact      │
+                 └─────────────────────────────────────────┘
+                                       │
+                                       ▼
+           ┌────────────────────────────────────────────────────┐
+           │         NOTIFY JOB: Email Notification              │
+           │────────────────────────────────────────────────────│
+           │ Runs after both CI + CD                            │
+           │ Sends Gmail SMTP message with results              │
+           │ Includes unified metrics and status summary        │
+           └────────────────────────────────────────────────────┘
+```
+
+### Notifications
+Email notifications are automatically sent using Gmail SMTP credentials stored in GitHub Secrets:
+- `EMAIL_SENDER`
+- `EMAIL_PASSWORD`
+- `EMAIL_RECEIVER`
+
+These contain build results, mean semantic similarity, precision@k, and model registry version.
+
+---
+
+## 7. Streamlit Application Integration
+
+The Streamlit app dynamically loads the **latest registered model** and ChromaDB collection.  
+The preload script now automatically detects the latest version from `models_registry/`:
+
+```python
+# streamlit_app/core/preload.py
+
+def get_latest_model_path():
+    versions = sorted(MODELS_DIR.glob("llama_3b_instruct_v*"), reverse=True)
+    latest = versions[0]
+    model_file = next(latest.glob("*.gguf"), None)
+    return model_file
+```
+
+This ensures that whenever CI/CD registers a new model, the Streamlit application automatically uses it without manual updates.
+
+---
+
+## 8. Running the Pipelines
+=======
 ## 5. Running the Pipeline
+>>>>>>> f4be250ff65f7a0c0977bc35eae49f0207aa0faa
 
 ```bash
 # Clone the repository
 git clone https://github.com/MLOpsGroup9/FrontShiftAI.git
 cd FrontShiftAI
 
+<<<<<<< HEAD
+# Environment setup
+=======
 # Set up environment
+>>>>>>> f4be250ff65f7a0c0977bc35eae49f0207aa0faa
 conda create -n frontshiftai python=3.12 -y
 conda activate frontshiftai
 pip install -r requirements.txt
 
+<<<<<<< HEAD
+# Run data pipeline
+dvc repro
+
+# Run model evaluation
+python ml_pipeline/eval_pipeline_runner.py
+
+# Launch Streamlit interface
+streamlit run streamlit_app/app.py
+```
+
+---
+
+## 9. Testing and Validation
+
+Run all pipeline and ML evaluation tests:
+
+```bash
+pytest -v --disable-warnings
+```
+
+To verify coverage:
+
+```bash
+pytest --cov=data_pipeline --cov=ml_pipeline --cov-report=term-missing
+```
+
+---
+
+## 10. License
+
+This project is released under the MIT License.  
+See `License.md` for details.
+
+---
+
+## 11. Repository
+
+=======
 # Pull versioned data
 dvc pull
 
@@ -267,4 +500,5 @@ See `License.md` for details.
 
 ## 8. Repository
 
+>>>>>>> f4be250ff65f7a0c0977bc35eae49f0207aa0faa
 https://github.com/MLOpsGroup9/FrontShiftAI

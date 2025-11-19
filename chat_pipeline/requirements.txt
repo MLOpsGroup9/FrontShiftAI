@@ -1,0 +1,17 @@
+openai
+aiohttp
+chromadb>=0.5.0
+langchain-core
+langchain-community>=0.2.0
+sentence-transformers>=2.6.0
+transformers
+huggingface_hub
+torch
+rank-bm25
+tiktoken
+tqdm
+pyyaml
+python-dotenv
+wandb
+pytest
+llama-cpp-python

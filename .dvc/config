@@ -1,4 +1,0 @@
-[core]
-    remote = local_store
-['remote "local_store"']
-    url = /Users/sriks/Documents/Projects/DVC_Store
