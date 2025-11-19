@@ -38,6 +38,21 @@ jobs:
           echo "HF_API_TOKEN=dummy" >> $GITHUB_ENV
         shell: bash
 
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
+        with:
+            credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud SDK (gsutil)
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Sync vector DB from GCS
+        run: |
+          mkdir -p chat_pipeline/data_pipeline/data/vector_db
+          gsutil -m rsync -r gs://frontshiftai-data/vector_db chat_pipeline/data_pipeline/data/vector_db
+          echo "CHROMA_DIR=chat_pipeline/data_pipeline/data/vector_db" >> $GITHUB_ENV
+        shell: bash
+
       - name: Run Smoke Tests (unit-level, mocked LLM + tiny DB fixtures)
         run: |
           pytest chat_pipeline/tests -q

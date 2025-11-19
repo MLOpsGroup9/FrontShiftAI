@@ -1,8 +1,8 @@
 # Utils
 
-Shared helpers used across the chat pipeline.
+Shared, lightweight helpers used across the pipeline.
 
 - `logger.py`: Structured logging setup used by CLI, evaluation runner, and registry helpers.
-- `email_notifier.py`: Simple SMTP notifier for sending run summaries/alerts.
+- `email_notifier.py`: SMTP notifier for sending run summaries or alerts.
 
-These modules are dependency-light and safe to import from any stage (RAG pipeline, evaluation, or tracking).
+Safe to import from any stage (RAG, evaluation, tracking). No heavy dependencies.***

@@ -48,6 +48,13 @@ def _next_version(model_name: str, registry: Path) -> str:
     return f"v{max(existing, default=0) + 1}"
 
 
+def get_next_version(model_name: str) -> str:
+    """Public helper to compute the next version for a given model."""
+
+    registry = _ensure_registry_dir()
+    return _next_version(model_name, registry)
+
+
 def _copy_artifact(src: Path, dest_dir: Path) -> Optional[str]:
     if not src or not src.exists():
         return None

@@ -233,7 +233,7 @@ def _resolve_num_samples(data: Any, default: int) -> int:
 def _resolve_output_path(category_name: str) -> Path:
     base = CATEGORY_DIR_MAP.get(category_name, Path(__file__).resolve().parent / category_name)
     base.mkdir(parents=True, exist_ok=True)
-    return base / "dataset.json"
+    return base / "dataset.jsonl"
 
 
 def load_generation_plan() -> Tuple[GenerationSettings, List[CategoryConfig]]:

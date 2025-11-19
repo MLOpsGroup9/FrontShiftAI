@@ -68,6 +68,7 @@ def test_persist_intermediate_writes_answer_and_contexts(tmp_path: Path):
         test_questions_dir=tmp_path,
         output_dir=tmp_path,
     )
+    runner._example_records = []
 
     example = _record_to_example(
         "category",
@@ -82,7 +83,8 @@ def test_persist_intermediate_writes_answer_and_contexts(tmp_path: Path):
         contexts=["ctx1", "ctx2"],
         index=1,
     )
+    runner._export_examples()
 
-    written = json.loads((tmp_path / "example_0001.json").read_text(encoding="utf-8"))
-    assert written["answer"] == "answer text"
-    assert written["contexts"] == ["ctx1", "ctx2"]
+    written = json.loads((tmp_path / "examples.json").read_text(encoding="utf-8"))
+    assert written[0]["answer"] == "answer text"
+    assert written[0]["contexts"] == ["ctx1", "ctx2"]

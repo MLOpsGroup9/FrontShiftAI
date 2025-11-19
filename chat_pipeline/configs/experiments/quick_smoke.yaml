@@ -12,13 +12,13 @@ eval:
   slice_fields: [slice]
   pipeline_overrides:
     generation:
-      backend: auto
+      backend: mercury
   main:
-    test_dir: chat_pipeline/evaluation/test_questions
+    test_dir: chat_pipeline/evaluation/test_questions/general
     output_dir: chat_pipeline/results/smoke_test_main
     max_examples: 5
   slices:
-    enabled: false
+    enabled: True
     test_dir: chat_pipeline/evaluation/test_questions/slices
     output_dir: chat_pipeline/results/smoke_test_slices
     max_examples: 5

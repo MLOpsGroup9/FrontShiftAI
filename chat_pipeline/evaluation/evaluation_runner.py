@@ -73,6 +73,34 @@ def _iter_question_records(root: Path) -> Iterable[Tuple[str, Dict[str, Any]]]:
     if not root.exists():
         raise FileNotFoundError(f"Test question directory not found: {root}")
 
+    # Support a single dataset file directly under the root (e.g., .../slices/dataset.jsonl).
+    direct_files = [
+        path
+        for path in (
+            root / "dataset.json",
+            root / "dataset.jsonl",
+        )
+        if path.exists()
+    ]
+    if direct_files:
+        dataset_file = direct_files[0]
+        try:
+            with dataset_file.open("r", encoding="utf-8") as handle:
+                for line in handle:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        payload = json.loads(line)
+                    except Exception:
+                        logger.debug("Skipping malformed JSON line in %s", dataset_file)
+                        continue
+                    if isinstance(payload, dict):
+                        yield root.name, payload
+        except Exception as exc:
+            logger.warning("Failed to load %s: %s", dataset_file, exc)
+        return
+
     for category_dir in sorted(root.iterdir()):
         if not category_dir.is_dir():
             continue
@@ -129,11 +157,15 @@ def _record_to_example(category: str, record: Dict[str, Any]) -> Optional[Evalua
         or record.get("answer")
         or ""
     )
-    metadata = {
+    metadata: Dict[str, Any] = {
         "category": category,
         "source": record.get("source"),
         "company_name": record.get("company") or record.get("company_name"),
     }
+    # Carry through additional metadata fields when present (e.g., slice/domain/difficulty).
+    for key in ("slice", "domain", "difficulty"):
+        if record.get(key) is not None:
+            metadata[key] = record[key]
     return EvaluationExample(
         query=question.strip(),
         reference_answer=str(reference_answer or ""),
@@ -201,6 +233,7 @@ class EvaluationRunner:
         self.config = config
         self.results: List[MetricResult] = []
         self._examples: List[Tuple[EvaluationExample, MetricResult]] = []
+        self._example_records: List[Dict[str, Any]] = []
         self._judge_client = JudgeClient()
         self._wandb = WandbTracker(config)
         self._config_overrides = config_overrides or {}
@@ -220,6 +253,7 @@ class EvaluationRunner:
                 duration = time.perf_counter() - start
                 logger.debug("Processed example %s in %.2fs", idx, duration)
 
+        self._export_examples()
         self._export_summary()
         self._export_bias_report()
         self._wandb.finish()
@@ -277,7 +311,6 @@ class EvaluationRunner:
         contexts: List[str],
         index: int,
     ) -> None:
-        self.config.output_dir.mkdir(parents=True, exist_ok=True)
         record = {
             "index": index,
             "question": example.query,
@@ -287,9 +320,17 @@ class EvaluationRunner:
             "contexts": contexts,
             "metrics": metrics.__dict__,
         }
-        output_file = self.config.output_dir / f"example_{index:04d}.json"
-        with output_file.open("w", encoding="utf-8") as handle:
-            json.dump(record, handle, indent=2, ensure_ascii=False)
+        self._example_records.append(record)
+
+    def _export_examples(self) -> None:
+        if not self._example_records:
+            logger.warning("No examples to write.")
+            return
+        self.config.output_dir.mkdir(parents=True, exist_ok=True)
+        examples_path = self.config.output_dir / "examples.json"
+        with examples_path.open("w", encoding="utf-8") as handle:
+            json.dump(self._example_records, handle, indent=2, ensure_ascii=False)
+        logger.info("Wrote consolidated examples to %s", examples_path)
 
     def _export_summary(self) -> None:
         if not self.results:

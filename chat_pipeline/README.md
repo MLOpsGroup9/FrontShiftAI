@@ -1,33 +1,35 @@
-# Chat Pipeline (RAG + Evaluation)
+# Chat Pipeline
 
-This package owns the retrieval-augmented generation pipeline and the evaluation harness used for smoke tests and full runs.
+This package implements two things:
+- A retrieval-augmented generation (RAG) service: fetch context from a vector store, build a prompt, and call an LLM backend.
+- An evaluation harness: generate test questions, run the pipeline, judge answers, and aggregate metrics and bias slices.
 
-## Layout
-- `rag/` – RAG pipeline (`pipeline.py`), generator backends, retriever/reranker, prompt templates, and config helpers.
-- `configs/` – Runtime configs: `rag.yaml`, experiment configs (`experiments/quick_smoke.yaml`, `experiments/full_eval.yaml`), and seed data definitions (`test_set.yaml`).
-- `evaluation/` – Test question generation, LLM-as-a-judge scoring, evaluation runner, and artifacts (examples, summaries, bias reports).
-- `utils/` – Logging and notification helpers.
-- `tracking/` – W&B logging helpers and a simple local model registry (`models_registry/`).
-- `results/` – Default destination for evaluation artifacts (per-example JSON, summaries, bias reports, tuning runs).
+## What lives where
+- `rag/`: RAG pipeline entrypoint (`pipeline.py`), retriever/reranker, generator backends, prompt templates, config helpers.
+- `configs/`: Runtime configuration (`rag.yaml`), experiment configs (`experiments/`), seed question definitions (`test_set.yaml`).
+- `evaluation/`: Question generation, judge client, evaluation runner, artifacts written under `results/`.
+- `tracking/`: W&B helpers and the model registry writer (metadata-only).
+- `utils/`: Logging setup and email notifier.
+- `results/`: Default output location for eval runs (examples.json, summary.json, bias_report.json).
 
-## Running the pipeline
-- **Smoke test:** `python -m chat_pipeline.cli --config chat_pipeline/configs/experiments/quick_smoke.yaml`
-- **Full eval:** `python -m chat_pipeline.cli --config chat_pipeline/configs/experiments/full_eval.yaml`
-- The RAG stack can also be driven directly via `chat_pipeline/rag/pipeline.py` if you need ad-hoc queries.
+## How to run
+- Smoke run (small set, mocked/tiny fixtures): `python -m chat_pipeline.cli --config chat_pipeline/configs/experiments/quick_smoke.yaml`
+- Full evaluation: `python -m chat_pipeline.cli --config chat_pipeline/configs/experiments/full_eval.yaml`
+- Direct RAG call (ad hoc): `python -m chat_pipeline.rag.pipeline --question "..." --company "..."` (see `pipeline.py` for flags).
 
-## Configuration and backends
-- The generation backend comes from `GENERATION_BACKEND` in `.env`; it overrides `configs/rag.yaml` and experiment overrides (`local`, `hf`, `mercury`, or `auto`).
-- Retrieval, reranking, and prompt options live in `configs/rag.yaml`.
-- Experiment-specific knobs (which dataset, output paths, slice fields) live in `configs/experiments/*.yaml`.
+## Backends and config precedence
+- Generation backend comes from `GENERATION_BACKEND` in the environment; it overrides `rag.yaml` and any experiment overrides. Supported values: `local`, `hf`, `mercury`, `auto`.
+- Retrieval, reranking, prompt choices, and caches are configured in `configs/rag.yaml`.
+- Eval-specific knobs (datasets, outputs, slice fields, overrides) live in `configs/experiments/*.yaml`.
 
-## Outputs
-- Per-example results: `results/<run_label>/example_XXXX.json` (includes question, metadata, contexts, answer, and metrics).
-- Aggregates: `summary.json` and `bias_report.json` inside each run directory.
-- Top-level experiment summary: `results/experiment_summary.json` (path configurable per experiment config).
+## Artifacts produced
+- Per-run consolidated examples: `results/<run_label>/examples.json` with question, metadata, contexts, answer, metrics.
+- Aggregates: `results/<run_label>/summary.json` and `results/<run_label>/bias_report.json`.
+- Experiment-level summary: `results/experiment_summary.json` (path can be set per experiment config).
 
-## Notes
-- Hugging Face and Mercury backends require tokens/keys in `.env`.
-- Local LLaMA relies on `llama-cpp-python`; set `LLAMA_N_GPU_LAYERS` (e.g., `-1` for full offload) if your build has GPU support.
+## Environment essentials
+- Set tokens/keys for the backends you use (OpenAI, HF, Mercury) in `.env`.
+- For local LLaMA via llama-cpp, ensure your build has GPU support if you set `LLAMA_N_GPU_LAYERS=-1`.
 
 ## Sample `.env`
 ```
