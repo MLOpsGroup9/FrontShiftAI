@@ -2,7 +2,7 @@ name: Chat Pipeline Smoke Test
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, raghav-branch ]
   pull_request:
     branches: [ main ]
 
