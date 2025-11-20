@@ -13,6 +13,9 @@ pyjwt
 # Database
 sqlalchemy>=2.0.0
 
+# Email validation (required by pydantic for EmailStr)
+email-validator>=2.0.0
+
 # LLM & RAG Core
 openai
 langchain>=0.2.0
@@ -41,3 +44,4 @@ pandas>=2.2.0
 pytest>=7.4.0
 pytest-asyncio
 httpx
+pytest-cov
