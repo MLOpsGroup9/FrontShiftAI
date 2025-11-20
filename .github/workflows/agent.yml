@@ -4,7 +4,7 @@ on:
     branches: [ '**' ]
     paths:
       - 'backend/agents/**'
-      - '.github/workflows/agents.yml'
+      - '.github/workflows/agent.yml'
   pull_request:
     branches: [ '**' ]
     paths:
