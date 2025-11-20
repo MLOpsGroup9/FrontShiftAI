@@ -1,0 +1,66 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [ '**' ]  # All branches
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend.yml'
+  pull_request:
+    branches: [ '**' ]  # All branches
+    paths:
+      - 'frontend/**'
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js 20
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Install dependencies
+      run: |
+        cd frontend
+        npm ci
+    
+    - name: Lint frontend (if you have linting)
+      run: |
+        cd frontend
+        npm run lint || echo "⚠️ No lint script found"
+      continue-on-error: true
+    
+    - name: Build frontend
+      run: |
+        cd frontend
+        npm run build
+      env:
+        VITE_API_URL: http://localhost:8000
+    
+    - name: Check build size
+      run: |
+        cd frontend
+        du -sh dist/
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: frontend-build-${{ github.ref_name }}
+        path: frontend/dist/
+        retention-days: 7
+    
+    - name: Build summary
+      if: success()
+      run: echo "✅ Frontend build successful on branch ${{ github.ref_name }}"
+    
+    - name: Build failure
+      if: failure()
+      run: echo "❌ Frontend build failed on branch ${{ github.ref_name }}"

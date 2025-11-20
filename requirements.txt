@@ -49,10 +49,10 @@ apache-airflow-providers-sqlite
 apache-airflow-providers-http
 apache-airflow-providers-postgres
 
-#exp tracking
+# Experiment Tracking
 wandb
 
-#sst,tts,sts
+# Speech & Audio (STT, TTS, STS)
 gTTS
 pygame
 sounddevice
@@ -64,5 +64,14 @@ edge-tts
 simpleaudio
 pydub
 
-
+# Additional Utilities
+python-multipart
+requests
 dvc[gs]
+pytest 
+pytest-asyncio 
+httpx
+
+# Agent & LangGraph Dependencies (NEW)
+langgraph==0.2.28
+python-dateutil==2.9.0
