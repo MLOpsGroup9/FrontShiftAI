@@ -10,7 +10,6 @@ on:
     paths:
       - 'backend/agents/**'
   workflow_dispatch:
-
 jobs:
   test-pto-agent:
     name: Test PTO Agent
@@ -40,31 +39,31 @@ jobs:
       - name: Test PTO Agent Tools
         run: |
           cd backend
-          pytest agents/tests/test_pto_tools.py -v --cov=agents/pto/tools --cov-report=term
+          pytest agents/test_agents/test_pto_tools.py -v --cov=agents/pto/tools --cov-report=term
         continue-on-error: true
         
       - name: Test PTO Agent Nodes
         run: |
           cd backend
-          pytest agents/tests/test_pto_nodes.py -v --cov=agents/pto/nodes --cov-report=term
+          pytest agents/test_agents/test_pto_nodes.py -v --cov=agents/pto/nodes --cov-report=term
         continue-on-error: true
         
       - name: Test PTO Agent State
         run: |
           cd backend
-          pytest agents/tests/ -k "state" -v --cov=agents/pto/state --cov-report=term
+          pytest agents/test_agents/ -k "state" -v --cov=agents/pto/state --cov-report=term
         continue-on-error: true
         
       - name: Test PTO Agent Workflow
         run: |
           cd backend
-          pytest agents/tests/ -k "agent" -v --cov=agents/pto/agent --cov-report=term
+          pytest agents/test_agents/ -k "agent" -v --cov=agents/pto/agent --cov-report=term
         continue-on-error: true
         
       - name: Run all PTO agent tests with coverage
         run: |
           cd backend
-          pytest agents/tests/ -v --cov=agents/pto --cov-report=term --cov-report=xml --cov-report=html
+          pytest agents/test_agents/ -v --cov=agents/pto --cov-report=term --cov-report=xml --cov-report=html
         continue-on-error: false
         
       - name: Upload coverage to Codecov
@@ -99,7 +98,6 @@ jobs:
         run: |
           echo "❌ PTO Agent tests failed on branch ${{ github.ref_name }}"
           echo "Check the logs above for details"
-
   future-agents:
     name: Future Agents Placeholder
     runs-on: ubuntu-latest
@@ -115,7 +113,7 @@ jobs:
           echo ""
           echo "To add a new agent:"
           echo "  1. Create agents/[agent_name]/ directory"
-          echo "  2. Add tests in agents/tests/test_[agent_name].py"
+          echo "  2. Add tests in agents/test_agents/test_[agent_name].py"
           echo "  3. Add test job in this workflow"
           echo ""
           echo "Current status: PTO Agent ✅"
