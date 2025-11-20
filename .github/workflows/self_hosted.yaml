@@ -32,6 +32,13 @@ jobs:
           echo "TOKENIZERS_PARALLELISM=false" >> $GITHUB_ENV
         shell: bash
 
+      - name: Load local env file
+        run: |
+          set -a
+          source chat_pipeline/.env
+          set +a
+        shell: bash
+
       - name: Auth to GCP
         uses: google-github-actions/auth@v2
         with:
@@ -66,20 +73,3 @@ jobs:
             exit 1
           fi
           echo "✅ Evaluation results generated successfully"
-
-      - name: Send Email Notification
-        if: always()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          username: ${{ secrets.EMAIL_SENDER }}
-          password: ${{ secrets.EMAIL_PASSWORD }}
-          to: ${{ secrets.EMAIL_RECEIVER }}
-          from: ${{ secrets.EMAIL_SENDER }}
-          subject: "Self-Hosted Full Eval ${{ job.status }} - ${{ github.workflow }}"
-          body: |
-            Repository: ${{ github.repository }}
-            Workflow: ${{ github.workflow }}
-            Run: ${{ github.run_id }}
-            Status: ${{ job.status }}

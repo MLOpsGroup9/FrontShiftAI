@@ -30,6 +30,7 @@ jobs:
         run: |
           echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
           echo "TOKENIZERS_PARALLELISM=false" >> $GITHUB_ENV
+          echo "INCEPTION_API_KEY=${{ secrets.INCEPTION_API_KEY }}" >> $GITHUB_ENV
         shell: bash
 
       - name: Auth to GCP
@@ -43,7 +44,7 @@ jobs:
       - name: Sync vector DB from GCS
         run: |
           mkdir -p chat_pipeline/data_pipeline/data/vector_db
-          gsutil -m rsync -r gs://frontshiftai-data/vector_db chat_pipeline/data_pipeline/data/vector_db
+          gsutil -m rsync -r gs://frontshiftai-data/data/vector_db/ chat_pipeline/data_pipeline/data/vector_db
           echo "CHROMA_DIR=chat_pipeline/data_pipeline/data/vector_db" >> $GITHUB_ENV
         shell: bash
 
