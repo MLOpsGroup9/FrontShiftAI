@@ -2,41 +2,91 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
 import MessageInput from './components/MessageInput';
-import { ragQuery } from './services/api';
+import ConnectionStatus from './components/ConnectionStatus';
+import Login from './components/Login';
+import SuperAdminDashboard from './components/SuperAdminDashboard';
+import CompanyAdminDashboard from './components/CompanyAdminDashboard';
+import { logout, getUserInfo, ptoChatAgent } from './services/api';
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userInfo, setUserInfo] = useState(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  
   const [activeView, setActiveView] = useState('home');
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
-    // Load from localStorage or default to 320px (w-80)
     const saved = localStorage.getItem('sidebarWidth');
     return saved ? parseInt(saved, 10) : 320;
   });
   const [isResizing, setIsResizing] = useState(false);
   const [currentChatId, setCurrentChatId] = useState(null);
   const [chatHistory, setChatHistory] = useState(() => {
-    // Load chat history from localStorage
     const saved = localStorage.getItem('chatHistory');
     return saved ? JSON.parse(saved) : [];
   });
-  // Save sidebar width to localStorage whenever it changes
+
+  // Check authentication on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem('access_token');
+      const email = localStorage.getItem('user_email');
+      const company = localStorage.getItem('user_company');
+      
+      if (token && email) {
+        try {
+          // Verify token is still valid
+          const userData = await getUserInfo();
+          setUserInfo(userData);
+          setIsAuthenticated(true);
+        } catch (error) {
+          console.error('Token validation failed:', error);
+          // Clear invalid token
+          logout();
+          setIsAuthenticated(false);
+        }
+      } else {
+        setIsAuthenticated(false);
+      }
+      
+      setIsCheckingAuth(false);
+    };
+
+    checkAuth();
+  }, []);
+
   useEffect(() => {
     localStorage.setItem('sidebarWidth', sidebarWidth.toString());
   }, [sidebarWidth]);
 
-  // Save chat history to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
   }, [chatHistory]);
 
-  // Create new chat
+  const handleLoginSuccess = (loginData) => {
+    setUserInfo({
+      email: loginData.email,
+      company: loginData.company,
+      role: loginData.role
+    });
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    logout();
+    setIsAuthenticated(false);
+    setUserInfo(null);
+    setMessages([]);
+    setChatHistory([]);
+    setCurrentChatId(null);
+  };
+
   const handleNewChat = () => {
     setCurrentChatId(null);
     setMessages([]);
   };
 
-  // Load a chat from history
   const handleLoadChat = (chatId) => {
     const chat = chatHistory.find(c => c.id === chatId);
     if (chat) {
@@ -53,7 +103,6 @@ function App() {
     }
   };
 
-  // Get formatted time for chat grouping
   const getTimeLabel = (timestamp) => {
     const now = new Date();
     const chatDate = new Date(timestamp);
@@ -67,7 +116,6 @@ function App() {
     return `${Math.floor(diffDays / 30)} months ago`;
   };
 
-  // Group chats by time
   const groupedChats = chatHistory.reduce((groups, chat) => {
     const timeLabel = getTimeLabel(chat.timestamp);
     if (!groups[timeLabel]) {
@@ -77,13 +125,11 @@ function App() {
     return groups;
   }, {});
 
-  // Format chat history for sidebar
   const formattedChatHistory = Object.entries(groupedChats).map(([time, chats]) => ({
     time,
     chats: chats
-      .sort((a, b) => (b.lastUpdated || b.timestamp) - (a.lastUpdated || a.timestamp)) // Sort by most recent first within group
+      .sort((a, b) => (b.lastUpdated || b.timestamp) - (a.lastUpdated || a.timestamp))
       .map(chat => {
-        // Get first user message for title
         const firstUserMessage = chat.messages.find(m => m.role === 'user');
         const title = firstUserMessage?.content 
           ? (firstUserMessage.content.length > 50 
@@ -97,19 +143,16 @@ function App() {
         };
       })
   })).sort((a, b) => {
-    // Sort groups by most recent first
     const aTime = a.chats[0]?.timestamp || 0;
     const bTime = b.chats[0]?.timestamp || 0;
     return bTime - aTime;
   });
 
-
-  // Handle mouse move for resizing
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (!isResizing) return;
       e.preventDefault();
-      const newWidth = Math.min(Math.max(240, e.clientX), 600); // Min 240px, Max 600px
+      const newWidth = Math.min(Math.max(240, e.clientX), 600);
       setSidebarWidth(newWidth);
     };
 
@@ -139,7 +182,6 @@ function App() {
   }, [isResizing]);
 
   const handleSendMessage = async (message) => {
-    // Add user message to chat
     const userMessage = {
       role: 'user',
       content: message,
@@ -150,20 +192,25 @@ function App() {
     setIsLoading(true);
 
     try {
-      // Call RAG API
-      const response = await ragQuery(message, null, 4);
+      console.log('📤 Sending message to PTO agent:', message);
       
-      // Add assistant response to chat
+      // Use PTO agent instead of RAG
+      const response = await ptoChatAgent(message);
+      console.log('📥 Received PTO agent response:', response);
+      
       const assistantMessage = {
         role: 'assistant',
-        content: response.answer,
-        sources: response.sources || [],
+        content: response.response,
+        ptoInfo: {
+          requestCreated: response.request_created,
+          requestId: response.request_id,
+          balanceInfo: response.balance_info
+        },
         timestamp: Date.now(),
       };
       const finalMessages = [...updatedMessages, assistantMessage];
       setMessages(finalMessages);
 
-      // Update or create chat in history
       setChatHistory(prev => {
         const chatId = currentChatId || Date.now().toString();
         const existingChat = prev.find(c => c.id === currentChatId);
@@ -175,28 +222,35 @@ function App() {
         };
 
         if (currentChatId && existingChat) {
-          // Update existing chat
           return prev.map(chat => 
             chat.id === currentChatId ? chatData : chat
           );
         } else {
-          // Create new chat
           setCurrentChatId(chatId);
           return [chatData, ...prev];
         }
       });
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('❌ Error sending message:', error);
+      
+      let errorMsg = 'Sorry, I encountered an error.';
+      if (error.message === 'Not authenticated') {
+        errorMsg = '🔒 Session expired. Please log in again.';
+        setTimeout(() => handleLogout(), 2000);
+      } else if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
+        errorMsg = '🔌 Cannot connect to backend. Please ensure the backend server is running on port 8000.';
+      } else if (error.response?.data?.detail) {
+        errorMsg = `Backend error: ${error.response.data.detail}`;
+      }
+      
       const errorMessage = {
         role: 'assistant',
-        content: error.response?.data?.detail || 'Sorry, I encountered an error. Please check if the backend API is running.',
-        sources: [],
+        content: errorMsg,
         timestamp: Date.now(),
       };
       const finalMessages = [...updatedMessages, errorMessage];
       setMessages(finalMessages);
 
-      // Save error message to history as well
       setChatHistory(prev => {
         const chatId = currentChatId || Date.now().toString();
         const existingChat = prev.find(c => c.id === currentChatId);
@@ -221,13 +275,34 @@ function App() {
     }
   };
 
+  // Show loading while checking auth
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#0a0a0f] via-[#1a1a24] to-[#0a0a0f] flex items-center justify-center">
+        <div className="text-white/60">Loading...</div>
+      </div>
+    );
+  }
+
+  // Show login page if not authenticated
+  if (!isAuthenticated) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  // Route based on user role
+  if (userInfo?.role === 'super_admin') {
+    return <SuperAdminDashboard onLogout={handleLogout} userInfo={userInfo} />;
+  }
+
+  if (userInfo?.role === 'company_admin') {
+    return <CompanyAdminDashboard onLogout={handleLogout} userInfo={userInfo} />;
+  }
+
+  // Regular user - show chat interface
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0a0f] via-[#1a1a24] to-[#0a0a0f] relative overflow-hidden">
-
-      {/* Floating Orb */}
       <div className="fixed top-1/4 right-1/4 w-96 h-96 bg-gradient-to-r from-white/10 to-gray-500/10 rounded-full blur-3xl opacity-20 animate-float-orb pointer-events-none z-0"></div>
 
-      {/* Main Layout */}
       <div className="relative z-10 flex min-h-screen">
         <Sidebar 
           activeView={activeView} 
@@ -238,8 +313,10 @@ function App() {
           onLoadChat={handleLoadChat}
           onDeleteChat={handleDeleteChat}
           currentChatId={currentChatId}
+          userInfo={userInfo}
+          onLogout={handleLogout}
         />
-        {/* Resize Handle */}
+        
         <div
           className={`fixed top-0 h-screen w-3 cursor-col-resize z-20 transition-all ${
             isResizing ? 'bg-white/10' : ''
@@ -255,10 +332,11 @@ function App() {
             isResizing ? 'bg-white/40' : 'bg-white/10 hover:bg-white/30'
           }`}></div>
         </div>
-        {/* Resizing Overlay */}
+        
         {isResizing && (
           <div className="fixed inset-0 bg-black/0 z-[15] cursor-col-resize" />
         )}
+        
         <div 
           className="flex-1 flex flex-col min-h-screen"
           style={{ marginLeft: `${sidebarWidth}px` }}
@@ -270,6 +348,8 @@ function App() {
           <MessageInput onSendMessage={handleSendMessage} isLoading={isLoading} messages={messages} />
         </div>
       </div>
+
+      <ConnectionStatus />
     </div>
   );
 }

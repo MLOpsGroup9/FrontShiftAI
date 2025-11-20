@@ -1,0 +1,124 @@
+name: Agent Tests
+
+on:
+  push:
+    branches: [ '**' ]
+    paths:
+      - 'backend/agents/**'
+      - '.github/workflows/agents.yml'
+  pull_request:
+    branches: [ '**' ]
+    paths:
+      - 'backend/agents/**'
+  workflow_dispatch:
+
+jobs:
+  test-pto-agent:
+    name: Test PTO Agent
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+    
+    - name: Install dependencies
+      run: |
+        cd backend
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio pytest-cov
+    
+    - name: Test PTO Agent Tools
+      run: |
+        cd backend
+        pytest agents/tests/test_pto_tools.py -v --cov=agents/pto/tools --cov-report=term
+      continue-on-error: true
+    
+    - name: Test PTO Agent Nodes
+      run: |
+        cd backend
+        pytest agents/tests/test_pto_nodes.py -v --cov=agents/pto/nodes --cov-report=term
+      continue-on-error: true
+    
+    - name: Test PTO Agent State
+      run: |
+        cd backend
+        pytest agents/tests/ -k "state" -v --cov=agents/pto/state --cov-report=term
+      continue-on-error: true
+    
+    - name: Test PTO Agent Workflow
+      run: |
+        cd backend
+        pytest agents/tests/ -k "agent" -v --cov=agents/pto/agent --cov-report=term
+      continue-on-error: true
+    
+    - name: Run all PTO agent tests with coverage
+      run: |
+        cd backend
+        pytest agents/tests/ -v --cov=agents/pto --cov-report=term --cov-report=xml --cov-report=html
+      continue-on-error: false
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./backend/coverage.xml
+        flags: pto-agent
+        name: pto-agent-coverage
+      continue-on-error: true
+    
+    - name: Upload HTML coverage report
+      uses: actions/upload-artifact@v3
+      with:
+        name: pto-agent-coverage-html
+        path: backend/htmlcov/
+        retention-days: 7
+    
+    - name: PTO Agent summary
+      if: success()
+      run: |
+        echo "✅ PTO Agent tests passed on branch ${{ github.ref_name }}"
+        echo "📊 Coverage reports generated"
+        echo ""
+        echo "Test Breakdown:"
+        echo "  - Tools: ✓"
+        echo "  - Nodes: ✓"
+        echo "  - State: ✓"
+        echo "  - Workflow: ✓"
+    
+    - name: PTO Agent failure
+      if: failure()
+      run: |
+        echo "❌ PTO Agent tests failed on branch ${{ github.ref_name }}"
+        echo "Check the logs above for details"
+  
+  future-agents:
+    name: Future Agents Placeholder
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Future agents info
+      run: |
+        echo "🚀 Future agents will be tested here:"
+        echo ""
+        echo "Planned agents:"
+        echo "  1. 💰 Expense Report Agent"
+        echo "  2. 📅 Scheduling Agent"
+        echo "  3. 🎯 [Your third agent]"
+        echo ""
+        echo "To add a new agent:"
+        echo "  1. Create agents/[agent_name]/ directory"
+        echo "  2. Add tests in agents/tests/test_[agent_name].py"
+        echo "  3. Add test job in this workflow"
+        echo ""
+        echo "Current status: PTO Agent ✅"
