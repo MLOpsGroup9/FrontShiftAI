@@ -115,25 +115,4 @@ jobs:
           echo "  - LLM client configuration"
           echo "  - State validation errors"
 
-  future-agents:
-    name: Future Agents Placeholder
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Future agents info
-        run: |
-          echo "🚀 Future agents will be tested here:"
-          echo ""
-          echo "Planned agents:"
-          echo "  1. 💰 Expense Report Agent"
-          echo "  2. 📅 Scheduling Agent"
-          echo "  3. 🛠️ Equipment Request Agent"
-          echo ""
-          echo "To add a new agent:"
-          echo "  1. Create agents/[agent_name]/ directory"
-          echo "  2. Add tests in agents/test_agents/test_[agent_name].py"
-          echo "  3. Add test job in this workflow"
-          echo ""
-          echo "Current status:"
-          echo "  - PTO Agent: ✅"
-          echo "  - HR Ticket Agent: ✅"
+  
