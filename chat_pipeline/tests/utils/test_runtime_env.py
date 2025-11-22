@@ -19,3 +19,10 @@ def test_remote_timeout_seconds(monkeypatch):
     assert runtime_env.remote_timeout_seconds() == 30
     monkeypatch.setenv("CHAT_PIPELINE_REMOTE_TIMEOUT", "invalid")
     assert runtime_env.remote_timeout_seconds(default=50) == 50
+
+
+def test_remote_request_delay_seconds(monkeypatch):
+    monkeypatch.setenv("CHAT_PIPELINE_REMOTE_REQUEST_DELAY", "3.5")
+    assert runtime_env.remote_request_delay_seconds() == 3.5
+    monkeypatch.setenv("CHAT_PIPELINE_REMOTE_REQUEST_DELAY", "-1")
+    assert runtime_env.remote_request_delay_seconds() == 1.0
