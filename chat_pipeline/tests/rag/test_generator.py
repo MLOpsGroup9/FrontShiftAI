@@ -67,8 +67,8 @@ def test_generation_streams_when_requested(monkeypatch):
 
 def test_run_retrieval_with_reranker(monkeypatch):
     reranked = [
-        {"document": "docA", "metadata": {"rank": 1}},
-        {"document": "docB", "metadata": {"rank": 2}},
+        {"document": "docA", "metadata": {"rank": 1}, "score": 0.9},
+        {"document": "docB", "metadata": {"rank": 2}, "score": 0.5},
     ]
     monkeypatch.setattr(generator, "two_stage_reranker", lambda **_: reranked)
 
@@ -83,7 +83,8 @@ def test_run_retrieval_with_reranker(monkeypatch):
     )
 
     assert docs == ["docA", "docB"]
-    assert metadata == [{"rank": 1}, {"rank": 2}]
+    assert metadata[0]["rank"] == 1
+    assert metadata[0]["reranker_score"] == pytest.approx(0.9)
 
 
 def test_run_retrieval_invalid_backend():

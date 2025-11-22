@@ -21,7 +21,22 @@ def vector_retrieval(
     if not result.get("documents"):
         return [], []
 
-    return result["documents"][0], result["metadatas"][0]
+    documents = result["documents"][0]
+    raw_meta = (result.get("metadatas") or [[]])[0] or []
+    metadata: List[Dict] = [dict(item or {}) for item in raw_meta]
+    if len(metadata) < len(documents):
+        metadata.extend({} for _ in range(len(documents) - len(metadata)))
+    distances = (result.get("distances") or [[]])
+    distance_row = distances[0] if distances else []
+    for idx, meta in enumerate(metadata):
+        if distance_row and idx < len(distance_row):
+            try:
+                distance = float(distance_row[idx])
+                meta["retrieval_distance"] = distance
+                meta["retrieval_score"] = 1.0 / (1.0 + distance)
+            except (TypeError, ValueError):
+                continue
+    return documents, metadata
 
 
 def bm25_retrieval(
@@ -52,6 +67,11 @@ def bm25_retrieval(
         score = getattr(doc, "score", None) or meta.get("score")
         if score is not None:
             meta.setdefault("bm25_score", score)
+        if meta.get("bm25_score") is not None:
+            try:
+                meta["retrieval_score"] = float(meta["bm25_score"])
+            except (TypeError, ValueError):
+                pass
         metadatas.append(meta)
 
     return documents, metadatas

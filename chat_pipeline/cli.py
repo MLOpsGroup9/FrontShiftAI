@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -16,6 +18,7 @@ from chat_pipeline.utils.logger import setup_logging
 
 
 logger = logging.getLogger(__name__)
+DEFAULT_PARALLELISM = "sequential"
 
 
 def _load_config(path: Path) -> Dict[str, Any]:
@@ -38,6 +41,9 @@ def _run_eval_block(
     wandb_project: Optional[str],
     wandb_entity: Optional[str],
     disable_wandb: bool,
+    wandb_tags: Optional[List[str]] = None,
+    wandb_run_name: Optional[str] = None,
+    mode: str = "full",
 ) -> Dict[str, Any]:
     test_dir = Path(block["test_dir"])
     output_dir = _ensure_dir(Path(block.get("output_dir", f"chat_pipeline/outputs/eval_{label}")))
@@ -52,8 +58,10 @@ def _run_eval_block(
         disable_wandb=disable_wandb,
         dataset_label=label,
         slice_fields=slice_fields,
+        wandb_tags=wandb_tags or [],
+        wandb_run_name=wandb_run_name,
     )
-    runner = EvaluationRunner(cfg, config_overrides=pipeline_overrides or {})
+    runner = EvaluationRunner(cfg, config_overrides=pipeline_overrides or {}, mode=mode)
     runner.run()
 
     summary_path = output_dir / "summary.json"
@@ -66,6 +74,107 @@ def _run_eval_block(
     }
 
 
+def _build_eval_payload(
+    label: str,
+    block: Dict[str, Any],
+    slice_fields: List[str],
+    pipeline_overrides: Optional[Dict[str, Any]],
+    wandb_project: Optional[str],
+    wandb_entity: Optional[str],
+    disable_wandb: bool,
+    wandb_tags: Optional[List[str]],
+    wandb_run_name: Optional[str],
+    mode: str,
+) -> Dict[str, Any]:
+    return {
+        "label": label,
+        "block": block,
+        "slice_fields": slice_fields,
+        "pipeline_overrides": pipeline_overrides,
+        "wandb_project": wandb_project,
+        "wandb_entity": wandb_entity,
+        "disable_wandb": disable_wandb,
+        "wandb_tags": wandb_tags or [],
+        "wandb_run_name": wandb_run_name,
+        "mode": mode,
+    }
+
+
+def _derive_run_type_tag(config_path: Path) -> str:
+    stem = config_path.stem.lower()
+    if "full" in stem:
+        return "run-type:full-eval"
+    if "core" in stem:
+        return "run-type:core-eval"
+    if "smoke" in stem:
+        return "run-type:smoke-test"
+    return f"run-type:{stem}"
+
+
+def _eval_block_worker(payload: Dict[str, Any]) -> Dict[str, Any]:
+    return _run_eval_block(**payload)
+
+
+def _maybe_run_with_ray(payloads: List[Dict[str, Any]]) -> Optional[List[Dict[str, Any]]]:
+    try:
+        import ray  # type: ignore
+    except ImportError:  # pragma: no cover - optional dependency
+        logger.warning("Ray not installed; falling back to sequential execution.")
+        return None
+
+    if not payloads:
+        return []
+
+    needs_shutdown = False
+    if not ray.is_initialized():  # type: ignore[attr-defined]
+        ray.init(ignore_reinit_error=True, log_to_driver=False)  # type: ignore[attr-defined]
+        needs_shutdown = True
+
+    @ray.remote  # type: ignore[attr-defined]
+    def _ray_runner(payload: Dict[str, Any]) -> Dict[str, Any]:
+        return _eval_block_worker(payload)
+
+    futures = [_ray_runner.remote(payload) for payload in payloads]  # type: ignore[attr-defined]
+    results = ray.get(futures)  # type: ignore[attr-defined]
+    if needs_shutdown:
+        ray.shutdown()  # type: ignore[attr-defined]
+    return results
+
+
+def _execute_eval_payloads(payloads: List[Dict[str, Any]], parallelism: str) -> List[Dict[str, Any]]:
+    if not payloads:
+        return []
+
+    if parallelism == "ray" and len(payloads) > 1:
+        ray_results = _maybe_run_with_ray(payloads)
+        if ray_results is not None:
+            return ray_results
+
+    if parallelism == "multiprocessing" and len(payloads) > 1:
+        from multiprocessing import get_context
+
+        ctx = get_context("spawn")
+        worker_count = min(len(payloads), os.cpu_count() or 1) or 1
+        with ctx.Pool(processes=worker_count) as pool:
+            return pool.map(_eval_block_worker, payloads)
+
+    return [_eval_block_worker(payload) for payload in payloads]
+
+
+def _determine_parallelism(cfg: Dict[str, Any]) -> str:
+    execution_cfg = cfg.get("execution_modes") or {}
+    override_mode = os.getenv("CHAT_PIPELINE_EXECUTION_MODE")
+    if override_mode:
+        key = override_mode.strip().lower()
+    else:
+        key = "ci" if os.getenv("CI") else "local"
+    entry = execution_cfg.get(key) or execution_cfg.get("local", {})
+    parallelism = entry.get("parallelism")
+    if not parallelism:
+        return DEFAULT_PARALLELISM
+    return str(parallelism).lower()
+
+
 def _run_tuning(
     cfg: Dict[str, Any],
     tuning_cfg: Dict[str, Any],
@@ -73,6 +182,9 @@ def _run_tuning(
     wandb_project: Optional[str],
     wandb_entity: Optional[str],
     disable_wandb: bool,
+    wandb_tags: Optional[List[str]] = None,
+    run_name_prefix: Optional[str] = None,
+    run_timestamp: Optional[str] = None,
 ) -> Path:
     output_dir = _ensure_dir(Path(tuning_cfg.get("output_dir", "chat_pipeline/outputs/tuning")))
     max_examples = tuning_cfg.get("max_examples")
@@ -94,6 +206,9 @@ def _run_tuning(
             wandb_project=wandb_project,
             wandb_entity=wandb_entity,
             disable_wandb=disable_wandb,
+            wandb_tags=wandb_tags,
+            run_name_prefix=run_name_prefix,
+            run_timestamp=run_timestamp,
         )
     )
 
@@ -110,6 +225,9 @@ def _run_tuning(
                 wandb_project=wandb_project,
                 wandb_entity=wandb_entity,
                 disable_wandb=disable_wandb,
+                wandb_tags=wandb_tags,
+                run_name_prefix=run_name_prefix,
+                run_timestamp=run_timestamp,
             )
         )
 
@@ -128,13 +246,21 @@ def main(argv: Optional[List[str]] = None) -> None:
         default=Path("chat_pipeline/configs/experiments/quick_smoke.yaml"),
         help="Experiment config YAML",
     )
+    parser.add_argument("--debug", action="store_true", help="Enable verbose logging output.")
+    parser.add_argument(
+        "--mode",
+        choices=("full", "generate", "judge"),
+        default="full",
+        help="Run mode: full (default), generate-only, or judge-only.",
+    )
     args = parser.parse_args(argv)
 
     cfg = _load_config(args.config)
+    run_ts = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
 
     log_cfg = cfg.get("logging", {})
     setup_logging(
-        level=log_cfg.get("level"),
+        level="DEBUG" if args.debug else log_cfg.get("level"),
         to_file=log_cfg.get("to_file", False),
         log_dir=Path(log_cfg["log_dir"]) if log_cfg.get("log_dir") else None,
     )
@@ -142,53 +268,80 @@ def main(argv: Optional[List[str]] = None) -> None:
     eval_cfg = cfg.get("eval", {})
     slice_fields = eval_cfg.get("slice_fields", ["category", "company_name"])
     pipeline_overrides = eval_cfg.get("pipeline_overrides")
-    wandb_project = cfg.get("wandb", {}).get("project")
-    wandb_entity = cfg.get("wandb", {}).get("entity")
-    disable_wandb = cfg.get("wandb", {}).get("disable", True)
+    wandb_cfg = cfg.get("wandb", {}) or {}
+    wandb_project = wandb_cfg.get("project")
+    wandb_entity = wandb_cfg.get("entity")
+    disable_wandb = wandb_cfg.get("disable", True)
+    base_tags = list(wandb_cfg.get("tags") or [])
+    run_type_tag = _derive_run_type_tag(args.config)
+    if run_type_tag:
+        base_tags.append(run_type_tag)
+    wandb_tags = sorted({tag for tag in base_tags if tag})
+    run_mode_tag = f"mode:{args.mode}"
+    wandb_tags.append(run_mode_tag)
+    base_run_name = run_type_tag.replace("run-type:", "") if run_type_tag else args.config.stem.lower()
+    parallelism = _determine_parallelism(cfg)
 
     results: List[Dict[str, Any]] = []
+    eval_payloads: List[Dict[str, Any]] = []
 
     if "main" in eval_cfg:
-        results.append(
-            _run_eval_block(
-                label="main",
-                block=eval_cfg["main"],
-                slice_fields=slice_fields,
-                pipeline_overrides=pipeline_overrides,
-                wandb_project=wandb_project,
-                wandb_entity=wandb_entity,
-                disable_wandb=disable_wandb,
+            eval_payloads.append(
+                _build_eval_payload(
+                    label="main",
+                    block=eval_cfg["main"],
+                    slice_fields=slice_fields,
+                    pipeline_overrides=pipeline_overrides,
+                    wandb_project=wandb_project,
+                    wandb_entity=wandb_entity,
+                    disable_wandb=disable_wandb or args.mode == "generate",
+                    wandb_tags=wandb_tags,
+                    wandb_run_name=f"{base_run_name}-main-{run_ts}",
+                    mode=args.mode,
+                )
             )
-        )
 
     slices_block = eval_cfg.get("slices", {})
     if slices_block.get("enabled", False):
         path = Path(slices_block.get("test_dir", ""))
         if path.exists():
-            results.append(
-                _run_eval_block(
+            eval_payloads.append(
+                _build_eval_payload(
                     label="slices",
                     block=slices_block,
                     slice_fields=slice_fields,
                     pipeline_overrides=pipeline_overrides,
                     wandb_project=wandb_project,
                     wandb_entity=wandb_entity,
-                    disable_wandb=disable_wandb,
+                    disable_wandb=disable_wandb or args.mode == "generate",
+                    wandb_tags=wandb_tags,
+                    wandb_run_name=f"{base_run_name}-slices-{run_ts}",
+                    mode=args.mode,
                 )
             )
         else:
             logger.info("Slices dataset not found at %s; skipping slices eval.", path)
 
+    results.extend(_execute_eval_payloads(eval_payloads, parallelism))
+
     tuning_cfg = cfg.get("tuning", {})
     if tuning_cfg.get("enabled", False):
-        _run_tuning(
-            cfg=cfg,
-            tuning_cfg=tuning_cfg,
-            slice_fields=slice_fields,
-            wandb_project=wandb_project,
-            wandb_entity=wandb_entity,
-            disable_wandb=disable_wandb,
-        )
+        if args.mode != "full":
+            logger.info("Skipping tuning in '%s' mode.", args.mode)
+        else:
+            tuning_tags = sorted({*(wandb_tags or []), "tuning"})
+            tuning_prefix = f"{base_run_name}-tuning"
+            _run_tuning(
+                cfg=cfg,
+                tuning_cfg=tuning_cfg,
+                slice_fields=slice_fields,
+                wandb_project=wandb_project,
+                wandb_entity=wandb_entity,
+                disable_wandb=disable_wandb,
+                wandb_tags=tuning_tags,
+                run_name_prefix=tuning_prefix,
+                run_timestamp=run_ts,
+            )
 
     summary_path = Path(eval_cfg.get("summary_output", "chat_pipeline/outputs/experiment_summary.json"))
     _ensure_dir(summary_path.parent)

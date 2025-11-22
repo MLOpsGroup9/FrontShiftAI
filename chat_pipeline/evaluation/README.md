@@ -10,7 +10,7 @@ End-to-end evaluation of the RAG system: generate questions, run the pipeline, j
 - `configs/experiments/*.yaml`: Experiment definitions consumed by `chat_pipeline/cli.py` for smoke vs full runs.
 
 ## Outputs per run
-- `examples.json`: all questions with metadata, contexts, answers, and metrics.
+- `examples.jsonl`: all questions with metadata, contexts, answers, and metrics.
 - `summary.json`: averaged metrics (precision, recall, groundedness, relevance, etc.).
 - `bias_report.json`: slice-level averages for `groundedness`, `answer_relevance`, `factual_correctness` based on `slice_fields`.
 - Top-level experiment summary path configured via `summary_output` in the experiment config (defaults under `chat_pipeline/results/`).
