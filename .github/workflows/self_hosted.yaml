@@ -30,6 +30,7 @@ jobs:
         run: |
           echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
           echo "TOKENIZERS_PARALLELISM=false" >> $GITHUB_ENV
+          echo "CHAT_PIPELINE_ALLOW_HEAVY_FALLBACKS=1" >> $GITHUB_ENV
         shell: bash
 
       - name: Load local env file
@@ -54,13 +55,51 @@ jobs:
           echo "CHROMA_DIR=chat_pipeline/data_pipeline/data/vector_db" >> $GITHUB_ENV
         shell: bash
 
-      - name: Run Full Evaluation
+      - name: Set W&B Environment Variables
+        run: |
+          echo "WANDB_ENTITY=group9mlops-northeastern-university" >> $GITHUB_ENV
+          echo "WANDB_PROJECT=FrontShiftAI" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Generate Core Evaluation Responses
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
-          WANDB_ENTITY: group9mlops-northeastern-university
-          WANDB_PROJECT: FrontShiftAI
         run: |
-          python -m chat_pipeline.cli --config chat_pipeline/configs/experiments/full_eval.yaml
+          python -m chat_pipeline.cli --config chat_pipeline/configs/experiments/core_eval.yaml --mode generate --debug
+
+      - name: Judge Core Evaluation Responses
+        env:
+          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+        run: |
+          python -m chat_pipeline.cli --config chat_pipeline/configs/experiments/core_eval.yaml --mode judge --debug
+
+      - name: Verify Core Evaluation Results
+        run: |
+          if [ ! -f "chat_pipeline/results/core_experiment_summary.json" ]; then
+            echo "❌ chat_pipeline/results/core_experiment_summary.json not found"
+            exit 1
+          fi
+          if [ ! -f "chat_pipeline/results/core_eval_main/summary.json" ]; then
+            echo "❌ chat_pipeline/results/core_eval_main/summary.json not found"
+            exit 1
+          fi
+          if [ ! -f "chat_pipeline/results/core_eval_slices/summary.json" ]; then
+            echo "❌ chat_pipeline/results/core_eval_slices/summary.json not found"
+            exit 1
+          fi
+          echo "✅ Core evaluation results generated successfully"
+
+      - name: Generate Full Evaluation Responses
+        env:
+          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+        run: |
+          python -m chat_pipeline.cli --config chat_pipeline/configs/experiments/full_eval.yaml --mode generate --debug
+
+      - name: Judge Full Evaluation Responses
+        env:
+          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+        run: |
+          python -m chat_pipeline.cli --config chat_pipeline/configs/experiments/full_eval.yaml --mode judge --debug
 
       - name: Verify Evaluation Results
         run: |
@@ -73,3 +112,12 @@ jobs:
             exit 1
           fi
           echo "✅ Evaluation results generated successfully"
+
+      - name: Upload Evaluation Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: self-hosted-eval-results
+          path: |
+            chat_pipeline/results/
+            models/
+          retention-days: 30

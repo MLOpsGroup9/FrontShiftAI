@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import time
 from typing import Any, Dict
 
 import torch
@@ -12,7 +13,19 @@ import requests
 from openai import OpenAI
 from transformers import pipeline
 
+from chat_pipeline.utils.runtime_env import (
+    allow_heavy_fallbacks,
+    remote_max_attempts,
+    remote_retry_backoff,
+    remote_retry_initial_delay,
+    remote_timeout_seconds,
+)
+
 logger = logging.getLogger(__name__)
+REMOTE_TIMEOUT = remote_timeout_seconds()
+REMOTE_MAX_ATTEMPTS = remote_max_attempts()
+REMOTE_BACKOFF = remote_retry_backoff()
+REMOTE_BACKOFF_START = remote_retry_initial_delay()
 
 class JudgeClient:
     """Abstraction that prefers OpenAI GPT-4o-mini with HF fallbacks."""
@@ -40,6 +53,7 @@ class JudgeClient:
                 model=model_name or "gpt-4o-mini",
                 messages=[{"role": "user", "content": judge_prompt}],
                 temperature=0,
+                timeout=REMOTE_TIMEOUT,
             )
             text = response.choices[0].message.content.strip()
         else:
@@ -48,12 +62,10 @@ class JudgeClient:
                 try:
                     text = self._call_mercury(judge_prompt, mercury_key)
                 except Exception as exc:
-                    logger.warning("Mercury judge failed: %s; falling back to HF.", exc)
-                    model = os.getenv("JUDGE_MODEL", "Qwen/Qwen2.5-3B-Instruct")
-                    text = self._run_pipeline("hf-judge", model, judge_prompt)
+                    logger.warning("Mercury judge failed: %s; attempting heavy fallback.", exc)
+                    text = self._run_hf_fallback(judge_prompt)
             else:
-                model = os.getenv("JUDGE_MODEL", "Qwen/Qwen2.5-3B-Instruct")
-                text = self._run_pipeline("hf-judge", model, judge_prompt)
+                text = self._run_hf_fallback(judge_prompt)
 
         try:
             return json.loads(self._extract_json(text))
@@ -97,6 +109,12 @@ class JudgeClient:
             raise RuntimeError(f"{model_name} returned empty output.")
         return text
 
+    def _run_hf_fallback(self, prompt: str) -> str:
+        if not allow_heavy_fallbacks():
+            raise RuntimeError("Heavy HF judge fallback disabled. Enable CHAT_PIPELINE_ALLOW_HEAVY_FALLBACKS to use it.")
+        model = os.getenv("JUDGE_MODEL", "Qwen/Qwen2.5-3B-Instruct")
+        return self._run_pipeline("hf-judge", model, prompt)
+
     def _call_mercury(self, prompt: str, api_key: str) -> str:
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -109,20 +127,34 @@ class JudgeClient:
             "temperature": 0,
             "top_p": 0.9,
         }
-        resp = requests.post(
-            os.getenv("INCEPTION_API_BASE", "https://api.inceptionlabs.ai/v1") + "/chat/completions",
-            json=payload,
-            headers=headers,
-            timeout=60,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        if "choices" in data and data["choices"]:
-            message = data["choices"][0].get("message", {})
-            return (message.get("content") or "").strip()
-        if "content" in data:
-            return (data.get("content") or "").strip()
-        raise RuntimeError(f"Unexpected Mercury response: {data}")
+        attempts = REMOTE_MAX_ATTEMPTS
+        delay = REMOTE_BACKOFF_START
+        last_exc: Exception | None = None
+        base_url = os.getenv("INCEPTION_API_BASE", "https://api.inceptionlabs.ai/v1")
+        for attempt in range(1, attempts + 1):
+            try:
+                resp = requests.post(
+                    f"{base_url}/chat/completions",
+                    json=payload,
+                    headers=headers,
+                    timeout=REMOTE_TIMEOUT,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                if "choices" in data and data["choices"]:
+                    message = data["choices"][0].get("message", {})
+                    return (message.get("content") or "").strip()
+                if "content" in data:
+                    return (data.get("content") or "").strip()
+                raise RuntimeError(f"Unexpected Mercury response: {data}")
+            except Exception as exc:
+                last_exc = exc
+                logger.warning("Mercury judge attempt %s/%s failed: %s", attempt, attempts, exc)
+                if attempt == attempts:
+                    break
+                time.sleep(delay)
+                delay *= REMOTE_BACKOFF
+        raise RuntimeError("Mercury judge backend failed after multiple attempts.") from last_exc
 
 
 __all__ = ["JudgeClient"]

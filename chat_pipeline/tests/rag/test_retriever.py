@@ -19,6 +19,7 @@ def test_vector_retrieval_returns_documents(monkeypatch):
     response = {
         "documents": [["doc-1", "doc-2"]],
         "metadatas": [[{"id": 1}, {"id": 2}]],
+        "distances": [[0.2, 0.4]],
     }
     collection = DummyCollection(response)
 
@@ -30,7 +31,10 @@ def test_vector_retrieval_returns_documents(monkeypatch):
     docs, metadata = vector_retrieval("hello", top_k=2, company_name="ACME")
 
     assert docs == ["doc-1", "doc-2"]
-    assert metadata == [{"id": 1}, {"id": 2}]
+    assert metadata[0]["id"] == 1
+    assert metadata[1]["id"] == 2
+    assert metadata[0]["retrieval_distance"] == pytest.approx(0.2)
+    assert metadata[0]["retrieval_score"] == pytest.approx(1 / 1.2)
     assert collection.last_args["n_results"] == 2
     assert collection.last_args["where"]["company"] == "ACME"
 
@@ -77,4 +81,5 @@ def test_bm25_retrieval(monkeypatch):
 
     assert docs == ["alpha", "beta"]
     assert metadata[0]["bm25_score"] == 0.9
+    assert metadata[0]["retrieval_score"] == pytest.approx(0.9)
     assert "bm25_score" not in metadata[1] or metadata[1]["bm25_score"] is None
