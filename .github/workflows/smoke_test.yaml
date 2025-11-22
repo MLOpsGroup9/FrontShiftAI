@@ -1,10 +1,11 @@
 name: Chat Pipeline Smoke Test
 
 on:
-  push:
-    branches: [ main, raghav-branch ]
-  pull_request:
-    branches: [ main ]
+  # push:
+  #   branches: [ main, raghav-branch ]
+  # pull_request:
+  #   branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   smoke:
