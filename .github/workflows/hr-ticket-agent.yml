@@ -2,15 +2,8 @@ name: Agent Tests for HR Ticket Agent
 on:
   push:
     branches: [ '**' ]
-    paths:
-      - 'backend/agents/hr_ticket/**'
-      - 'backend/agents/test_agents/test_hr_ticket*.py'
-      - '.github/workflows/hr-ticket-agent.yml'
   pull_request:
     branches: [ '**' ]
-    paths:
-      - 'backend/agents/hr_ticket/**'
-      - 'backend/agents/test_agents/test_hr_ticket*.py'
   workflow_dispatch:
 
 jobs:
@@ -114,5 +107,3 @@ jobs:
           echo "  - Missing database fixtures"
           echo "  - LLM client configuration"
           echo "  - State validation errors"
-
-  
