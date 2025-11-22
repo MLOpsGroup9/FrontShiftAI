@@ -318,4 +318,203 @@ export const deletePTOBalance = async (email) => {
   }
 };
 
+// -------------- HR Ticket Agent APIs --------------
+
+// Chat with HR Ticket Agent
+export const hrTicketChatAgent = async (message) => {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+    const response = await api.post('/api/hr-tickets/chat', {
+      message,
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error("HR Ticket Chat Error:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// Get user's HR tickets
+export const getMyHRTickets = async () => {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+    const response = await api.get('/api/hr-tickets/my-tickets', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Get My Tickets Error:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// Cancel a ticket
+export const cancelHRTicket = async (ticketId) => {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+    const response = await api.delete(`/api/hr-tickets/${ticketId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Cancel Ticket Error:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// Admin: Get ticket queue
+export const getHRTicketQueue = async (filters = {}) => {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+    
+    const params = new URLSearchParams();
+    if (filters.status) params.append('status_filter', filters.status);
+    if (filters.category) params.append('category_filter', filters.category);
+    if (filters.urgency) params.append('urgency_filter', filters.urgency);
+    if (filters.sortBy) params.append('sort_by', filters.sortBy);
+    
+    const url = `/api/hr-tickets/admin/queue${params.toString() ? '?' + params.toString() : ''}`;
+    
+    const response = await api.get(url, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Get Queue Error:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// Admin: Pick up ticket
+export const pickUpHRTicket = async (ticketId) => {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+    const response = await api.post('/api/hr-tickets/admin/pick-ticket', {
+      ticket_id: ticketId
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Pick Ticket Error:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// Admin: Schedule meeting
+export const scheduleHRMeeting = async (ticketId, meetingData) => {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+    const response = await api.post('/api/hr-tickets/admin/schedule-meeting', {
+      ticket_id: ticketId,
+      scheduled_datetime: meetingData.datetime,
+      meeting_link: meetingData.link || null,
+      meeting_location: meetingData.location || null,
+      admin_notes: meetingData.notes || null
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Schedule Meeting Error:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// Admin: Resolve ticket
+export const resolveHRTicket = async (ticketId, status, resolutionNotes = null) => {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+    const response = await api.post('/api/hr-tickets/admin/resolve', {
+      ticket_id: ticketId,
+      status: status, // "resolved" or "closed"
+      resolution_notes: resolutionNotes
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Resolve Ticket Error:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// Admin: Add note to ticket
+export const addHRTicketNote = async (ticketId, note) => {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+    const response = await api.post('/api/hr-tickets/admin/add-note', {
+      ticket_id: ticketId,
+      note: note
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Add Note Error:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// Admin: Get ticket stats
+export const getHRTicketStats = async () => {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+    const response = await api.get('/api/hr-tickets/admin/stats', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Get Stats Error:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
 export default api;

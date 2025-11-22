@@ -22,7 +22,9 @@ if str(project_root) not in sys.path:
 
 # Import routers
 from api import auth, rag, admin
-from api.pto_agent import router as pto_router  # NEW: PTO Agent router
+from api.unified_agent import router as unified_agent_router
+from api.pto_agent import router as pto_router  # Keep for admin endpoints
+from api.hr_ticket_agent import router as hr_ticket_router  # Keep for admin endpoints
 
 # ----------------------------
 # Lifespan Events
@@ -43,8 +45,8 @@ async def lifespan(app: FastAPI):
 # ----------------------------
 app = FastAPI(
     title="FrontShiftAI API",
-    version="2.0.0",
-    description="Multi-company RAG system with AI agents",
+    version="2.1.0",
+    description="Multi-company RAG system with unified AI agents",
 )
 
 # ----------------------------
@@ -64,7 +66,13 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(rag.router)
 app.include_router(admin.router)
-app.include_router(pto_router)  # NEW: PTO Agent routes
+
+# Unified Agent (User-facing chat)
+app.include_router(unified_agent_router)
+
+# Individual Agent Routers (Admin endpoints only)
+app.include_router(pto_router)
+app.include_router(hr_ticket_router)
 
 # ----------------------------
 # Health Check
@@ -73,8 +81,9 @@ app.include_router(pto_router)  # NEW: PTO Agent routes
 def health_check():
     return {
         "status": "ok",
-        "version": "2.0.0",
-        "message": "FrontShiftAI API is running"
+        "version": "2.1.0",
+        "message": "FrontShiftAI API is running",
+        "agents": ["unified", "pto", "hr_ticket", "rag"]
     }
 
 @app.get("/")
@@ -82,7 +91,8 @@ def root():
     return {
         "message": "Welcome to FrontShiftAI API",
         "docs": "/docs",
-        "health": "/health"
+        "health": "/health",
+        "chat_endpoint": "/api/chat/message"
     }
 
 # Set lifespan

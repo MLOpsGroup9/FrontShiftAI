@@ -30,19 +30,28 @@ backend/
 │   │   ├── nodes.py        # Workflow nodes
 │   │   ├── state.py        # State definition
 │   │   └── tools.py        # Utility functions
+│   ├── hr_ticket/          # HR Ticket Agent
+│   │   ├── agent.py        # LangGraph workflow
+│   │   ├── nodes.py        # Workflow nodes
+│   │   ├── state.py        # State definition
+│   │   └── tools.py        # Utility functions
 │   ├── utils/              # Shared utilities
 │   │   ├── llm_client.py   # LLM client with fallback
 │   │   └── llm_config.py   # Provider configuration
-│   └── tests/              # Agent tests
+│   └── test_agents/        # Agent tests
 │       ├── conftest.py
 │       ├── test_pto_tools.py
-│       └── test_pto_nodes.py
+│       ├── test_pto_nodes.py
+│       ├── test_hr_ticket_tools.py
+│       └── test_hr_ticket_nodes.py
 │
 ├── api/                     # API Endpoints
 │   ├── admin.py            # Admin management
 │   ├── auth.py             # Authentication
 │   ├── rag.py              # RAG queries
-│   └── pto_agent.py        # PTO agent endpoints
+│   ├── pto_agent.py        # PTO agent endpoints
+│   ├── hr_ticket_agent.py  # HR ticket endpoints
+│   └── unified_agent.py    # Unified chat router
 │
 ├── db/                      # Database Layer
 │   ├── connection.py       # SQLAlchemy setup
@@ -52,7 +61,8 @@ backend/
 ├── schemas/                 # Data Validation
 │   ├── auth.py             # Auth schemas
 │   ├── rag.py              # RAG schemas
-│   └── pto.py              # PTO schemas
+│   ├── pto.py              # PTO schemas
+│   └── hr_ticket.py        # HR ticket schemas
 │
 ├── services/                # Business Logic
 │   ├── auth_service.py     # Auth operations
@@ -76,6 +86,152 @@ backend/
 ├── requirements.txt        # Dependencies
 └── users.db                # SQLite database
 ```
+
+## Unified Agent Router
+
+### Overview
+
+The unified agent router provides a single endpoint that intelligently routes user messages to the appropriate agent (RAG, PTO, or HR Ticket) based on intent detection. This enables seamless conversational experiences where users can naturally switch between querying handbooks, requesting time off, and creating support tickets within the same chat session.
+
+### Architecture
+
+**Intent Detection Flow:**
+```
+User Message
+    ↓
+LLM Intent Classification
+    ↓
+├─→ RAG Agent (handbook queries)
+├─→ PTO Agent (time off requests)
+└─→ HR Ticket Agent (support requests)
+    ↓
+Unified Response
+```
+
+### Implementation
+
+**Endpoint:**
+```
+POST /api/chat/message
+Request: {"message": "What is the PTO policy?"}
+Response: {
+  "response": "According to the handbook...",
+  "agent_used": "rag",
+  "sources": [...]
+}
+```
+
+**Intent Detection Logic:**
+```python
+def detect_intent(message: str) -> dict:
+    """
+    Uses LLM to classify user intent into three categories:
+    - rag: Queries about company policies, procedures, benefits
+    - pto: Requests for time off, PTO balance checks
+    - hr_ticket: Support requests, meeting scheduling, complaints
+    
+    Fallback mechanism:
+    1. LLM classification (primary)
+    2. Keyword matching (fallback)
+    3. Default to RAG (safest)
+    """
+    
+    # Primary: LLM classification
+    llm_result = classify_with_llm(message)
+    if llm_result['confidence'] > 0.7:
+        return llm_result
+    
+    # Fallback: Keyword matching
+    pto_keywords = ['pto', 'leave', 'vacation', 'time off', 'days off']
+    hr_keywords = ['hr', 'ticket', 'meeting', 'discuss', 'complaint']
+    
+    if any(keyword in message.lower() for keyword in pto_keywords):
+        return {'intent': 'pto', 'confidence': 0.8}
+    elif any(keyword in message.lower() for keyword in hr_keywords):
+        return {'intent': 'hr_ticket', 'confidence': 0.8}
+    
+    # Default: RAG
+    return {'intent': 'rag', 'confidence': 0.6}
+```
+
+**Router Implementation:**
+```python
+@router.post("/message", response_model=ChatResponse)
+async def unified_chat(
+    request: ChatRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Routes messages to appropriate agent based on intent.
+    Maintains conversation context across agent boundaries.
+    """
+    intent_data = detect_intent(request.message)
+    
+    if intent_data['intent'] == 'pto':
+        pto_agent = get_pto_agent()
+        result = pto_agent.process(
+            user_email=current_user['email'],
+            company=current_user['company'],
+            user_message=request.message,
+            db=db
+        )
+        return ChatResponse(
+            response=result['agent_response'],
+            agent_used='pto',
+            metadata={'request_id': result.get('request_id')}
+        )
+    
+    elif intent_data['intent'] == 'hr_ticket':
+        hr_agent = get_hr_ticket_agent()
+        result = hr_agent.process(
+            user_email=current_user['email'],
+            company=current_user['company'],
+            user_message=request.message,
+            db=db
+        )
+        return ChatResponse(
+            response=result['agent_response'],
+            agent_used='hr_ticket',
+            metadata={'ticket_id': result.get('ticket_id')}
+        )
+    
+    else:  # Default to RAG
+        rag_result = await rag_query(
+            RAGQueryRequest(query=request.message),
+            current_user
+        )
+        return ChatResponse(
+            response=rag_result.answer,
+            agent_used='rag',
+            metadata={'sources': rag_result.sources}
+        )
+```
+
+### Conversation Examples
+
+**Multi-Agent Conversation:**
+```
+User: "What is the remote work policy?"
+System: [RAG Agent] According to the handbook, employees may work remotely...
+
+User: "I need 3 days off next week"
+System: [PTO Agent] PTO request created for Dec 24-26. Your request is pending approval...
+
+User: "Also, can I schedule a meeting with HR about benefits?"
+System: [HR Ticket Agent] Support ticket created. You are #5 in queue...
+
+User: "What documents do I need for the benefits meeting?"
+System: [RAG Agent] For benefits enrollment, you will need...
+```
+
+### Benefits
+
+1. **Single Entry Point**: Users interact with one endpoint regardless of request type
+2. **Seamless Context Switching**: Natural conversation flow across different agent domains
+3. **Intelligent Routing**: LLM-based classification with keyword fallback
+4. **Unified Response Format**: Consistent response structure across all agents
+5. **Metadata Preservation**: Agent-specific data (request IDs, ticket numbers) included in responses
 
 ## AI Agents System
 
@@ -227,6 +383,94 @@ def validate_dates_node(state: PTOAgentState, db: Session) -> PTOAgentState:
     return state
 ```
 
+### HR Ticket Agent
+
+Automates HR support requests and meeting scheduling: parsing employee inquiries, categorizing tickets, managing queue, and facilitating admin-employee communication.
+
+**Workflow:**
+```
+START
+  ↓
+Parse Intent (LLM extracts subject, category, meeting preferences)
+  ↓
+Validate Request (check required fields, validate dates)
+  ↓ (valid/invalid)
+Check Duplicates (existing open tickets?)
+  ↓ (informational only)
+Create Ticket (save to database, assign queue position)
+  ↓
+Generate Response (user confirmation with ticket details)
+  ↓
+END
+```
+
+**State Definition:**
+```python
+class HRTicketState(TypedDict):
+    # Input
+    user_email: str
+    company: str
+    user_message: str
+    
+    # Parsed data
+    intent: str
+    subject: Optional[str]
+    description: Optional[str]
+    category: Optional[str]  # benefits, payroll, workplace_issue, etc.
+    meeting_type: Optional[str]  # in_person, online, phone, no_meeting
+    preferred_date: Optional[date]
+    preferred_time_slot: Optional[str]  # morning, afternoon, evening
+    urgency: str  # normal, urgent
+    
+    # Validation
+    is_valid: bool
+    validation_errors: List[str]
+    
+    # Duplicate check
+    has_open_tickets: bool
+    open_ticket_ids: List[str]
+    
+    # Output
+    ticket_id: Optional[str]
+    queue_position: Optional[int]
+    agent_response: str
+```
+
+**Features:**
+- **Smart Categorization**: Automatically categorizes requests (benefits, payroll, workplace issues, etc.)
+- **Queue Management**: Assigns position based on pending tickets
+- **Meeting Coordination**: Captures preferred dates/times for HR meetings
+- **Admin Dashboard**: Queue view with filtering and sorting
+- **Meeting Scheduling**: Admin can schedule meetings with links/locations
+- **Ticket Lifecycle**: Pending → In Progress → Scheduled → Resolved/Closed
+- **Admin Notes System**: Admins can add notes visible to users for transparency
+
+**Example User Interactions:**
+```python
+# Benefits inquiry
+"I need to discuss my health insurance options"
+→ Category: benefits, Meeting: online
+
+# Urgent payroll issue
+"URGENT: There's a problem with my paycheck"
+→ Category: payroll, Urgency: urgent
+
+# Policy question
+"What's the remote work policy?"
+→ Category: policy_question, Meeting: no_meeting_needed
+
+# Workplace concern
+"I'd like to meet in person to discuss a workplace issue"
+→ Category: workplace_issue, Meeting: in_person
+```
+
+**Admin Workflow:**
+1. View ticket queue (filter by status, category, urgency)
+2. Pick up ticket (assigns to admin, status: in_progress)
+3. Add notes (visible to user for communication)
+4. Schedule meeting (if needed, status: scheduled)
+5. Resolve/Close ticket (status: resolved/closed)
+
 ### LLM Integration
 
 **Provider Configuration:**
@@ -273,17 +517,27 @@ class AgentLLMClient:
 ```python
 async def parse_user_intent(user_message: str) -> Dict:
     """
+    PTO Example:
     Input: "I need leave from December 25 to December 27"
     Output: {
         "intent": "request_pto",
         "start_date": "2025-12-25",
         "end_date": "2025-12-27"
     }
+    
+    HR Ticket Example:
+    Input: "I need to discuss my health insurance options"
+    Output: {
+        "intent": "create_ticket",
+        "subject": "Health Insurance Discussion",
+        "category": "benefits",
+        "meeting_type": "online"
+    }
     """
     llm_client = get_llm_client()
     
     messages = [
-        {"role": "system", "content": "Extract PTO request details..."},
+        {"role": "system", "content": "Extract request details..."},
         {"role": "user", "content": user_message}
     ]
     
@@ -358,6 +612,63 @@ class CompanyBlackoutDate(Base):
     reason = Column(String)
 ```
 
+### HR Ticket System
+```python
+class HRTicket(Base):
+    id = Column(String, primary_key=True)  # UUID
+    email = Column(String, index=True)
+    company = Column(String, index=True)
+    
+    # Request details
+    subject = Column(String)
+    description = Column(String)
+    category = Column(Enum(TicketCategory))
+    # benefits, payroll, workplace_issue, general_inquiry,
+    # policy_question, leave_related, other
+    
+    meeting_type = Column(Enum(MeetingType))
+    # in_person, online, phone, no_meeting_needed
+    
+    preferred_date = Column(Date, nullable=True)
+    preferred_time_slot = Column(String, nullable=True)
+    urgency = Column(Enum(Urgency))  # normal, urgent
+    
+    # Queue management
+    status = Column(Enum(TicketStatus))
+    # pending, in_progress, scheduled, resolved, closed
+    queue_position = Column(Integer)
+    created_at = Column(DateTime)
+    
+    # Admin interaction
+    assigned_to = Column(String, nullable=True)
+    picked_up_at = Column(DateTime, nullable=True)
+    
+    # Meeting details
+    scheduled_datetime = Column(DateTime, nullable=True)
+    meeting_link = Column(String, nullable=True)
+    meeting_location = Column(String, nullable=True)
+    
+    # Resolution
+    resolved_at = Column(DateTime, nullable=True)
+    resolution_notes = Column(String, nullable=True)
+    
+    updated_at = Column(DateTime)
+
+class HRTicketNote(Base):
+    """
+    Admin notes that are visible to users.
+    Provides transparent communication between admins and employees.
+    """
+    id = Column(String, primary_key=True)  # UUID
+    ticket_id = Column(String, ForeignKey('hr_tickets.id'))
+    admin_email = Column(String)
+    note = Column(String)
+    created_at = Column(DateTime)
+    
+    # Relationship
+    ticket = relationship("HRTicket", backref="notes")
+```
+
 ## API Endpoints
 
 ### Authentication
@@ -368,6 +679,33 @@ POST /api/auth/login
 
 GET /api/auth/me
   Response: {"email": "user@company.com", "company": "...", "role": "user"}
+```
+
+### Unified Chat Router
+```
+POST /api/chat/message
+  Request: {"message": "What is the PTO policy?"}
+  Response: {
+    "response": "According to the handbook...",
+    "agent_used": "rag",
+    "metadata": {"sources": [...]}
+  }
+
+POST /api/chat/message
+  Request: {"message": "I need 3 days off next week"}
+  Response: {
+    "response": "PTO request created...",
+    "agent_used": "pto",
+    "metadata": {"request_id": "uuid", "balance_info": {...}}
+  }
+
+POST /api/chat/message
+  Request: {"message": "I need to schedule a meeting with HR"}
+  Response: {
+    "response": "Ticket created successfully...",
+    "agent_used": "hr_ticket",
+    "metadata": {"ticket_id": "uuid", "queue_position": 5}
+  }
 ```
 
 ### RAG Queries
@@ -428,6 +766,146 @@ DELETE /api/pto/admin/balance/{email}
   Response: {"message": "Balance deleted"}
 ```
 
+### HR Ticket Agent (User)
+```
+POST /api/hr-tickets/chat
+  Request: {"message": "I need to discuss my health insurance options"}
+  Response: {
+    "response": "Ticket created successfully...",
+    "ticket_created": true,
+    "ticket_id": "uuid",
+    "queue_position": 5,
+    "ticket_details": {...}
+  }
+
+GET /api/hr-tickets/my-tickets
+  Response: {
+    "tickets": [
+      {
+        "id": "uuid",
+        "subject": "Health Insurance Discussion",
+        "status": "pending",
+        "queue_position": 5,
+        "created_at": "2025-11-21T10:30:00",
+        "notes": [
+          {
+            "id": "note_uuid",
+            "admin_email": "admin@company.com",
+            "note": "Reviewing your request",
+            "created_at": "2025-11-21T11:00:00"
+          }
+        ],
+        ...
+      }
+    ],
+    "total_count": 3
+  }
+
+GET /api/hr-tickets/{ticket_id}
+  Response: {
+    "id": "uuid",
+    "subject": "...",
+    "status": "scheduled",
+    "scheduled_datetime": "2025-11-25T14:00:00",
+    "meeting_link": "https://meet.google.com/...",
+    "notes": [
+      {
+        "admin_email": "admin@company.com",
+        "note": "Meeting scheduled for next week",
+        "created_at": "2025-11-21T12:00:00"
+      }
+    ],
+    ...
+  }
+
+DELETE /api/hr-tickets/{ticket_id}
+  Response: {"message": "Ticket cancelled successfully"}
+```
+
+### HR Ticket Agent (Admin)
+```
+GET /api/hr-tickets/admin/queue
+  Query params:
+    - status_filter: pending|in_progress|scheduled|all
+    - category_filter: benefits|payroll|workplace_issue|...
+    - urgency_filter: urgent|normal
+    - sort_by: created_at|urgency|category
+  
+  Response: {
+    "tickets": [
+      {
+        "id": "uuid",
+        "email": "user@company.com",
+        "subject": "Health Insurance",
+        "category": "benefits",
+        "urgency": "normal",
+        "status": "pending",
+        "queue_position": 1,
+        "created_at": "2025-11-21T09:00:00",
+        ...
+      }
+    ],
+    "total_count": 12
+  }
+
+POST /api/hr-tickets/admin/pick-ticket
+  Request: {"ticket_id": "uuid"}
+  Response: {"message": "Ticket assigned to you"}
+
+POST /api/hr-tickets/admin/schedule-meeting
+  Request: {
+    "ticket_id": "uuid",
+    "scheduled_datetime": "2025-11-25T14:00:00",
+    "meeting_link": "https://meet.google.com/...",
+    "meeting_location": null,
+    "admin_notes": "Looking forward to our meeting"
+  }
+  Response: {"message": "Meeting scheduled successfully"}
+
+POST /api/hr-tickets/admin/resolve
+  Request: {
+    "ticket_id": "uuid",
+    "status": "resolved",
+    "resolution_notes": "Issue resolved successfully"
+  }
+  Response: {"message": "Ticket resolved successfully"}
+
+POST /api/hr-tickets/admin/add-note
+  Request: {
+    "ticket_id": "uuid",
+    "note": "Waiting for additional information"
+  }
+  Response: {
+    "message": "Note added successfully",
+    "note": {
+      "id": "note_uuid",
+      "admin_email": "admin@company.com",
+      "note": "Waiting for additional information",
+      "created_at": "2025-11-21T13:30:00"
+    }
+  }
+
+GET /api/hr-tickets/admin/stats
+  Response: {
+    "total_pending": 12,
+    "total_in_progress": 5,
+    "total_scheduled": 3,
+    "total_resolved_today": 8,
+    "total_closed_today": 2,
+    "average_resolution_time_hours": 4.5,
+    "by_category": {
+      "benefits": 5,
+      "payroll": 3,
+      "workplace_issue": 2,
+      ...
+    },
+    "by_urgency": {
+      "normal": 15,
+      "urgent": 5
+    }
+  }
+```
+
 ### Admin Management
 ```
 GET /api/admin/company-users
@@ -460,9 +938,9 @@ PUT /api/admin/update-password
 
 **Agent Tests** (`.github/workflows/agents.yml`):
 - Triggers: Push/PR to any branch with agent changes
-- Tests: PTO Tools, Nodes, State, Workflow
+- Tests: PTO Agent (Tools, Nodes), HR Ticket Agent (Tools, Nodes)
 - Coverage: Agent-specific reports
-- Future: Placeholder for additional agents
+- Future: Scalable for additional agents
 
 **Config Validation** (`.github/workflows/config.yml`):
 - Triggers: Push/PR to any branch with config changes
@@ -493,13 +971,20 @@ pytest
 pytest tests/
 
 # Agent tests only
-pytest agents/tests/
+pytest agents/test_agents/
+
+# Specific agent tests
+pytest agents/test_agents/test_pto_tools.py
+pytest agents/test_agents/test_hr_ticket_nodes.py
 
 # Specific test file
 pytest tests/test_api/test_auth.py
 
 # With coverage
 pytest --cov=. --cov-report=html --cov-report=term
+
+# Agent coverage
+pytest agents/test_agents/ --cov=agents --cov-report=term
 ```
 
 ### Test Structure
@@ -519,6 +1004,14 @@ def sample_pto_balance(db_session):
     db_session.add(balance)
     db_session.commit()
     return balance
+
+@pytest.fixture
+def sample_hr_ticket(db_session):
+    """Sample HR ticket for testing"""
+    ticket = HRTicket(...)
+    db_session.add(ticket)
+    db_session.commit()
+    return ticket
 ```
 ```python
 # test_pto_tools.py
@@ -540,6 +1033,21 @@ def test_check_conflicting_requests(db_session):
     assert has_conflicts is True
 ```
 ```python
+# test_hr_ticket_tools.py
+def test_check_open_tickets(db_session, sample_hr_ticket):
+    has_open, ticket_ids = check_open_tickets(
+        db_session,
+        sample_hr_ticket.email,
+        sample_hr_ticket.company
+    )
+    assert has_open is True
+    assert sample_hr_ticket.id in ticket_ids
+
+def test_calculate_queue_position(db_session):
+    position = calculate_queue_position(db_session, "Crouse Medical Practice")
+    assert position == 1
+```
+```python
 # test_pto_nodes.py
 def test_validate_dates_past_dates(db_session):
     state = PTOAgentState(
@@ -551,6 +1059,18 @@ def test_validate_dates_past_dates(db_session):
     result = validate_dates_node(state, db_session)
     assert result['is_valid'] is False
     assert "past dates" in result['validation_errors'][0]
+```
+```python
+# test_hr_ticket_nodes.py
+def test_parse_intent_node(db_session):
+    state = HRTicketState(
+        user_message="I need to discuss my health insurance",
+        ...
+    )
+    
+    result = parse_intent_node(state, db_session)
+    assert result['category'] in ['benefits', 'general_inquiry']
+    assert result['is_valid'] is True
 ```
 
 ## Development Workflow
@@ -590,6 +1110,8 @@ sqlite3 users.db
 > .tables
 > SELECT * FROM users;
 > SELECT * FROM pto_requests WHERE status = 'pending';
+> SELECT * FROM hr_tickets WHERE status = 'pending';
+> SELECT * FROM hr_ticket_notes WHERE ticket_id = 'uuid';
 
 # Reset database
 rm users.db
@@ -703,7 +1225,8 @@ pip install -r requirements.txt --force-reinstall
 The architecture supports multiple agents:
 ```
 agents/
-├── pto/              # Implemented
+├── pto/              # ✓ Implemented: PTO Request Agent
+├── hr_ticket/        # ✓ Implemented: HR Ticket Agent
 ├── expense/          # Planned: Expense Report Agent
 ├── scheduling/       # Planned: Scheduling Agent
 └── utils/            # Shared utilities
@@ -716,6 +1239,15 @@ Each agent follows the same pattern:
 4. Build LangGraph workflow
 5. Add API endpoints
 6. Write comprehensive tests
+
+**Implemented Agents:**
+- **PTO Request Agent**: Automated vacation request processing with balance tracking
+- **HR Ticket Agent**: Employee support ticketing with queue management and meeting coordination
+
+**Planned Agents:**
+- **Expense Report Agent**: Automated expense submission and approval workflow
+- **Scheduling Agent**: Shift scheduling and swap management
+- **Equipment Request Agent**: Company equipment and resource requests
 
 ## Resources
 
@@ -739,8 +1271,3 @@ User:
   Email: user@crousemedical.com
   Password: password123
 ```
-
----
-
-**Last Updated**: November 20, 2025  
-**Version**: 2.0.0

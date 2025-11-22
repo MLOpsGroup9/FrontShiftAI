@@ -114,7 +114,7 @@ const Login = ({ onLoginSuccess }) => {
             <div className="space-y-3">
               <div className="bg-white/5 p-3 rounded-lg">
                 <p className="text-xs text-white/50 mb-1">Regular User:</p>
-                <p className="text-xs text-white/70">user@crousemedical.com / user123</p>
+                <p className="text-xs text-white/70">user@crousemedical.com / password123</p>
               </div>
               <div className="bg-white/5 p-3 rounded-lg">
                 <p className="text-xs text-white/50 mb-1">Company Admin:</p>

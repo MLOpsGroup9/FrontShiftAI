@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const MessageInput = ({ onSendMessage, isLoading, messages = [] }) => {
+const MessageInput = ({ onSendMessage, isLoading, messages = [], placeholder }) => {
   const [message, setMessage] = useState('');
   const hasMessages = messages.length > 0;
 
@@ -48,7 +48,7 @@ const MessageInput = ({ onSendMessage, isLoading, messages = [] }) => {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Message AI Chat..."
+            placeholder={placeholder || "Message AI Chat..."}
             disabled={isLoading}
             className={`${textAreaClasses} transition-all duration-500`}
           />

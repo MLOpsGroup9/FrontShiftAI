@@ -7,18 +7,42 @@ import {
   updatePTOBalance,
   resetPTOBalance,
   resetAllPTOBalances,
-  deletePTOBalance
+  deletePTOBalance,
+  getHRTicketQueue,
+  pickUpHRTicket,
+  scheduleHRMeeting,
+  resolveHRTicket,
+  addHRTicketNote,
+  getHRTicketStats
 } from '../services/api';
 
 const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
-  const [activeTab, setActiveTab] = useState('users'); // users, leaves, requests
+  const [activeTab, setActiveTab] = useState('users'); // users, leaves, requests, hr_tickets
   const [users, setUsers] = useState([]);
   const [ptoBalances, setPtoBalances] = useState([]);
   const [ptoRequests, setPtoRequests] = useState([]);
+  const [hrTickets, setHrTickets] = useState([]);
+  const [hrTicketStats, setHrTicketStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [editingBalance, setEditingBalance] = useState(null);
+  
+  // HR Ticket filters
+  const [hrStatusFilter, setHrStatusFilter] = useState(null);
+  const [hrCategoryFilter, setHrCategoryFilter] = useState(null);
+  const [hrUrgencyFilter, setHrUrgencyFilter] = useState(null);
+  const [hrSortBy, setHrSortBy] = useState('created_at');
+  
+  // Selected ticket for modal
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [scheduleMeetingData, setScheduleMeetingData] = useState({
+    datetime: '',
+    link: '',
+    location: '',
+    notes: ''
+  });
   
   // Form state
   const [newUser, setNewUser] = useState({
@@ -36,8 +60,11 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
       fetchPTOBalances();
     } else if (activeTab === 'requests') {
       fetchPTORequests();
+    } else if (activeTab === 'hr_tickets') {
+      fetchHRTickets();
+      fetchHRTicketStats();
     }
-  }, [activeTab, statusFilter]);
+  }, [activeTab, statusFilter, hrStatusFilter, hrCategoryFilter, hrUrgencyFilter, hrSortBy]);
 
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -76,6 +103,33 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
       console.error('Error fetching PTO requests:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchHRTickets = async () => {
+    setIsLoading(true);
+    try {
+      const filters = {
+        status: hrStatusFilter,
+        category: hrCategoryFilter,
+        urgency: hrUrgencyFilter,
+        sortBy: hrSortBy
+      };
+      const response = await getHRTicketQueue(filters);
+      setHrTickets(response.tickets || []);
+    } catch (error) {
+      console.error('Error fetching HR tickets:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchHRTicketStats = async () => {
+    try {
+      const stats = await getHRTicketStats();
+      setHrTicketStats(stats);
+    } catch (error) {
+      console.error('Error fetching HR ticket stats:', error);
     }
   };
 
@@ -170,13 +224,80 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
     }
   };
 
+  // HR Ticket Handlers
+  const handlePickUpTicket = async (ticketId) => {
+    try {
+      await pickUpHRTicket(ticketId);
+      fetchHRTickets();
+      alert('Ticket assigned to you');
+    } catch (error) {
+      alert(error.response?.data?.detail || 'Failed to pick up ticket');
+    }
+  };
+
+  const handleOpenScheduleModal = (ticket) => {
+    setSelectedTicket(ticket);
+    setShowScheduleModal(true);
+    setScheduleMeetingData({
+      datetime: '',
+      link: '',
+      location: '',
+      notes: ''
+    });
+  };
+
+  const handleScheduleMeeting = async (e) => {
+    e.preventDefault();
+    try {
+      await scheduleHRMeeting(selectedTicket.id, scheduleMeetingData);
+      setShowScheduleModal(false);
+      setSelectedTicket(null);
+      fetchHRTickets();
+      alert('Meeting scheduled successfully');
+    } catch (error) {
+      alert(error.response?.data?.detail || 'Failed to schedule meeting');
+    }
+  };
+
+  const handleResolveTicket = async (ticketId, status) => {
+    const notes = prompt(`Resolution notes (optional):`);
+    try {
+      await resolveHRTicket(ticketId, status, notes);
+      fetchHRTickets();
+      fetchHRTicketStats();
+      alert(`Ticket ${status} successfully`);
+    } catch (error) {
+      alert(error.response?.data?.detail || `Failed to ${status} ticket`);
+    }
+  };
+
+  const handleAddNote = async (ticketId) => {
+    const note = prompt('Add note:');
+    if (!note) return;
+    try {
+      await addHRTicketNote(ticketId, note);
+      fetchHRTickets();
+      alert('Note added successfully');
+    } catch (error) {
+      alert(error.response?.data?.detail || 'Failed to add note');
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'pending': return 'text-yellow-400 bg-yellow-500/20 border-yellow-500/30';
       case 'approved': return 'text-green-400 bg-green-500/20 border-green-500/30';
       case 'denied': return 'text-red-400 bg-red-500/20 border-red-500/30';
+      case 'in_progress': return 'text-blue-400 bg-blue-500/20 border-blue-500/30';
+      case 'scheduled': return 'text-purple-400 bg-purple-500/20 border-purple-500/30';
+      case 'resolved': return 'text-green-400 bg-green-500/20 border-green-500/30';
+      case 'closed': return 'text-gray-400 bg-gray-500/20 border-gray-500/30';
       default: return 'text-white/60 bg-white/10 border-white/20';
     }
+  };
+
+  const formatCategory = (category) => {
+    return category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   const getEmailDomain = () => {
@@ -234,6 +355,16 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
             }`}
           >
             📝 Leave Requests
+          </button>
+          <button
+            onClick={() => setActiveTab('hr_tickets')}
+            className={`flex-1 px-4 py-2 rounded-lg transition-all ${
+              activeTab === 'hr_tickets'
+                ? 'bg-white/10 text-white'
+                : 'text-white/60 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            🎫 HR Tickets
           </button>
         </div>
       </div>
@@ -510,6 +641,311 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* HR Tickets Tab */}
+      {activeTab === 'hr_tickets' && (
+        <div className="max-w-7xl mx-auto">
+          {/* Stats Cards */}
+          {hrTicketStats && (
+            <div className="grid grid-cols-5 gap-4 mb-6">
+              <div className="glass-card bg-white/10 p-4">
+                <p className="text-white/60 text-sm mb-1">Pending</p>
+                <p className="text-2xl font-bold text-yellow-400">{hrTicketStats.total_pending}</p>
+              </div>
+              <div className="glass-card bg-white/10 p-4">
+                <p className="text-white/60 text-sm mb-1">In Progress</p>
+                <p className="text-2xl font-bold text-blue-400">{hrTicketStats.total_in_progress}</p>
+              </div>
+              <div className="glass-card bg-white/10 p-4">
+                <p className="text-white/60 text-sm mb-1">Scheduled</p>
+                <p className="text-2xl font-bold text-purple-400">{hrTicketStats.total_scheduled}</p>
+              </div>
+              <div className="glass-card bg-white/10 p-4">
+                <p className="text-white/60 text-sm mb-1">Resolved Today</p>
+                <p className="text-2xl font-bold text-green-400">{hrTicketStats.total_resolved_today}</p>
+              </div>
+              <div className="glass-card bg-white/10 p-4">
+                <p className="text-white/60 text-sm mb-1">Avg Resolution</p>
+                <p className="text-2xl font-bold text-white/90">
+                  {hrTicketStats.average_resolution_time_hours ? 
+                    `${hrTicketStats.average_resolution_time_hours.toFixed(1)}h` : 
+                    'N/A'
+                  }
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="glass-card bg-white/10 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-white">HR Ticket Queue</h2>
+              <div className="flex space-x-2">
+                {/* Status Filter */}
+                <select
+                  value={hrStatusFilter || ''}
+                  onChange={(e) => setHrStatusFilter(e.target.value || null)}
+                  className="px-3 py-1 bg-white/10 border border-white/10 rounded-lg text-white text-sm"
+                >
+                  <option value="">All Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="closed">Closed</option>
+                </select>
+                
+                {/* Category Filter */}
+                <select
+                  value={hrCategoryFilter || ''}
+                  onChange={(e) => setHrCategoryFilter(e.target.value || null)}
+                  className="px-3 py-1 bg-white/10 border border-white/10 rounded-lg text-white text-sm"
+                >
+                  <option value="">All Categories</option>
+                  <option value="benefits">Benefits</option>
+                  <option value="payroll">Payroll</option>
+                  <option value="workplace_issue">Workplace Issue</option>
+                  <option value="general_inquiry">General Inquiry</option>
+                  <option value="policy_question">Policy Question</option>
+                  <option value="leave_related">Leave Related</option>
+                  <option value="other">Other</option>
+                </select>
+
+                {/* Urgency Filter */}
+                <select
+                  value={hrUrgencyFilter || ''}
+                  onChange={(e) => setHrUrgencyFilter(e.target.value || null)}
+                  className="px-3 py-1 bg-white/10 border border-white/10 rounded-lg text-white text-sm"
+                >
+                  <option value="">All Urgency</option>
+                  <option value="normal">Normal</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+
+                {/* Sort By */}
+                <select
+                  value={hrSortBy}
+                  onChange={(e) => setHrSortBy(e.target.value)}
+                  className="px-3 py-1 bg-white/10 border border-white/10 rounded-lg text-white text-sm"
+                >
+                  <option value="created_at">Sort: Date</option>
+                  <option value="urgency">Sort: Urgency</option>
+                  <option value="category">Sort: Category</option>
+                </select>
+              </div>
+            </div>
+
+            {isLoading ? (
+              <p className="text-white/60 text-center py-8">Loading...</p>
+            ) : hrTickets.length === 0 ? (
+              <p className="text-white/60 text-center py-8">No tickets found.</p>
+            ) : (
+              <div className="space-y-4">
+                {hrTickets.map(ticket => (
+                  <div
+                    key={ticket.id}
+                    className="p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/8 transition-all"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <h3 className="text-lg font-medium text-white">{ticket.subject}</h3>
+                          <span className={`px-2 py-1 rounded text-xs border ${getStatusColor(ticket.status)}`}>
+                            {ticket.status.replace('_', ' ')}
+                          </span>
+                          {ticket.urgency === 'urgent' && (
+                            <span className="px-2 py-1 rounded text-xs border border-red-500/30 bg-red-500/20 text-red-400">
+                              🚨 URGENT
+                            </span>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+                          <div>
+                            <p className="text-white/50 mb-1">Employee</p>
+                            <p className="text-white/90">{ticket.email}</p>
+                          </div>
+                          <div>
+                            <p className="text-white/50 mb-1">Category</p>
+                            <p className="text-white/90">{formatCategory(ticket.category)}</p>
+                          </div>
+                          <div>
+                            <p className="text-white/50 mb-1">Meeting Type</p>
+                            <p className="text-white/90">{formatCategory(ticket.meeting_type)}</p>
+                          </div>
+                          <div>
+                            <p className="text-white/50 mb-1">Created</p>
+                            <p className="text-white/90">{new Date(ticket.created_at).toLocaleDateString()}</p>
+                          </div>
+                          {ticket.queue_position && ticket.status === 'pending' && (
+                            <div>
+                              <p className="text-white/50 mb-1">Queue Position</p>
+                              <p className="text-white/90">#{ticket.queue_position}</p>
+                            </div>
+                          )}
+                          {ticket.preferred_date && (
+                            <div>
+                              <p className="text-white/50 mb-1">Preferred Date</p>
+                              <p className="text-white/90">
+                                {new Date(ticket.preferred_date).toLocaleDateString()}
+                                {ticket.preferred_time_slot && ` (${ticket.preferred_time_slot})`}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-sm">
+                          <p className="text-white/50 mb-1">Description</p>
+                          <p className="text-white/70">{ticket.description}</p>
+                        </div>
+                        {ticket.admin_notes && (
+                          <div className="mt-3 text-sm">
+                            <p className="text-white/50 mb-1">Admin Notes</p>
+                            <p className="text-white/70 whitespace-pre-wrap">{ticket.admin_notes}</p>
+                          </div>
+                        )}
+                        {ticket.scheduled_datetime && (
+                          <div className="mt-3 p-3 bg-purple-500/10 border border-purple-500/30 rounded">
+                            <p className="text-purple-300 text-sm font-medium mb-2">📅 Meeting Scheduled</p>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <p className="text-white/50">Date & Time</p>
+                                <p className="text-white/90">{new Date(ticket.scheduled_datetime).toLocaleString()}</p>
+                              </div>
+                              {ticket.meeting_link && (
+                                <div>
+                                  <p className="text-white/50">Meeting Link</p>
+                                  <a href={ticket.meeting_link} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
+                                    Join Meeting
+                                  </a>
+                                </div>
+                              )}
+                              {ticket.meeting_location && (
+                                <div>
+                                  <p className="text-white/50">Location</p>
+                                  <p className="text-white/90">{ticket.meeting_location}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-col space-y-2 ml-4">
+                        {ticket.status === 'pending' && (
+                          <button
+                            onClick={() => handlePickUpTicket(ticket.id)}
+                            className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded text-blue-300 transition-all text-sm"
+                          >
+                            Pick Up
+                          </button>
+                        )}
+                        {(ticket.status === 'in_progress' || ticket.status === 'pending') && (
+                          <button
+                            onClick={() => handleOpenScheduleModal(ticket)}
+                            className="px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 rounded text-purple-300 transition-all text-sm"
+                          >
+                            Schedule Meeting
+                          </button>
+                        )}
+                        {(ticket.status === 'in_progress' || ticket.status === 'scheduled') && (
+                          <>
+                            <button
+                              onClick={() => handleResolveTicket(ticket.id, 'resolved')}
+                              className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 rounded text-green-300 transition-all text-sm"
+                            >
+                              ✓ Resolve
+                            </button>
+                            <button
+                              onClick={() => handleResolveTicket(ticket.id, 'closed')}
+                              className="px-4 py-2 bg-gray-500/20 hover:bg-gray-500/30 border border-gray-500/30 rounded text-gray-300 transition-all text-sm"
+                            >
+                              Close
+                            </button>
+                          </>
+                        )}
+                        {ticket.status !== 'resolved' && ticket.status !== 'closed' && (
+                          <button
+                            onClick={() => handleAddNote(ticket.id)}
+                            className="px-4 py-2 bg-white/10 hover:bg-white/15 border border-white/10 rounded text-white transition-all text-sm"
+                          >
+                            Add Note
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Schedule Meeting Modal */}
+      {showScheduleModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="glass-card bg-white/10 p-6 w-full max-w-md">
+            <h3 className="text-xl font-semibold text-white mb-4">Schedule Meeting</h3>
+            <form onSubmit={handleScheduleMeeting} className="space-y-4">
+              <div>
+                <label className="block text-white/60 text-sm mb-2">Date & Time *</label>
+                <input
+                  type="datetime-local"
+                  value={scheduleMeetingData.datetime}
+                  onChange={(e) => setScheduleMeetingData({...scheduleMeetingData, datetime: e.target.value})}
+                  required
+                  className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-white/60 text-sm mb-2">Meeting Link (for online meetings)</label>
+                <input
+                  type="url"
+                  placeholder="https://meet.google.com/..."
+                  value={scheduleMeetingData.link}
+                  onChange={(e) => setScheduleMeetingData({...scheduleMeetingData, link: e.target.value})}
+                  className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
+                />
+              </div>
+              <div>
+                <label className="block text-white/60 text-sm mb-2">Location (for in-person meetings)</label>
+                <input
+                  type="text"
+                  placeholder="HR Office, Room 203"
+                  value={scheduleMeetingData.location}
+                  onChange={(e) => setScheduleMeetingData({...scheduleMeetingData, location: e.target.value})}
+                  className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
+                />
+              </div>
+              <div>
+                <label className="block text-white/60 text-sm mb-2">Notes</label>
+                <textarea
+                  placeholder="Looking forward to our meeting..."
+                  value={scheduleMeetingData.notes}
+                  onChange={(e) => setScheduleMeetingData({...scheduleMeetingData, notes: e.target.value})}
+                  rows="3"
+                  className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
+                />
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-white/90 hover:bg-white text-black rounded-lg transition-all"
+                >
+                  Schedule
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowScheduleModal(false);
+                    setSelectedTicket(null);
+                  }}
+                  className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/15 border border-white/10 rounded-lg text-white transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

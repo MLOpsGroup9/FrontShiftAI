@@ -100,3 +100,63 @@ def sample_holidays(db_session, sample_company):
         db_session.add(holiday)
     db_session.commit()
     return holidays
+
+# ==========================================
+# HR TICKET FIXTURES
+# ==========================================
+
+@pytest.fixture
+def sample_hr_ticket(db_session, sample_user):
+    """Create a sample HR ticket for testing"""
+    from db.models import HRTicket, TicketStatus, TicketCategory, MeetingType, Urgency
+    from datetime import datetime
+    import uuid
+    
+    ticket = HRTicket(
+        id=str(uuid.uuid4()),
+        email=sample_user.email,
+        company=sample_user.company,
+        subject="Test HR Ticket",
+        description="This is a test ticket for HR inquiries",
+        category=TicketCategory.BENEFITS,
+        meeting_type=MeetingType.ONLINE,
+        urgency=Urgency.NORMAL,
+        status=TicketStatus.PENDING,
+        queue_position=1,
+        preferred_date=None,
+        preferred_time_slot=None,
+        created_at=datetime.utcnow()
+    )
+    
+    db_session.add(ticket)
+    db_session.commit()
+    db_session.refresh(ticket)
+    
+    return ticket
+
+
+@pytest.fixture
+def sample_company_admin(db_session):
+    """Create a sample company admin user for testing"""
+    from db.models import User, UserRole
+    from datetime import datetime
+    
+    admin = User(
+        email="admin@crousemedical.com",
+        password="admin123",
+        name="Test Admin",
+        role=UserRole.COMPANY_ADMIN,
+        company="Crouse Medical Practice",
+        created_at=datetime.utcnow()
+    )
+    
+    # Check if already exists
+    existing = db_session.query(User).filter_by(email=admin.email).first()
+    if existing:
+        return existing
+    
+    db_session.add(admin)
+    db_session.commit()
+    db_session.refresh(admin)
+    
+    return admin

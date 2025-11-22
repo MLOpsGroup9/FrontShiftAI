@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { getPTOBalance, getPTORequests } from '../services/api';
+import React, { useState } from 'react';
 
 const Sidebar = ({
   activeView,
@@ -14,32 +13,6 @@ const Sidebar = ({
   onLogout,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [ptoBalance, setPtoBalance] = useState(null);
-  const [ptoRequests, setPtoRequests] = useState([]);
-  const [loadingPTO, setLoadingPTO] = useState(false);
-
-  // Fetch PTO data when component mounts
-  useEffect(() => {
-    if (userInfo) {
-      fetchPTOData();
-    }
-  }, [userInfo]);
-
-  const fetchPTOData = async () => {
-    setLoadingPTO(true);
-    try {
-      const [balance, requests] = await Promise.all([
-        getPTOBalance(),
-        getPTORequests()
-      ]);
-      setPtoBalance(balance);
-      setPtoRequests(requests);
-    } catch (error) {
-      console.error('Error fetching PTO data:', error);
-    } finally {
-      setLoadingPTO(false);
-    }
-  };
 
   // Filter chats based on search query
   const filteredChatHistory = chatHistory.map(group => ({
@@ -48,32 +21,6 @@ const Sidebar = ({
       chat.title.toLowerCase().includes(searchQuery.toLowerCase())
     )
   })).filter(group => group.chats.length > 0);
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'pending':
-        return 'text-yellow-400';
-      case 'approved':
-        return 'text-green-400';
-      case 'denied':
-        return 'text-red-400';
-      default:
-        return 'text-white/60';
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'pending':
-        return '⏳';
-      case 'approved':
-        return '✅';
-      case 'denied':
-        return '❌';
-      default:
-        return '❓';
-    }
-  };
 
   return (
     <div 
@@ -129,79 +76,6 @@ const Sidebar = ({
                 />
               </svg>
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* PTO Balance Section */}
-      {ptoBalance && (
-        <div className="px-4 py-3 border-b border-white/5 bg-white/5">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-semibold text-white/60 uppercase tracking-wider">
-              Leave Balance
-            </h3>
-            <button
-              onClick={fetchPTOData}
-              className="p-1 hover:bg-white/10 rounded transition-all"
-              title="Refresh"
-            >
-              <svg 
-                className="w-3.5 h-3.5 text-white/50" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-          </div>
-          
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-xs">
-              <span className="text-white/50">Available:</span>
-              <span className="text-green-400 font-semibold">{ptoBalance.remaining_days} days</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-white/50">Used:</span>
-              <span className="text-white/70">{ptoBalance.used_days} days</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-white/50">Pending:</span>
-              <span className="text-yellow-400">{ptoBalance.pending_days} days</span>
-            </div>
-            <div className="flex justify-between text-xs pt-1.5 border-t border-white/10">
-              <span className="text-white/50">Total:</span>
-              <span className="text-white/90 font-medium">{ptoBalance.total_days} days</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* PTO Requests Section */}
-      {ptoRequests && ptoRequests.length > 0 && (
-        <div className="px-4 py-3 border-b border-white/5 bg-white/5">
-          <h3 className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">
-            Recent Requests
-          </h3>
-          <div className="space-y-2 max-h-32 overflow-y-auto">
-            {ptoRequests.slice(0, 5).map((request) => (
-              <div 
-                key={request.id} 
-                className="text-xs bg-white/5 rounded-lg p-2 border border-white/10"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-white/90 font-medium">
-                    {new Date(request.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(request.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </span>
-                  <span className={`text-xs font-medium ${getStatusColor(request.status)}`}>
-                    {getStatusIcon(request.status)} {request.status}
-                  </span>
-                </div>
-                <div className="text-white/50 text-[10px]">
-                  {request.days_requested} days
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       )}

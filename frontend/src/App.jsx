@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import Sidebar from './components/Sidebar';
-import ChatArea from './components/ChatArea';
-import MessageInput from './components/MessageInput';
+import UserChatPage from './components/UserChatPage';
 import ConnectionStatus from './components/ConnectionStatus';
 import Login from './components/Login';
 import SuperAdminDashboard from './components/SuperAdminDashboard';
 import CompanyAdminDashboard from './components/CompanyAdminDashboard';
-import { logout, getUserInfo, ptoChatAgent } from './services/api';
+import { logout, getUserInfo } from './services/api';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -27,22 +27,21 @@ function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
   // Check authentication on mount
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('access_token');
       const email = localStorage.getItem('user_email');
-      const company = localStorage.getItem('user_company');
       
       if (token && email) {
         try {
-          // Verify token is still valid
           const userData = await getUserInfo();
           setUserInfo(userData);
           setIsAuthenticated(true);
         } catch (error) {
           console.error('Token validation failed:', error);
-          // Clear invalid token
           logout();
           setIsAuthenticated(false);
         }
@@ -192,20 +191,40 @@ function App() {
     setIsLoading(true);
 
     try {
-      console.log('📤 Sending message to PTO agent:', message);
+      console.log('📤 Sending message to smart router:', message);
       
-      // Use PTO agent instead of RAG
-      const response = await ptoChatAgent(message);
-      console.log('📥 Received PTO agent response:', response);
+      const token = localStorage.getItem('access_token');
+      const response = await axios.post(
+        `${API_BASE_URL}/api/chat/message`,
+        { message },
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      console.log('📥 Received response from', response.data.agent_used, 'agent');
       
       const assistantMessage = {
         role: 'assistant',
-        content: response.response,
-        ptoInfo: {
-          requestCreated: response.request_created,
-          requestId: response.request_id,
-          balanceInfo: response.balance_info
-        },
+        content: response.data.response,
+        agentType: response.data.agent_used,
+        ...(response.data.agent_used === 'pto' && response.data.balance_info && {
+          ptoInfo: {
+            requestCreated: response.data.request_created,
+            requestId: response.data.request_id,
+            balanceInfo: response.data.balance_info
+          }
+        }),
+        ...(response.data.agent_used === 'hr_ticket' && response.data.ticket_id && {
+          hrTicketInfo: {
+            ticketCreated: response.data.ticket_created,
+            ticketId: response.data.ticket_id,
+            queuePosition: response.data.queue_position
+          }
+        }),
         timestamp: Date.now(),
       };
       const finalMessages = [...updatedMessages, assistantMessage];
@@ -217,6 +236,7 @@ function App() {
         const chatData = {
           id: chatId,
           messages: finalMessages,
+          agentType: response.data.agent_used,
           timestamp: existingChat?.timestamp || Date.now(),
           lastUpdated: Date.now(),
         };
@@ -234,7 +254,7 @@ function App() {
       console.error('❌ Error sending message:', error);
       
       let errorMsg = 'Sorry, I encountered an error.';
-      if (error.message === 'Not authenticated') {
+      if (error.response?.status === 401 || error.message === 'Not authenticated') {
         errorMsg = '🔒 Session expired. Please log in again.';
         setTimeout(() => handleLogout(), 2000);
       } else if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
@@ -275,7 +295,6 @@ function App() {
     }
   };
 
-  // Show loading while checking auth
   if (isCheckingAuth) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0a0a0f] via-[#1a1a24] to-[#0a0a0f] flex items-center justify-center">
@@ -284,12 +303,10 @@ function App() {
     );
   }
 
-  // Show login page if not authenticated
   if (!isAuthenticated) {
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
-  // Route based on user role
   if (userInfo?.role === 'super_admin') {
     return <SuperAdminDashboard onLogout={handleLogout} userInfo={userInfo} />;
   }
@@ -341,11 +358,12 @@ function App() {
           className="flex-1 flex flex-col min-h-screen"
           style={{ marginLeft: `${sidebarWidth}px` }}
         >
-          <ChatArea
+          <UserChatPage
             messages={messages}
             isLoading={isLoading}
+            onSendMessage={handleSendMessage}
+            userInfo={userInfo}
           />
-          <MessageInput onSendMessage={handleSendMessage} isLoading={isLoading} messages={messages} />
         </div>
       </div>
 
