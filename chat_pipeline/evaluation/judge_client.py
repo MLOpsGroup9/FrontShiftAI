@@ -19,6 +19,7 @@ from chat_pipeline.utils.runtime_env import (
     remote_retry_backoff,
     remote_retry_initial_delay,
     remote_timeout_seconds,
+    remote_request_delay_seconds,
 )
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ REMOTE_TIMEOUT = remote_timeout_seconds()
 REMOTE_MAX_ATTEMPTS = remote_max_attempts()
 REMOTE_BACKOFF = remote_retry_backoff()
 REMOTE_BACKOFF_START = remote_retry_initial_delay()
+REMOTE_MIN_DELAY = remote_request_delay_seconds()
 
 class JudgeClient:
     """Abstraction that prefers OpenAI GPT-4o-mini with HF fallbacks."""
@@ -133,6 +135,8 @@ class JudgeClient:
         base_url = os.getenv("INCEPTION_API_BASE", "https://api.inceptionlabs.ai/v1")
         for attempt in range(1, attempts + 1):
             try:
+                if REMOTE_MIN_DELAY > 0 and attempt > 1:
+                    time.sleep(REMOTE_MIN_DELAY)
                 resp = requests.post(
                     f"{base_url}/chat/completions",
                     json=payload,

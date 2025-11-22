@@ -31,6 +31,7 @@ jobs:
           echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
           echo "TOKENIZERS_PARALLELISM=false" >> $GITHUB_ENV
           echo "INCEPTION_API_KEY=${{ secrets.INCEPTION_API_KEY }}" >> $GITHUB_ENV
+          echo "CHAT_PIPELINE_REMOTE_REQUEST_DELAY=5" >> $GITHUB_ENV
         shell: bash
 
       - name: Auth to GCP

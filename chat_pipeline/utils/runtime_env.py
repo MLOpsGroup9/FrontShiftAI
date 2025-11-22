@@ -57,6 +57,15 @@ def remote_retry_initial_delay(default: float = 2.0) -> float:
         return default
 
 
+def remote_request_delay_seconds(default: float = 1.0) -> float:
+    value = os.getenv("CHAT_PIPELINE_REMOTE_REQUEST_DELAY", str(default))
+    try:
+        parsed = float(value)
+        return parsed if parsed >= 0.0 else default
+    except ValueError:
+        return default
+
+
 def task_timeout_seconds(default: float = 600.0) -> float:
     value = os.getenv("CHAT_PIPELINE_TASK_TIMEOUT", str(default))
     try:

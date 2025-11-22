@@ -20,6 +20,7 @@ from chat_pipeline.utils.runtime_env import (
     remote_retry_backoff,
     remote_retry_initial_delay,
     remote_timeout_seconds,
+    remote_request_delay_seconds,
 )
 
 load_dotenv()
@@ -75,6 +76,7 @@ REMOTE_TIMEOUT = remote_timeout_seconds()
 REMOTE_MAX_ATTEMPTS = remote_max_attempts()
 REMOTE_BACKOFF = remote_retry_backoff()
 REMOTE_BACKOFF_START = remote_retry_initial_delay()
+REMOTE_MIN_DELAY = remote_request_delay_seconds()
 
 _LLM_INSTANCE: Optional[Any] = None
 _LLM_CACHE_KEY: Optional[Tuple[str, Tuple[Tuple[str, Any], ...]]] = None
@@ -249,6 +251,8 @@ def _call_mercury_api(prompt: str, params: Dict[str, Any]) -> str:
     last_exc: Exception | None = None
     for attempt in range(1, attempts + 1):
         try:
+            if REMOTE_MIN_DELAY > 0 and attempt > 1:
+                time.sleep(REMOTE_MIN_DELAY)
             response = requests.post(
                 f"{INCEPTION_API_BASE}/chat/completions",
                 json=payload,
