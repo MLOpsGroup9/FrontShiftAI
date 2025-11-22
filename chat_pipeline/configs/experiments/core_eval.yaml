@@ -11,6 +11,8 @@ wandb:
 execution_modes:
   local:
     parallelism: ray
+  ci:
+    parallelism: sequential
 
 eval:
   summary_output: chat_pipeline/results/core_experiment_summary.json
