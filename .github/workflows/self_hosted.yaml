@@ -6,7 +6,7 @@ on:
 jobs:
   mac-self-hosted:
     runs-on: [self-hosted, macos]
-    timeout-minutes: 90
+    timeout-minutes: 120
 
     steps:
       - name: Checkout Repository
