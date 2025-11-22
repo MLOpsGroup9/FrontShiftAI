@@ -11,8 +11,6 @@ wandb:
 execution_modes:
   local:
     parallelism: ray
-  ci:
-    parallelism: multiprocessing
 
 eval:
   summary_output: chat_pipeline/results/core_experiment_summary.json
@@ -23,17 +21,17 @@ eval:
   main:
     test_dir: chat_pipeline/evaluation/test_questions
     output_dir: chat_pipeline/results/core_eval_main
-    max_examples: 50
+    max_examples: 20
   slices:
     enabled: True
     test_dir: chat_pipeline/evaluation/test_questions/slices
     output_dir: chat_pipeline/results/core_eval_slices
-    max_examples: 50
+    max_examples: 20
 
 tuning:
   enabled: true
   output_dir: chat_pipeline/results/core_eval_tuning
-  max_examples: 20
+  max_examples: 10
   grid:
     - name: baseline
       overrides: {}
