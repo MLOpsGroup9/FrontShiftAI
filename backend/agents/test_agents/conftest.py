@@ -3,18 +3,36 @@ Pytest fixtures for agent tests
 """
 import sys
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from backend/.env
+backend_dir = Path(__file__).resolve().parent.parent.parent
+env_path = backend_dir / '.env'
+load_dotenv(env_path)
+
+# Verify GROQ_API_KEY is loaded
+if os.getenv('GROQ_API_KEY'):
+    print(f"\n✓ GROQ_API_KEY loaded for testing")
+else:
+    print(f"\n⚠ Warning: GROQ_API_KEY not found in {env_path}")
 
 # Add backend directory to path
-backend_dir = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(backend_dir))
 
+# ... rest of your conftest.py continues here
+
 import pytest
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 # Now imports should work
-from db.models import Base, User, Company, PTOBalance, PTORequest, CompanyHoliday, PTOStatus, UserRole
+from db.models import (
+    Base, User, Company, PTOBalance, PTORequest, CompanyHoliday, 
+    PTOStatus, UserRole, HRTicket, TicketStatus, TicketCategory, 
+    MeetingType, Urgency
+)
 from db.connection import get_db
 
 # Test database
@@ -108,7 +126,6 @@ def sample_holidays(db_session, sample_company):
 @pytest.fixture
 def sample_hr_ticket(db_session, sample_user):
     """Create a sample HR ticket for testing"""
-    from db.models import HRTicket, TicketStatus, TicketCategory, MeetingType, Urgency
     from datetime import datetime
     import uuid
     
@@ -138,7 +155,6 @@ def sample_hr_ticket(db_session, sample_user):
 @pytest.fixture
 def sample_company_admin(db_session):
     """Create a sample company admin user for testing"""
-    from db.models import User, UserRole
     from datetime import datetime
     
     admin = User(
@@ -160,3 +176,73 @@ def sample_company_admin(db_session):
     db_session.refresh(admin)
     
     return admin
+
+# ==========================================
+# NEW FIXTURES FOR ENHANCED TESTING
+# ==========================================
+
+@pytest.fixture
+def sample_approved_pto_request(db_session, sample_user):
+    """Create an approved PTO request for conflict testing"""
+    import uuid
+    request = PTORequest(
+        id=str(uuid.uuid4()),
+        email=sample_user.email,
+        company=sample_user.company,
+        start_date=date(2025, 12, 10),
+        end_date=date(2025, 12, 15),
+        days_requested=4.0,
+        status=PTOStatus.APPROVED,
+        reason="Vacation"
+    )
+    db_session.add(request)
+    db_session.commit()
+    return request
+
+@pytest.fixture
+def multiple_hr_tickets(db_session, sample_user):
+    """Create multiple HR tickets with different statuses"""
+    import uuid
+    tickets = []
+    
+    statuses = [
+        (TicketStatus.PENDING, 1),
+        (TicketStatus.IN_PROGRESS, None),
+        (TicketStatus.RESOLVED, None),
+        (TicketStatus.CLOSED, None)
+    ]
+    
+    for status, queue_pos in statuses:
+        ticket = HRTicket(
+            id=str(uuid.uuid4()),
+            email=sample_user.email,
+            company=sample_user.company,
+            subject=f"Ticket - {status.value}",
+            description=f"Test ticket with status {status.value}",
+            category=TicketCategory.GENERAL_INQUIRY,
+                            meeting_type=MeetingType.NO_MEETING,
+            urgency=Urgency.NORMAL,
+            status=status,
+            queue_position=queue_pos,
+            created_at=datetime.utcnow()
+        )
+        db_session.add(ticket)
+        tickets.append(ticket)
+    
+    db_session.commit()
+    return tickets
+
+@pytest.fixture
+def pto_balance_with_usage(db_session, sample_user, sample_company):
+    """Create PTO balance with some days already used and pending"""
+    balance = PTOBalance(
+        email=sample_user.email,
+        company=sample_company.name,
+        year=2025,
+        total_days=15.0,
+        used_days=5.0,
+        pending_days=3.0
+    )
+    db_session.add(balance)
+    db_session.commit()
+    return balance

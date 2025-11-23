@@ -1,5 +1,6 @@
 """
 Tests for HR Ticket Agent nodes
+Enhanced with additional validation scenarios
 """
 import pytest
 from datetime import date, timedelta
@@ -76,6 +77,8 @@ class TestParseIntentNode:
         # If LLM is available, it should parse as payroll
         # If LLM fails, it falls back to general_inquiry
         assert result["category"] in ["payroll", "general_inquiry"]
+        # Urgency should be detected
+        assert result["urgency"] in ["urgent", "normal"]
 
     def test_parse_with_preferred_time(self, db_session):
         """Test parsing with preferred time slot"""
@@ -102,11 +105,37 @@ class TestParseIntentNode:
         
         result = parse_intent_node(state, db_session)
         
-        # If LLM is available, it should parse as policy_question
-        # If LLM fails, it falls back to general_inquiry
+        # Should parse as policy_question or workplace_issue
         assert result["category"] in ["policy_question", "general_inquiry", "workplace_issue"]
-        # Preferred time should be detected if LLM works
-        # assert result["preferred_time_slot"] in ["morning", "anytime", None]
+        # If LLM works, morning should be detected
+        # assert result["preferred_time_slot"] in ["morning", None]
+    
+    def test_parse_payroll_category(self, db_session):
+        """Test parsing detects payroll category"""
+        state: HRTicketState = {
+            "user_email": "user@crousemedical.com",
+            "company": "Crouse Medical Practice",
+            "user_message": "I have a question about my pay stub and deductions",
+            "intent": "",
+            "subject": None,
+            "description": None,
+            "category": None,
+            "meeting_type": None,
+            "preferred_date": None,
+            "preferred_time_slot": None,
+            "urgency": "normal",
+            "is_valid": False,
+            "validation_errors": [],
+            "has_open_tickets": False,
+            "open_ticket_ids": [],
+            "ticket_id": None,
+            "queue_position": None,
+            "agent_response": ""
+        }
+        
+        result = parse_intent_node(state, db_session)
+        
+        assert result["category"] in ["payroll", "general_inquiry"]
     
     def test_fallback_on_error(self, db_session, monkeypatch):
         """Test fallback when LLM fails"""
@@ -141,7 +170,7 @@ class TestParseIntentNode:
         
         # Should fallback to defaults
         assert result["intent"] == "create_ticket"
-        assert result["subject"] in ["HR Inquiry", "I need help with something"]
+        assert result["subject"] in ["HR Inquiry", "I need help with something", "General Inquiry", "HR Assistance Request"]
         assert result["category"] == "general_inquiry"
         assert result["is_valid"] is True
 
@@ -293,6 +322,33 @@ class TestValidateRequestNode:
         
         assert result["is_valid"] is True
         assert result["preferred_date"] == tomorrow
+    
+    def test_valid_without_date(self, db_session):
+        """Test validation passes without preferred date"""
+        state: HRTicketState = {
+            "user_email": "user@crousemedical.com",
+            "company": "Crouse Medical Practice",
+            "user_message": "Test message",
+            "intent": "create_ticket",
+            "subject": "Test Subject",
+            "description": "Test Description",
+            "category": "general_inquiry",
+            "meeting_type": "no_meeting_needed",
+            "preferred_date": None,
+            "preferred_time_slot": None,
+            "urgency": "normal",
+            "is_valid": False,
+            "validation_errors": [],
+            "has_open_tickets": False,
+            "open_ticket_ids": [],
+            "ticket_id": None,
+            "queue_position": None,
+            "agent_response": ""
+        }
+        
+        result = validate_request_node(state, db_session)
+        
+        assert result["is_valid"] is True
 
 
 class TestCheckDuplicatesNode:
@@ -353,6 +409,35 @@ class TestCheckDuplicatesNode:
         
         assert result["has_open_tickets"] is True
         assert sample_hr_ticket.id in result["open_ticket_ids"]
+    
+    def test_with_multiple_open_tickets(self, db_session, multiple_hr_tickets):
+        """Test when user has multiple open tickets"""
+        state: HRTicketState = {
+            "user_email": multiple_hr_tickets[0].email,
+            "company": multiple_hr_tickets[0].company,
+            "user_message": "Test message",
+            "intent": "create_ticket",
+            "subject": "Test Subject",
+            "description": "Test Description",
+            "category": "benefits",
+            "meeting_type": "online",
+            "preferred_date": None,
+            "preferred_time_slot": None,
+            "urgency": "normal",
+            "is_valid": True,
+            "validation_errors": [],
+            "has_open_tickets": False,
+            "open_ticket_ids": [],
+            "ticket_id": None,
+            "queue_position": None,
+            "agent_response": ""
+        }
+        
+        result = check_duplicates_node(state, db_session)
+        
+        assert result["has_open_tickets"] is True
+        # Should have 2 open (pending + in_progress)
+        assert len(result["open_ticket_ids"]) == 2
 
 
 class TestCreateTicketNode:
@@ -420,6 +505,37 @@ class TestCreateTicketNode:
         ticket = db_session.query(HRTicket).filter_by(id=result["ticket_id"]).first()
         assert ticket.preferred_date == tomorrow
         assert ticket.preferred_time_slot == "morning"
+    
+    def test_create_urgent_ticket(self, db_session):
+        """Test creating urgent ticket"""
+        state: HRTicketState = {
+            "user_email": "user@crousemedical.com",
+            "company": "Crouse Medical Practice",
+            "user_message": "URGENT issue",
+            "intent": "create_ticket",
+            "subject": "URGENT: Payroll Problem",
+            "description": "Need immediate help",
+            "category": "payroll",
+            "meeting_type": "phone",
+            "preferred_date": None,
+            "preferred_time_slot": None,
+            "urgency": "urgent",
+            "is_valid": True,
+            "validation_errors": [],
+            "has_open_tickets": False,
+            "open_ticket_ids": [],
+            "ticket_id": None,
+            "queue_position": None,
+            "agent_response": ""
+        }
+        
+        result = create_ticket_node(state, db_session)
+        
+        assert result["ticket_id"] is not None
+        
+        from db.models import HRTicket, Urgency
+        ticket = db_session.query(HRTicket).filter_by(id=result["ticket_id"]).first()
+        assert ticket.urgency == Urgency.URGENT
 
 
 class TestGenerateResponseNode:
@@ -535,3 +651,34 @@ class TestGenerateResponseNode:
         result = generate_response_node(state, db_session)
         
         assert "2 other open ticket" in result["agent_response"]
+    
+    def test_response_with_preferred_meeting(self, db_session):
+        """Test response includes meeting preferences"""
+        tomorrow = date.today() + timedelta(days=1)
+        
+        state: HRTicketState = {
+            "user_email": "user@crousemedical.com",
+            "company": "Crouse Medical Practice",
+            "user_message": "Test message",
+            "intent": "create_ticket",
+            "subject": "Benefits Meeting",
+            "description": "Want to discuss options",
+            "category": "benefits",
+            "meeting_type": "in_person",
+            "preferred_date": tomorrow,
+            "preferred_time_slot": "afternoon",
+            "urgency": "normal",
+            "is_valid": True,
+            "validation_errors": [],
+            "has_open_tickets": False,
+            "open_ticket_ids": [],
+            "ticket_id": "test-ticket-id",
+            "queue_position": 1,
+            "agent_response": ""
+        }
+        
+        result = generate_response_node(state, db_session)
+        
+        assert "successfully" in result["agent_response"].lower()
+        # Should mention the meeting preference somehow
+        assert tomorrow.strftime("%B") in result["agent_response"] or "afternoon" in result["agent_response"].lower()

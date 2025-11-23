@@ -31,37 +31,47 @@ jobs:
           cd backend
           pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio pytest-cov
+          pip install pytest pytest-asyncio pytest-cov python-dotenv
       
       - name: Test PTO Agent Tools
         run: |
           cd backend
           pytest agents/test_agents/test_pto_tools.py -v --cov=agents/pto/tools --cov-report=term
         continue-on-error: true
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
       
       - name: Test PTO Agent Nodes
         run: |
           cd backend
           pytest agents/test_agents/test_pto_nodes.py -v --cov=agents/pto/nodes --cov-report=term
         continue-on-error: true
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
       
       - name: Test PTO Agent State
         run: |
           cd backend
           pytest agents/test_agents/ -k "state" -v --cov=agents/pto/state --cov-report=term
         continue-on-error: true
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
       
       - name: Test PTO Agent Workflow
         run: |
           cd backend
           pytest agents/test_agents/ -k "agent" -v --cov=agents/pto/agent --cov-report=term
         continue-on-error: true
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
       
       - name: Run all PTO agent tests with coverage
         run: |
           cd backend
           pytest agents/test_agents/test_pto*.py -v --cov=agents/pto --cov-report=term --cov-report=xml --cov-report=html
         continue-on-error: false
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
       
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
