@@ -5,10 +5,10 @@
 name: Component Test - Fast Feedback for Feature Branches
 
 on:
-  push:
-    branches: [ main, raghav-branch ]
-  pull_request:
-    branches: [ main ]
+  # push:
+  #   branches: [ main, raghav-branch ]
+  # pull_request:
+  #   branches: [ main ]
   workflow_dispatch:
 
 # Prevent parallel runs on the same branch

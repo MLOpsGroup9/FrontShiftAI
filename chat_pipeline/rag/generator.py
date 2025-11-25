@@ -5,6 +5,7 @@ from __future__ import annotations
 import atexit
 import logging
 import os
+import time
 from dotenv import load_dotenv
 from pathlib import Path
 from typing import Any, Dict, Generator, Iterable, List, Literal, Optional, Tuple
@@ -13,6 +14,14 @@ from chat_pipeline.rag.config_manager import get_streaming_config, get_generatio
 from chat_pipeline.rag.prompt_templates import prompt_templates
 from chat_pipeline.rag.reranker import two_stage_reranker
 from chat_pipeline.rag.retriever import bm25_retrieval, vector_retrieval
+from chat_pipeline.utils.runtime_env import (
+    allow_heavy_fallbacks,
+    remote_max_attempts,
+    remote_retry_backoff,
+    remote_retry_initial_delay,
+    remote_timeout_seconds,
+    remote_request_delay_seconds,
+)
 
 load_dotenv()
 
@@ -62,6 +71,12 @@ GENERATION_BACKEND = os.getenv("GENERATION_BACKEND")
 HF_MODEL_NAME = os.getenv("HF_MODEL_NAME")
 HF_API_TOKEN = os.getenv("HF_API_TOKEN")
 HF_API_BASE = os.getenv("HF_API_BASE")
+_LAST_BACKEND_USED: Optional[str] = None
+REMOTE_TIMEOUT = remote_timeout_seconds()
+REMOTE_MAX_ATTEMPTS = remote_max_attempts()
+REMOTE_BACKOFF = remote_retry_backoff()
+REMOTE_BACKOFF_START = remote_retry_initial_delay()
+REMOTE_MIN_DELAY = remote_request_delay_seconds()
 
 _LLM_INSTANCE: Optional[Any] = None
 _LLM_CACHE_KEY: Optional[Tuple[str, Tuple[Tuple[str, Any], ...]]] = None
@@ -143,6 +158,9 @@ def _get_streaming_hyperparameters(overrides: Optional[Dict[str, Any]] = None) -
 
 def _get_hf_client():
     """Return a shared Hugging Face inference client (if configured)."""
+
+    if not allow_heavy_fallbacks():
+        raise RuntimeError("HF fallback disabled. Enable CHAT_PIPELINE_ALLOW_HEAVY_FALLBACKS to use it.")
 
     model_name = HF_MODEL_NAME or get_generation_config().get("hf_model_name")
     if not model_name:
@@ -228,20 +246,46 @@ def _call_mercury_api(prompt: str, params: Dict[str, Any]) -> str:
         "temperature": params.get("temperature"),
         "top_p": params.get("top_p"),
     }
-    response = requests.post(
-        f"{INCEPTION_API_BASE}/chat/completions",
-        json=payload,
-        headers=headers,
-        timeout=60,
-    )
-    response.raise_for_status()
-    data = response.json()
-    if "choices" in data and data["choices"]:
-        message = data["choices"][0].get("message", {})
-        return (message.get("content") or "").strip()
-    if "content" in data:
-        return (data["content"] or "").strip()
-    raise RuntimeError(f"Unexpected response format from Mercury API: {data}")
+    attempts = REMOTE_MAX_ATTEMPTS
+    delay = REMOTE_BACKOFF_START
+    last_exc: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            if REMOTE_MIN_DELAY > 0 and attempt > 1:
+                time.sleep(REMOTE_MIN_DELAY)
+            response = requests.post(
+                f"{INCEPTION_API_BASE}/chat/completions",
+                json=payload,
+                headers=headers,
+                timeout=REMOTE_TIMEOUT,
+            )
+            response.raise_for_status()
+            data = response.json()
+            if "choices" in data and data["choices"]:
+                message = data["choices"][0].get("message", {})
+                return (message.get("content") or "").strip()
+            if "content" in data:
+                return (data["content"] or "").strip()
+            raise RuntimeError(f"Unexpected response format from Mercury API: {data}")
+        except Exception as exc:
+            last_exc = exc
+            logger.warning("Mercury API attempt %s/%s failed: %s", attempt, attempts, exc)
+            if attempt == attempts:
+                break
+            time.sleep(delay)
+            delay *= REMOTE_BACKOFF
+    raise RuntimeError("Mercury API failed after multiple attempts.") from last_exc
+
+
+def _record_backend(name: Optional[str]) -> None:
+    global _LAST_BACKEND_USED
+    _LAST_BACKEND_USED = name
+
+
+def get_last_backend_used() -> Optional[str]:
+    """Return the backend picked during the most recent generation call."""
+
+    return _LAST_BACKEND_USED
 
 
 def stream_response(
@@ -251,6 +295,7 @@ def stream_response(
 ) -> Generator[str, None, None]:
     """Stream the model output token-by-token as it is generated."""
 
+    _record_backend(None)
     params = _get_streaming_hyperparameters(stream_overrides)
     gen_cfg = get_generation_config()
     backend = (GENERATION_BACKEND or gen_cfg.get("backend") or "auto").lower()
@@ -264,19 +309,26 @@ def stream_response(
             local_llm = None
 
     if backend in ("auto", "local") and local_llm is not None:
+        _record_backend("local")
         yield from _stream_from_local_llm(local_llm, prompt, params)
         return
 
-    if backend in ("hf", "qwen", "llama", "auto"):
+    if backend in ("hf", "qwen", "llama", "auto") and allow_heavy_fallbacks():
         try:
+            hf_label = backend if backend in ("hf", "qwen", "llama") else "hf"
+            _record_backend(hf_label)
             yield from _stream_from_hf(prompt, params)
             return
         except Exception as exc:  # pragma: no cover - optional dependency
+            _record_backend(None)
             logger.debug("HF backend unavailable: %s", exc)
             if backend != "auto":
                 raise
+    elif backend in ("hf", "qwen", "llama") and not allow_heavy_fallbacks():
+        logger.warning("Heavy HF fallback disabled; skipping backend '%s'.", backend)
 
     if backend in ("mercury", "auto"):
+        _record_backend("mercury")
         yield _call_mercury_api(prompt, params)
         return
 
@@ -355,7 +407,16 @@ def _run_retrieval(
             max_documents=max_documents,
         )
         docs = [item["document"] for item in reranked]
-        metadata = [item.get("metadata", {}) or {} for item in reranked]
+        metadata: List[Dict[str, Any]] = []
+        for item in reranked:
+            meta = dict(item.get("metadata", {}) or {})
+            score = item.get("score")
+            if score is not None:
+                try:
+                    meta["reranker_score"] = float(score)
+                except (TypeError, ValueError):
+                    meta["reranker_score"] = score
+            metadata.append(meta)
         return docs, metadata
 
     if retriever_key not in {"vector", "bm25"}:
@@ -503,6 +564,7 @@ __all__ = [
     "load_llm",
     "stream_response",
     "generation",
+    "get_last_backend_used",
     "DEFAULT_MODEL_PATH",
     "HF_MODEL_NAME",
     "INCEPTION_API_KEY",

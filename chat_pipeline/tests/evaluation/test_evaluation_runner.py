@@ -82,9 +82,11 @@ def test_persist_intermediate_writes_answer_and_contexts(tmp_path: Path):
         answer="answer text",
         contexts=["ctx1", "ctx2"],
         index=1,
+        generation_backend="local",
     )
     runner._export_examples()
 
-    written = json.loads((tmp_path / "examples.json").read_text(encoding="utf-8"))
+    data = (tmp_path / "examples.jsonl").read_text(encoding="utf-8").strip().splitlines()
+    written = [json.loads(line) for line in data]
     assert written[0]["answer"] == "answer text"
     assert written[0]["contexts"] == ["ctx1", "ctx2"]

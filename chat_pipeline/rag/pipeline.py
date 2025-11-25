@@ -20,6 +20,7 @@ from chat_pipeline.rag.generator import (
     HF_MODEL_NAME,
     INCEPTION_API_KEY,
     generation,
+    get_last_backend_used,
 )
 from chat_pipeline.rag.reranker import two_stage_reranker
 from chat_pipeline.rag.retriever import bm25_retrieval, vector_retrieval
@@ -178,6 +179,7 @@ class PipelineResult:
     streamed: bool
     config: PipelineConfig
     timings: Dict[str, float] = field(default_factory=dict)
+    generation_backend: Optional[str] = None
 
     def is_stream(self) -> bool:
         return self.streamed
@@ -336,6 +338,7 @@ class RAGPipeline:
             documents=docs,
             metadatas=metadata,
         )
+        backend_used = get_last_backend_used()
         timings["generation"] = time.perf_counter() - gen_start
         timings["cache_hit"] = 1.0 if cache_hit else 0.0
 
@@ -348,6 +351,7 @@ class RAGPipeline:
             streamed=effective_stream,
             config=settings,
             timings=timings,
+            generation_backend=backend_used,
         )
 
     # ------------------------------------------------------------------ #
@@ -427,7 +431,16 @@ class RAGPipeline:
                 batch_size=settings.reranker.batch_size,
             )
             docs = [item.get("document", "") for item in reranked]
-            metadata = [item.get("metadata", {}) or {} for item in reranked]
+            metadata = []
+            for item in reranked:
+                meta = dict(item.get("metadata", {}) or {})
+                score = item.get("score")
+                if score is not None:
+                    try:
+                        meta["reranker_score"] = float(score)
+                    except (TypeError, ValueError):
+                        meta["reranker_score"] = score
+                metadata.append(meta)
             return self._filter_by_company(company_name, docs, metadata)
 
         retriever_fn = self.retriever_registry[retriever_name]

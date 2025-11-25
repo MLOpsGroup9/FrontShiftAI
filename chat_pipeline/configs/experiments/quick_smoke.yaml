@@ -3,7 +3,7 @@ logging:
   to_file: false
 
 wandb:
-  project: FrontShiftAI
+  project: FrontShiftAI_Latest
   entity: group9mlops-northeastern-university
   disable: true
 

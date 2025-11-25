@@ -10,7 +10,7 @@ This package implements two things:
 - `evaluation/`: Question generation, judge client, evaluation runner, artifacts written under `results/`.
 - `tracking/`: W&B helpers and the model registry writer (metadata-only).
 - `utils/`: Logging setup and email notifier.
-- `results/`: Default output location for eval runs (examples.json, summary.json, bias_report.json).
+- `results/`: Default output location for eval runs (examples.jsonl, summary.json, bias_report.json).
 
 ## How to run
 - Smoke run (small set, mocked/tiny fixtures): `python -m chat_pipeline.cli --config chat_pipeline/configs/experiments/quick_smoke.yaml`
@@ -23,7 +23,7 @@ This package implements two things:
 - Eval-specific knobs (datasets, outputs, slice fields, overrides) live in `configs/experiments/*.yaml`.
 
 ## Artifacts produced
-- Per-run consolidated examples: `results/<run_label>/examples.json` with question, metadata, contexts, answer, metrics.
+- Per-run consolidated examples: `results/<run_label>/examples.jsonl` with question, metadata, contexts, answer, metrics.
 - Aggregates: `results/<run_label>/summary.json` and `results/<run_label>/bias_report.json`.
 - Experiment-level summary: `results/experiment_summary.json` (path can be set per experiment config).
 

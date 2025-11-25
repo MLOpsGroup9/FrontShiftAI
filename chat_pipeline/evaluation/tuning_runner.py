@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -35,14 +36,23 @@ def _run_eval(
     wandb_project: Optional[str],
     wandb_entity: Optional[str],
     disable_wandb: bool,
+    wandb_tags: Optional[List[str]] = None,
+    run_name_prefix: Optional[str] = None,
+    run_timestamp: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     output_dir.mkdir(parents=True, exist_ok=True)
     runs: List[Dict[str, Any]] = []
+    timestamp = run_timestamp or datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    prefix = run_name_prefix or f"tuning-{label}"
 
     for item in grid:
         run_name = item.get("name") or "run"
         overrides = item.get("overrides") or {}
         dest = output_dir / f"{label}_{run_name}"
+        tags = set(wandb_tags or [])
+        tags.add("tuning")
+        tags.add(f"tuning-grid:{run_name}")
+        wandb_run_name = f"{prefix}-{label}-{run_name}-{timestamp}"
         cfg = EvaluationConfig(
             test_questions_dir=test_dir,
             output_dir=dest,
@@ -52,6 +62,8 @@ def _run_eval(
             disable_wandb=disable_wandb,
             dataset_label=label,
             slice_fields=slice_fields,
+            wandb_tags=sorted(tag for tag in tags if tag),
+            wandb_run_name=wandb_run_name,
         )
         runner = EvaluationRunner(cfg, config_overrides=overrides)
         runner.run()
