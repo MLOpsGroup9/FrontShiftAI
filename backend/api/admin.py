@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from schemas import CreateUserRequest, UpdatePasswordRequest, DeleteUserRequest
 from services import (
-    get_all_company_admins, get_all_companies,
+    get_all_company_admins,
     get_users_by_company, add_user, delete_user, update_user_password
 )
 from api.auth import get_current_user
@@ -30,8 +30,20 @@ async def get_company_admins(
 ):
     """Get all company admins (Super Admin only)"""
     require_admin(current_user, "super_admin")
-    admins = get_all_company_admins(db)
-    return {"admins": admins}
+    
+    from db.models import User, UserRole
+    admins = db.query(User).filter(User.role == UserRole.COMPANY_ADMIN).all()
+    return {
+        "admins": [
+            {
+                "email": admin.email,
+                "name": admin.name,
+                "company": admin.company,
+                "created_at": admin.created_at.isoformat() if admin.created_at else None
+            }
+            for admin in admins
+        ]
+    }
 
 @router.get("/all-companies")
 async def get_all_companies_admin(
@@ -40,8 +52,21 @@ async def get_all_companies_admin(
 ):
     """Get all companies (Super Admin only)"""
     require_admin(current_user, "super_admin")
-    companies = get_all_companies(db)
-    return {"companies": companies}
+    
+    from db.models import Company
+    companies = db.query(Company).all()
+    
+    return {
+        "companies": [
+            {
+                "name": c.name,
+                "domain": c.domain,
+                "email_domain": c.email_domain,
+                "url": c.url
+            }
+            for c in companies
+        ]
+    }
 
 @router.post("/add-company-admin")
 async def add_company_admin(
@@ -175,5 +200,17 @@ async def update_password(
 @router.get("/companies")
 def get_companies(db: Session = Depends(get_db)):
     """Get list of all available companies"""
-    companies = get_all_companies(db)
-    return {"companies": companies}
+    from db.models import Company
+    companies = db.query(Company).all()
+    
+    return {
+        "companies": [
+            {
+                "name": c.name,
+                "domain": c.domain,
+                "email_domain": c.email_domain,
+                "url": c.url
+            }
+            for c in companies
+        ]
+    }

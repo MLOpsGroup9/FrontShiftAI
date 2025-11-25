@@ -25,6 +25,7 @@ from api import auth, rag, admin
 from api.unified_agent import router as unified_agent_router
 from api.pto_agent import router as pto_router  # Keep for admin endpoints
 from api.hr_ticket_agent import router as hr_ticket_router  # Keep for admin endpoints
+from api.company_management import router as company_management_router  
 
 # ----------------------------
 # Lifespan Events
@@ -73,6 +74,7 @@ app.include_router(unified_agent_router)
 # Individual Agent Routers (Admin endpoints only)
 app.include_router(pto_router)
 app.include_router(hr_ticket_router)
+app.include_router(company_management_router) 
 
 # ----------------------------
 # Health Check

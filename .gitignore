@@ -71,6 +71,8 @@ secrets.yaml
 wandb/
 voice_pipeline 
 
+#GCP
+frontshiftai-c98c983486fd.json
 
 
 frontshiftai-dvc-sa.json
