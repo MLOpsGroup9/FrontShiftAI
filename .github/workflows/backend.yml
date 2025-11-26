@@ -80,18 +80,18 @@ jobs:
       - name: Upload HTML coverage report
         uses: actions/upload-artifact@v4
         with:
-          name: backend-coverage-html-${{ github.ref_name }}
+          name: backend-coverage-html-${{ github.run_id }}
           path: backend/htmlcov/
           retention-days: 7
       
       - name: Test summary
         if: success()
         run: |
-          echo "✅ Backend tests passed on branch ${{ github.ref_name }}"
+          echo "✅ Backend tests passed on branch ${{ github.run_id }}"
           echo "📊 Coverage reports generated"
       
       - name: Test failure
         if: failure()
         run: |
-          echo "❌ Backend tests failed on branch ${{ github.ref_name }}"
+          echo "❌ Backend tests failed on branch ${{ github.run_id }}"
           echo "Check the logs above for details"
