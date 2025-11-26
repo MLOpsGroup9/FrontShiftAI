@@ -1,21 +1,6 @@
 import React, { useState } from 'react';
 
-const examplePrompts = [
-  {
-    title: 'Shift Handover',
-    prompt: 'Give me a quick handover checklist for the night-shift warehouse lead.',
-  },
-  {
-    title: 'Safety Report',
-    prompt: 'How do I log a safety incident from the FrontShift mobile app?',
-  },
-  {
-    title: 'Benefits Snapshot',
-    prompt: 'Summarize PTO, overtime, and wellness benefits for field technicians.',
-  },
-];
-
-const MessageInput = ({ onSendMessage, isLoading, messages = [] }) => {
+const MessageInput = ({ onSendMessage, isLoading, messages = [], placeholder }) => {
   const [message, setMessage] = useState('');
   const hasMessages = messages.length > 0;
 
@@ -34,15 +19,9 @@ const MessageInput = ({ onSendMessage, isLoading, messages = [] }) => {
     }
   };
 
-  const handleExampleClick = (prompt) => {
-    if (isLoading) return;
-    setMessage('');
-    onSendMessage(prompt);
-  };
-
   const containerClasses = hasMessages
     ? 'px-4 sm:px-8 pt-2 pb-6'
-    : 'px-4 sm:px-8 pt-6 pb-10';
+    : 'px-4 sm:px-8 pt-6 pb-6'; // Changed pb-10 to pb-6
 
   const formClasses = hasMessages
     ? 'w-full max-w-4xl mx-auto flex flex-col gap-4'
@@ -69,7 +48,7 @@ const MessageInput = ({ onSendMessage, isLoading, messages = [] }) => {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Message AI Chat..."
+            placeholder={placeholder || "Message AI Chat..."}
             disabled={isLoading}
             className={`${textAreaClasses} transition-all duration-500`}
           />
@@ -93,7 +72,7 @@ const MessageInput = ({ onSendMessage, isLoading, messages = [] }) => {
             <button
               type="submit"
               disabled={!message.trim() || isLoading}
-              className="w-11 h-11 flex items-center justify-center rounded-2xl bg-gradient-to-br from-white/90 to-white/60 text-black/70 shadow-[0_12px_25px_rgba(15,15,20,0.55)] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-11 h-11 flex items-center justify-center rounded-2xl bg-gradient-to-br from-white/90 to-white/60 text-black/70 shadow-[0_12px_25px_rgba(15,15,20,0.55)] disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_15px_30px_rgba(15,15,20,0.65)] transition-all active:scale-95"
               title="Send message"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,23 +81,6 @@ const MessageInput = ({ onSendMessage, isLoading, messages = [] }) => {
             </button>
           </div>
         </div>
-
-        {!hasMessages && (
-          <div className="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {examplePrompts.map(({ title, prompt }) => (
-              <button
-                key={title}
-                type="button"
-                onClick={() => handleExampleClick(prompt)}
-                className="w-full text-left rounded-2xl border border-white/10 bg-white/5 px-4 py-3 hover:border-white/20 hover:bg-white/10 transition-all active:scale-[0.99]"
-              >
-                <p className="text-[11px] uppercase tracking-widest text-white/40">Example</p>
-                <h4 className="text-white/90 font-semibold text-sm mt-1">{title}</h4>
-                <p className="text-white/70 text-xs mt-1 leading-relaxed">{prompt}</p>
-              </button>
-            ))}
-          </div>
-        )}
       </form>
     </div>
   );

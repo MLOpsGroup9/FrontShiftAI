@@ -36,6 +36,8 @@ docker-data/
 MyResources/
 .email_config.json
 ml_pipeline/utils/email_config.json
+backend/mytests
+models/
 
 # DVC
 # .dvc
@@ -67,9 +69,10 @@ secrets.yaml
 
 # W&B files (already in gitignore, but verify)
 wandb/
-
 voice_pipeline 
 
+#GCP
+frontshiftai-c98c983486fd.json
 
 
 frontshiftai-dvc-sa.json
