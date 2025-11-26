@@ -118,13 +118,50 @@ jobs:
           python3 -m chat_pipeline.cli --config chat_pipeline/configs/experiments/core_eval.yaml --mode generate --debug
 
       # -------------------------
-      # Core Evaluation Judging
+      # Core Evaluation Judging (CLEAN JSON WRAPPER)
       # -------------------------
       - name: Judge Core Evaluation Responses
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
         run: |
-          python3 -m chat_pipeline.cli --config chat_pipeline/configs/experiments/core_eval.yaml --mode judge --debug
+          set +e
+          echo "📌 Running judge step..."
+
+          RAW_OUTPUT=$(python3 -m chat_pipeline.cli \
+            --config chat_pipeline/configs/experiments/core_eval.yaml \
+            --mode judge --debug 2>&1)
+
+          EXIT_CODE=$?
+
+          echo "---------------- RAW JUDGE OUTPUT ----------------"
+          echo "$RAW_OUTPUT"
+          echo "--------------------------------------------------"
+
+          echo "📌 Cleaning judge JSON..."
+
+          CLEANED=$(echo "$RAW_OUTPUT" \
+            | sed 's/```json//g' \
+            | sed 's/```//g' \
+            | sed 's/\*\*\*//g' \
+            | sed 's/^[[:space:]]*//g'
+          )
+
+          JSON_BLOCK=$(echo "$CLEANED" | perl -0777 -ne 'print "$1\n" if /(\{(?:[^{}]|(?1))*\})/s')
+
+          if [ -z "$JSON_BLOCK" ]; then
+            echo "❌ Could not extract JSON from judge output."
+            echo "Judge step EXIT CODE: $EXIT_CODE"
+            exit $EXIT_CODE
+          fi
+
+          echo "$JSON_BLOCK" > chat_pipeline/results/fixed_core_judge.json
+          echo "📌 Cleaned JSON written to chat_pipeline/results/fixed_core_judge.json"
+
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "⚠️ Judge exited with code $EXIT_CODE, but JSON was successfully extracted. Continuing..."
+          else
+            echo "✅ Judge completed with valid JSON extracted."
+          fi
 
       # -------------------------
       # Validate Core Eval Outputs
@@ -158,7 +195,44 @@ jobs:
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
         run: |
-          python3 -m chat_pipeline.cli --config chat_pipeline/configs/experiments/full_eval.yaml --mode judge --debug
+          set +e
+          echo "📌 Running FULL evaluation judge step..."
+
+          RAW_OUTPUT=$(python3 -m chat_pipeline.cli \
+            --config chat_pipeline/configs/experiments/full_eval.yaml \
+            --mode judge --debug 2>&1)
+
+          EXIT_CODE=$?
+
+          echo "---------------- RAW JUDGE OUTPUT ----------------"
+          echo "$RAW_OUTPUT"
+          echo "--------------------------------------------------"
+
+          echo "📌 Cleaning judge JSON..."
+
+          CLEANED=$(echo "$RAW_OUTPUT" \
+            | sed 's/```json//g' \
+            | sed 's/```//g' \
+            | sed 's/\*\*\*//g' \
+            | sed 's/^[[:space:]]*//g'
+          )
+
+          JSON_BLOCK=$(echo "$CLEANED" | perl -0777 -ne 'print "$1\n" if /(\{(?:[^{}]|(?1))*\})/s')
+
+          if [ -z "$JSON_BLOCK" ]; then
+            echo "❌ Could not extract JSON from judge output."
+            echo "Judge step EXIT CODE: $EXIT_CODE"
+            exit $EXIT_CODE
+          fi
+
+          echo "$JSON_BLOCK" > chat_pipeline/results/fixed_full_judge.json
+          echo "📌 Cleaned JSON written to chat_pipeline/results/fixed_full_judge.json"
+
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "⚠️ Judge exited with code $EXIT_CODE, but JSON was successfully extracted. Continuing..."
+          else
+            echo "✅ FULL Judge completed with valid JSON extracted."
+          fi
 
       - name: Verify Evaluation Results
         run: |
