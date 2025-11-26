@@ -1,5 +1,5 @@
 """
-Unified Agent - Handles RAG, PTO, and HR Tickets in one conversation
+Unified Agent - Handles RAG, PTO, HR Tickets, and Website Extraction
 WITH PERSISTENT CHAT STORAGE
 """
 from fastapi import APIRouter, Depends
@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from agents.utils.llm_client import get_llm_client
 from agents.pto.agent import PTOAgent
 from agents.hr_ticket.agent import HRTicketAgent
+from agents.website_extraction.agent import WebsiteExtractionAgent
 from schemas.rag import RAGQueryRequest
 from api.rag import rag_query
 from db.models import Conversation, Message
@@ -50,9 +51,20 @@ class MessageResponse(BaseModel):
 def detect_intent(message: str) -> dict:
     """
     Detect user intent and which agent should handle it.
-    Returns: {'agent': 'rag'|'pto'|'hr_ticket', 'confidence': 'high'|'low'}
+    Returns: {'agent': 'rag'|'pto'|'hr_ticket'|'website_extraction', 'confidence': 'high'|'low'}
     """
     message_lower = message.lower()
+    
+    # Website extraction keywords (direct request)
+    website_keywords = [
+        'company website', 'on their website', 'check website', 'look up online',
+        'find online', 'from the website', 'website says', 'their site',
+        'official site', 'company site', 'search website', 'on the web'
+    ]
+    
+    for keyword in website_keywords:
+        if keyword in message_lower:
+            return {'agent': 'website_extraction', 'confidence': 'high'}
     
     # High-confidence PTO keywords
     pto_strong = [
@@ -261,8 +273,43 @@ async def unified_chat(
                 }
             )
             
+        elif agent_type == 'website_extraction':
+            website_agent = WebsiteExtractionAgent(db)
+            result = await website_agent.execute(
+                user_email=current_user["email"],
+                company=current_user["company"],
+                message=message,
+                triggered_by="direct"
+            )
+            
+            assistant_message = Message(
+                id=str(uuid.uuid4()),
+                conversation_id=conversation_id,
+                role='assistant',
+                content=result["response"],
+                agent_type='website_extraction',
+                message_metadata=json.dumps({
+                    "found_answer": result.get("found_answer", False),
+                    "source_urls": result.get("source_urls", []),
+                    "confidence": result.get("confidence", 0.0),
+                    "suggest_hr_ticket": result.get("suggest_hr_ticket", False)
+                })
+            )
+            db.add(assistant_message)
+            db.commit()
+            
+            return ChatResponse(
+                response=result["response"],
+                agent_used="website_extraction",
+                conversation_id=conversation_id,
+                metadata={
+                    "found_answer": result.get("found_answer", False),
+                    "source_urls": result.get("source_urls", []),
+                    "suggest_hr_ticket": result.get("suggest_hr_ticket", False)
+                }
+            )
+            
         else:  # rag
-            # Use existing RAG endpoint
             rag_request = RAGQueryRequest(
                 query=message,
                 top_k=3
@@ -270,7 +317,55 @@ async def unified_chat(
             
             rag_result = await rag_query(rag_request, current_user)
             
-            # Save assistant message
+            # Check if RAG found nothing - fallback to website extraction
+            no_context_phrases = [
+                "no relevant context",
+                "couldn't find",
+                "not found in the",
+                "no information available",
+                "isn't available in the provided"
+            ]
+            
+            rag_failed = any(phrase in rag_result.answer.lower() for phrase in no_context_phrases)
+            
+            if rag_failed:
+                print(f"🔄 RAG found nothing, trying website extraction...")
+                website_agent = WebsiteExtractionAgent(db)
+                website_result = await website_agent.execute(
+                    user_email=current_user["email"],
+                    company=current_user["company"],
+                    message=message,
+                    triggered_by="rag_fallback"
+                )
+                
+                assistant_message = Message(
+                    id=str(uuid.uuid4()),
+                    conversation_id=conversation_id,
+                    role='assistant',
+                    content=website_result["response"],
+                    agent_type='website_extraction',
+                    message_metadata=json.dumps({
+                        "found_answer": website_result.get("found_answer", False),
+                        "source_urls": website_result.get("source_urls", []),
+                        "triggered_by": "rag_fallback",
+                        "suggest_hr_ticket": website_result.get("suggest_hr_ticket", False)
+                    })
+                )
+                db.add(assistant_message)
+                db.commit()
+                
+                return ChatResponse(
+                    response=website_result["response"],
+                    agent_used="website_extraction",
+                    conversation_id=conversation_id,
+                    metadata={
+                        "found_answer": website_result.get("found_answer", False),
+                        "source_urls": website_result.get("source_urls", []),
+                        "triggered_by": "rag_fallback",
+                        "suggest_hr_ticket": website_result.get("suggest_hr_ticket", False)
+                    }
+                )
+            
             assistant_message = Message(
                 id=str(uuid.uuid4()),
                 conversation_id=conversation_id,
@@ -404,5 +499,5 @@ def health_check():
     return {
         "status": "ok", 
         "message": "Unified agent is running",
-        "agents": ["rag", "pto", "hr_ticket"]
+        "agents": ["rag", "pto", "hr_ticket", "website_extraction"]
     }
