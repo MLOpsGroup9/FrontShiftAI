@@ -191,3 +191,33 @@ class HRTicket(Base):
 
     def __repr__(self):
         return f"<HRTicket(id={self.id}, email={self.email}, subject={self.subject}, status={self.status})>"
+
+
+class Conversation(Base):
+    """User chat conversations"""
+    __tablename__ = "conversations"
+    
+    id = Column(String, primary_key=True)  # UUID
+    email = Column(String, nullable=False, index=True)
+    company = Column(String, nullable=False, index=True)
+    title = Column(String, nullable=True)  # First user message (truncated)
+    
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
+class Message(Base):
+    """Individual messages within conversations"""
+    __tablename__ = "messages"
+    
+    id = Column(String, primary_key=True)  # UUID
+    conversation_id = Column(String, nullable=False, index=True)
+    
+    role = Column(String, nullable=False)  # 'user' or 'assistant'
+    content = Column(String, nullable=False)
+    agent_type = Column(String, nullable=True)  # 'rag', 'pto', 'hr_ticket'
+    
+    # Metadata (stored as JSON string)
+    message_metadata = Column(String, nullable=True)
+    
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)

@@ -1,5 +1,6 @@
 """
 Unified Agent - Handles RAG, PTO, and HR Tickets in one conversation
+WITH PERSISTENT CHAT STORAGE
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -11,19 +12,39 @@ from agents.pto.agent import PTOAgent
 from agents.hr_ticket.agent import HRTicketAgent
 from schemas.rag import RAGQueryRequest
 from api.rag import rag_query
+from db.models import Conversation, Message
 import json
+import uuid
+from typing import List, Optional
 
 router = APIRouter(prefix="/api/chat", tags=["Unified Agent"])
 
 
 class ChatRequest(BaseModel):
     message: str
+    conversation_id: Optional[str] = None
 
 
 class ChatResponse(BaseModel):
     response: str
     agent_used: str
+    conversation_id: str
     metadata: dict = {}
+
+
+class ConversationResponse(BaseModel):
+    id: str
+    title: str
+    created_at: str
+    updated_at: str
+
+
+class MessageResponse(BaseModel):
+    id: str
+    role: str
+    content: str
+    agent_type: Optional[str]
+    created_at: str
 
 
 def detect_intent(message: str) -> dict:
@@ -130,8 +151,35 @@ async def unified_chat(
 ):
     """
     Unified chat endpoint - intelligently routes to RAG, PTO, or HR Ticket agents
+    AND saves to database
     """
     message = request.message
+    conversation_id = request.conversation_id
+    
+    # Create or get conversation
+    if not conversation_id:
+        conversation_id = str(uuid.uuid4())
+        title = message[:50] + ('...' if len(message) > 50 else '')
+        
+        new_conversation = Conversation(
+            id=conversation_id,
+            email=current_user["email"],
+            company=current_user["company"],
+            title=title
+        )
+        db.add(new_conversation)
+        db.commit()
+    
+    # Save user message
+    user_message = Message(
+        id=str(uuid.uuid4()),
+        conversation_id=conversation_id,
+        role='user',
+        content=message,
+        agent_type=None
+    )
+    db.add(user_message)
+    db.commit()
     
     # Detect intent
     intent = detect_intent(message)
@@ -149,9 +197,26 @@ async def unified_chat(
                 message=message
             )
             
+            # Save assistant message
+            assistant_message = Message(
+                id=str(uuid.uuid4()),
+                conversation_id=conversation_id,
+                role='assistant',
+                content=result["response"],
+                agent_type='pto',
+                message_metadata=json.dumps({
+                    "request_created": result.get("request_created", False),
+                    "request_id": result.get("request_id"),
+                    "balance_info": result.get("balance_info")
+                })
+            )
+            db.add(assistant_message)
+            db.commit()
+            
             return ChatResponse(
                 response=result["response"],
                 agent_used="pto",
+                conversation_id=conversation_id,
                 metadata={
                     "request_created": result.get("request_created", False),
                     "request_id": result.get("request_id"),
@@ -169,9 +234,26 @@ async def unified_chat(
                 db=db
             )
             
+            # Save assistant message
+            assistant_message = Message(
+                id=str(uuid.uuid4()),
+                conversation_id=conversation_id,
+                role='assistant',
+                content=result["response"],
+                agent_type='hr_ticket',
+                message_metadata=json.dumps({
+                    "ticket_created": result.get("ticket_created", False),
+                    "ticket_id": result.get("ticket_id"),
+                    "queue_position": result.get("queue_position")
+                })
+            )
+            db.add(assistant_message)
+            db.commit()
+            
             return ChatResponse(
                 response=result["response"],
                 agent_used="hr_ticket",
+                conversation_id=conversation_id,
                 metadata={
                     "ticket_created": result.get("ticket_created", False),
                     "ticket_id": result.get("ticket_id"),
@@ -188,11 +270,27 @@ async def unified_chat(
             
             rag_result = await rag_query(rag_request, current_user)
             
+            # Save assistant message
+            assistant_message = Message(
+                id=str(uuid.uuid4()),
+                conversation_id=conversation_id,
+                role='assistant',
+                content=rag_result.answer,
+                agent_type='rag',
+                message_metadata=json.dumps({
+                    "sources": rag_result.sources,
+                    "company": rag_result.company
+                })
+            )
+            db.add(assistant_message)
+            db.commit()
+            
             return ChatResponse(
                 response=rag_result.answer,
                 agent_used="rag",
+                conversation_id=conversation_id,
                 metadata={
-                    "sources": rag_result.sources,  # Already formatted by rag_query
+                    "sources": rag_result.sources,
                     "company": rag_result.company
                 }
             )
@@ -202,12 +300,102 @@ async def unified_chat(
         import traceback
         traceback.print_exc()
         
-        # Return a helpful error message
+        # Save error message
+        error_message = Message(
+            id=str(uuid.uuid4()),
+            conversation_id=conversation_id,
+            role='assistant',
+            content=f"Sorry, I encountered an error processing your request: {str(e)}",
+            agent_type='error'
+        )
+        db.add(error_message)
+        db.commit()
+        
         return ChatResponse(
             response=f"Sorry, I encountered an error processing your request: {str(e)}",
             agent_used="error",
+            conversation_id=conversation_id,
             metadata={"error": str(e)}
         )
+
+
+@router.get("/conversations", response_model=List[ConversationResponse])
+async def get_conversations(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all conversations for current user"""
+    conversations = db.query(Conversation).filter(
+        Conversation.email == current_user["email"]
+    ).order_by(Conversation.updated_at.desc()).all()
+    
+    return [
+        ConversationResponse(
+            id=c.id,
+            title=c.title,
+            created_at=c.created_at.isoformat(),
+            updated_at=c.updated_at.isoformat()
+        )
+        for c in conversations
+    ]
+
+
+@router.get("/conversations/{conversation_id}/messages", response_model=List[MessageResponse])
+async def get_conversation_messages(
+    conversation_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all messages for a conversation"""
+    # Verify conversation belongs to user
+    conversation = db.query(Conversation).filter(
+        Conversation.id == conversation_id,
+        Conversation.email == current_user["email"]
+    ).first()
+    
+    if not conversation:
+        return []
+    
+    messages = db.query(Message).filter(
+        Message.conversation_id == conversation_id
+    ).order_by(Message.created_at.asc()).all()
+    
+    return [
+        MessageResponse(
+            id=m.id,
+            role=m.role,
+            content=m.content,
+            agent_type=m.agent_type,
+            created_at=m.created_at.isoformat()
+        )
+        for m in messages
+    ]
+
+
+@router.delete("/conversations/{conversation_id}")
+async def delete_conversation(
+    conversation_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a conversation and all its messages"""
+    # Verify conversation belongs to user
+    conversation = db.query(Conversation).filter(
+        Conversation.id == conversation_id,
+        Conversation.email == current_user["email"]
+    ).first()
+    
+    if not conversation:
+        return {"message": "Conversation not found"}
+    
+    # Delete messages first
+    db.query(Message).filter(Message.conversation_id == conversation_id).delete()
+    
+    # Delete conversation
+    db.delete(conversation)
+    db.commit()
+    
+    return {"message": "Conversation deleted"}
 
 
 @router.get("/health")

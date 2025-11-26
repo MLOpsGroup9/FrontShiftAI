@@ -22,10 +22,7 @@ function App() {
   });
   const [isResizing, setIsResizing] = useState(false);
   const [currentChatId, setCurrentChatId] = useState(null);
-  const [chatHistory, setChatHistory] = useState(() => {
-    const saved = localStorage.getItem('chatHistory');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [chatHistory, setChatHistory] = useState([]);
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -55,13 +52,30 @@ function App() {
     checkAuth();
   }, []);
 
+  // Load chat history from database when authenticated
+  useEffect(() => {
+    if (isAuthenticated && userInfo?.role === 'user') {
+      loadChatHistory();
+    }
+  }, [isAuthenticated, userInfo]);
+
+  const loadChatHistory = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await axios.get(
+        `${API_BASE_URL}/api/chat/conversations`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setChatHistory(response.data);
+    } catch (error) {
+      console.error('Error loading chat history:', error);
+    }
+  };
+
   useEffect(() => {
     localStorage.setItem('sidebarWidth', sidebarWidth.toString());
   }, [sidebarWidth]);
-
-  useEffect(() => {
-    localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
-  }, [chatHistory]);
 
   const handleLoginSuccess = (loginData) => {
     setUserInfo({
@@ -86,19 +100,46 @@ function App() {
     setMessages([]);
   };
 
-  const handleLoadChat = (chatId) => {
-    const chat = chatHistory.find(c => c.id === chatId);
-    if (chat) {
-      setCurrentChatId(chat.id);
-      setMessages(chat.messages);
+  const handleLoadChat = async (chatId) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await axios.get(
+        `${API_BASE_URL}/api/chat/conversations/${chatId}/messages`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      // Convert database format to frontend format
+      const loadedMessages = response.data.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        agentType: msg.agent_type,
+        timestamp: new Date(msg.created_at).getTime()
+      }));
+      
+      setCurrentChatId(chatId);
+      setMessages(loadedMessages);
+    } catch (error) {
+      console.error('Error loading chat:', error);
     }
   };
 
-  const handleDeleteChat = (chatId) => {
-    setChatHistory(prev => prev.filter(chat => chat.id !== chatId));
-    if (currentChatId === chatId) {
-      setCurrentChatId(null);
-      setMessages([]);
+  const handleDeleteChat = async (chatId) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      await axios.delete(
+        `${API_BASE_URL}/api/chat/conversations/${chatId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      // Remove from local state
+      setChatHistory(prev => prev.filter(chat => chat.id !== chatId));
+      
+      if (currentChatId === chatId) {
+        setCurrentChatId(null);
+        setMessages([]);
+      }
+    } catch (error) {
+      console.error('Error deleting chat:', error);
     }
   };
 
@@ -116,7 +157,7 @@ function App() {
   };
 
   const groupedChats = chatHistory.reduce((groups, chat) => {
-    const timeLabel = getTimeLabel(chat.timestamp);
+    const timeLabel = getTimeLabel(chat.updated_at);
     if (!groups[timeLabel]) {
       groups[timeLabel] = [];
     }
@@ -126,21 +167,11 @@ function App() {
 
   const formattedChatHistory = Object.entries(groupedChats).map(([time, chats]) => ({
     time,
-    chats: chats
-      .sort((a, b) => (b.lastUpdated || b.timestamp) - (a.lastUpdated || a.timestamp))
-      .map(chat => {
-        const firstUserMessage = chat.messages.find(m => m.role === 'user');
-        const title = firstUserMessage?.content 
-          ? (firstUserMessage.content.length > 50 
-            ? firstUserMessage.content.substring(0, 50) + '...' 
-            : firstUserMessage.content)
-          : 'New Chat';
-        return {
-          id: chat.id,
-          title,
-          timestamp: chat.timestamp
-        };
-      })
+    chats: chats.map(chat => ({
+      id: chat.id,
+      title: chat.title,
+      timestamp: new Date(chat.updated_at).getTime()
+    }))
   })).sort((a, b) => {
     const aTime = a.chats[0]?.timestamp || 0;
     const bTime = b.chats[0]?.timestamp || 0;
@@ -196,7 +227,10 @@ function App() {
       const token = localStorage.getItem('access_token');
       const response = await axios.post(
         `${API_BASE_URL}/api/chat/message`,
-        { message },
+        { 
+          message,
+          conversation_id: currentChatId 
+        },
         { 
           headers: { 
             Authorization: `Bearer ${token}`,
@@ -207,22 +241,27 @@ function App() {
       
       console.log('📥 Received response from', response.data.agent_used, 'agent');
       
+      // Update conversation ID if new
+      if (!currentChatId) {
+        setCurrentChatId(response.data.conversation_id);
+      }
+      
       const assistantMessage = {
         role: 'assistant',
         content: response.data.response,
         agentType: response.data.agent_used,
-        ...(response.data.agent_used === 'pto' && response.data.balance_info && {
+        ...(response.data.agent_used === 'pto' && response.data.metadata.balance_info && {
           ptoInfo: {
-            requestCreated: response.data.request_created,
-            requestId: response.data.request_id,
-            balanceInfo: response.data.balance_info
+            requestCreated: response.data.metadata.request_created,
+            requestId: response.data.metadata.request_id,
+            balanceInfo: response.data.metadata.balance_info
           }
         }),
-        ...(response.data.agent_used === 'hr_ticket' && response.data.ticket_id && {
+        ...(response.data.agent_used === 'hr_ticket' && response.data.metadata.ticket_id && {
           hrTicketInfo: {
-            ticketCreated: response.data.ticket_created,
-            ticketId: response.data.ticket_id,
-            queuePosition: response.data.queue_position
+            ticketCreated: response.data.metadata.ticket_created,
+            ticketId: response.data.metadata.ticket_id,
+            queuePosition: response.data.metadata.queue_position
           }
         }),
         timestamp: Date.now(),
@@ -230,26 +269,9 @@ function App() {
       const finalMessages = [...updatedMessages, assistantMessage];
       setMessages(finalMessages);
 
-      setChatHistory(prev => {
-        const chatId = currentChatId || Date.now().toString();
-        const existingChat = prev.find(c => c.id === currentChatId);
-        const chatData = {
-          id: chatId,
-          messages: finalMessages,
-          agentType: response.data.agent_used,
-          timestamp: existingChat?.timestamp || Date.now(),
-          lastUpdated: Date.now(),
-        };
-
-        if (currentChatId && existingChat) {
-          return prev.map(chat => 
-            chat.id === currentChatId ? chatData : chat
-          );
-        } else {
-          setCurrentChatId(chatId);
-          return [chatData, ...prev];
-        }
-      });
+      // Reload chat history to get updated list
+      await loadChatHistory();
+      
     } catch (error) {
       console.error('❌ Error sending message:', error);
       
@@ -270,26 +292,7 @@ function App() {
       };
       const finalMessages = [...updatedMessages, errorMessage];
       setMessages(finalMessages);
-
-      setChatHistory(prev => {
-        const chatId = currentChatId || Date.now().toString();
-        const existingChat = prev.find(c => c.id === currentChatId);
-        const chatData = {
-          id: chatId,
-          messages: finalMessages,
-          timestamp: existingChat?.timestamp || Date.now(),
-          lastUpdated: Date.now(),
-        };
-
-        if (currentChatId && existingChat) {
-          return prev.map(chat => 
-            chat.id === currentChatId ? chatData : chat
-          );
-        } else {
-          setCurrentChatId(chatId);
-          return [chatData, ...prev];
-        }
-      });
+      
     } finally {
       setIsLoading(false);
     }
