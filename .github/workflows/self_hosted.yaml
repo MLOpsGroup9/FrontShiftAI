@@ -2,6 +2,8 @@ name: Chat Pipeline - Mac Self-Hosted Check
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ 'krishna-branch' ]
 
 jobs:
   mac-self-hosted:
