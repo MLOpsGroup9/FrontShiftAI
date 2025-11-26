@@ -8,6 +8,12 @@ jobs:
     runs-on: [self-hosted, macos]
     timeout-minutes: 120
 
+    env:
+      LLAMA_MODEL_PATH: /Users/sriks/Documents/Projects/FrontShiftAI/models/Llama-3.2-3B-Instruct-Q4_K_M.gguf
+      GENERATION_BACKEND: local
+      TOKENIZERS_PARALLELISM: false
+      CHAT_PIPELINE_ALLOW_HEAVY_FALLBACKS: 1
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -31,10 +37,6 @@ jobs:
       - name: Set Environment Variables
         run: |
           echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
-          echo "TOKENIZERS_PARALLELISM=false" >> $GITHUB_ENV
-          echo "CHAT_PIPELINE_ALLOW_HEAVY_FALLBACKS=1" >> $GITHUB_ENV
-          echo "LLAMA_MODEL_PATH=/Users/sriks/Documents/Projects/FrontShiftAI/models/Llama-3.2-3B-Instruct-Q4_K_M.gguf" >> $GITHUB_ENV
-          echo "GENERATION_BACKEND=local" >> $GITHUB_ENV
         shell: bash
 
       - name: Auth to GCP
