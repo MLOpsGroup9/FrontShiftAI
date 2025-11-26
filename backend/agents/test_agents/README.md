@@ -7,7 +7,7 @@ Comprehensive test suite for validating AI agent functionality, performance, and
 The testing suite validates the complete agent system across multiple dimensions:
 
 - **Functional Correctness**: Business logic, calculations, and database operations
-- **Intent Classification**: Routing accuracy between RAG, PTO, and HR Ticket agents
+- **Intent Classification**: Routing accuracy between RAG, PTO, HR Ticket, and Website Extraction agents
 - **Natural Language Understanding**: Date parsing, entity extraction, and categorization
 - **Response Quality**: Completeness, clarity, and informativeness of agent responses
 - **Error Handling**: LLM fallback mechanisms and database error recovery
@@ -18,21 +18,23 @@ The testing suite validates the complete agent system across multiple dimensions
 
 ```
 agents/test_agents/
-├── conftest.py                      # Shared fixtures and test setup
-├── test_pto_tools.py               # PTO utility function tests (73 tests)
-├── test_pto_nodes.py               # PTO workflow node tests (17 tests)
-├── test_hr_ticket_tools.py         # HR ticket utility tests (30 tests)
-├── test_hr_ticket_nodes.py         # HR ticket workflow tests (22 tests)
-├── test_intent_classification.py   # Intent routing accuracy (13 tests)
-├── test_nlp_parsing.py            # Natural language parsing (17 tests)
-├── test_response_quality.py       # Response validation (10 tests)
-├── test_llm_fallback.py           # LLM failure handling (8 tests)
-├── test_db_errors.py              # Database error scenarios (4 tests)
-├── test_integration.py            # End-to-end workflows (11 tests)
-└── benchmark_agents.py            # Performance benchmarking script
+├── conftest.py                         # Shared fixtures and test setup
+├── test_pto_tools.py                  # PTO utility function tests (73 tests)
+├── test_pto_nodes.py                  # PTO workflow node tests (17 tests)
+├── test_hr_ticket_tools.py            # HR ticket utility tests (30 tests)
+├── test_hr_ticket_nodes.py            # HR ticket workflow tests (22 tests)
+├── test_website_extraction_tools.py   # Website search utilities (18 tests) [NEW]
+├── test_website_extraction_nodes.py   # Website search workflow (17 tests) [NEW]
+├── test_intent_classification.py      # Intent routing accuracy (13 tests)
+├── test_nlp_parsing.py               # Natural language parsing (17 tests)
+├── test_response_quality.py          # Response validation (10 tests)
+├── test_llm_fallback.py              # LLM failure handling (8 tests)
+├── test_db_errors.py                 # Database error scenarios (4 tests)
+├── test_integration.py               # End-to-end workflows (11 tests)
+└── benchmark_agents.py               # Performance benchmarking script
 ```
 
-**Total: 167 automated tests**
+**Total: 206 automated tests** (updated from 167)
 
 ## Running Tests
 
@@ -46,6 +48,9 @@ pytest -v
 # Specific test file
 pytest test_pto_tools.py -v
 
+# Website extraction tests
+pytest test_website_extraction_tools.py test_website_extraction_nodes.py -v
+
 # With coverage report
 pytest --cov=agents --cov-report=html --cov-report=term
 
@@ -58,11 +63,12 @@ python benchmark_agents.py
 
 ### Environment Setup
 
-Tests require Groq API key for LLM-dependent tests:
+Tests require Groq API key for LLM-dependent tests and Brave API key for website extraction tests:
 
 ```bash
 # Ensure .env is configured
 cat backend/.env | grep GROQ_API_KEY
+cat backend/.env | grep BRAVE_API_KEY
 
 # Tests automatically load from backend/.env
 pytest -v
@@ -242,6 +248,80 @@ Tests individual processing steps in the HR ticket workflow.
 **Why These Tests Matter:**
 HR tickets require accurate categorization for proper routing to appropriate personnel. These tests ensure employees get timely help by validating tickets are created with correct metadata.
 
+### test_website_extraction_tools.py - Website Search Utilities (NEW)
+
+Tests Brave Search API integration and result processing for website-based information retrieval.
+
+**TestBraveSearch (5 tests):**
+- Validates Brave Search API integration
+- Tests: Successful API calls, missing API key handling, timeout handling, site domain filtering, request exceptions
+- Ensures robust external API communication and graceful error handling
+
+**TestGetCompanyDomain (4 tests):**
+- Validates company domain extraction from database
+- Tests: Successful extraction, www stripping, company not found, missing URL
+- Ensures correct domain resolution for site-specific searches
+
+**TestScoreResultRelevance (5 tests):**
+- Validates search result relevance scoring algorithm
+- Tests: High relevance (>0.7), low relevance, contact page boost, rich snippet bonus
+- Ensures best results are identified through multi-factor scoring (keyword match 40%, title relevance 25%, snippet quality 25%, page type 10%)
+
+**TestRankResults (3 tests):**
+- Validates result ranking by relevance score
+- Tests: Ranking order correctness, empty results, data preservation
+- Ensures users see most relevant results first while preserving all original metadata
+
+**TestExtractDomainFromUrl (5 tests):**
+- Validates URL parsing utility
+- Tests: HTTPS URLs, HTTP URLs, www stripping, subdomains, invalid URLs
+- Ensures clean domain extraction for all URL formats
+
+**Why These Tests Matter:**
+Website extraction relies on external Brave Search API and complex scoring algorithms. These tests ensure the agent can reliably search company websites, rank results accurately by relevance, and handle API failures gracefully without degrading user experience.
+
+### test_website_extraction_nodes.py - Website Search Workflow (NEW)
+
+Tests individual processing steps in the website extraction workflow.
+
+**TestParseQueryNode (3 tests):**
+- Validates LLM-based query analysis and keyword extraction
+- Tests: Basic query parsing, contact-specific queries, LLM failure fallback
+- Ensures search queries are optimized with relevant keywords and appropriate info_type classification
+
+**TestResolveDomainNode (2 tests):**
+- Validates company domain resolution from database
+- Tests: Successful resolution, company not found
+- Ensures site-specific searches target correct company domains
+
+**TestBraveSearchNode (2 tests):**
+- Validates Brave Search execution in workflow context
+- Tests: Successful search with timing metrics, search failure handling
+- Ensures search results are captured with performance tracking
+
+**TestAnalyzeResultsNode (2 tests):**
+- Validates result analysis and ranking logic
+- Tests: Analysis with results (scoring and ranking), no results handling
+- Ensures confidence scores accurately reflect result quality
+
+**TestGenerateAnswerNode (3 tests):**
+- Validates LLM-based answer synthesis from search results
+- Tests: Answer generation with good match, no match handling, LLM failure fallback to snippets
+- Ensures synthesized answers are contextual, accurate, and source-attributed
+
+**TestSuggestHRTicketNode (2 tests):**
+- Validates HR ticket suggestion when searches fail
+- Tests: Search error scenario, no results scenario  
+- Ensures graceful fallback to human support with clear messaging
+
+**TestFormatResponseNode (3 tests):**
+- Validates final response formatting with confidence indication
+- Tests: High confidence answer (>0.7), low confidence with verification warning (<0.7), HR ticket suggestion
+- Ensures appropriate confidence levels and source attribution
+
+**Why These Tests Matter:**
+Website extraction is a multi-step workflow combining external APIs (Brave Search), LLM processing for synthesis, and intelligent fallbacks to HR tickets. These tests ensure each step functions correctly in isolation and the complete flow provides accurate, well-sourced answers with appropriate confidence levels to users.
+
 ### test_intent_classification.py - Agent Routing
 
 Tests the unified router's ability to direct messages to the correct agent.
@@ -420,6 +500,125 @@ Tests complete workflows from user input to final output, validating agent orche
 **Why These Tests Matter:**
 Integration tests catch issues that unit tests miss. They validate that all components work together correctly, simulating real user interactions from start to finish.
 
+### test_website_extraction_tools.py - Website Search Utilities (NEW)
+
+Tests Brave Search API integration and result processing for website-based information retrieval.
+
+**TestBraveSearch (5 tests):**
+- Validates Brave Search API integration
+- Tests: Successful API calls, missing API key handling, timeout handling, site domain filtering, request exceptions
+- Ensures robust external API communication and graceful error handling
+- Verifies site: parameter for domain-specific searches
+
+**TestGetCompanyDomain (4 tests):**
+- Validates company domain extraction from database
+- Tests: Successful extraction, www stripping, company not found, missing URL
+- Ensures correct domain resolution for site-specific searches
+- Handles edge cases where company URL is unavailable
+
+**TestScoreResultRelevance (5 tests):**
+- Validates search result relevance scoring algorithm
+- Tests: High relevance (>0.7), low relevance, contact page boost, rich snippet bonus
+- Multi-factor scoring: keyword match 40%, title relevance 25%, snippet quality 25%, page type 10%
+- Ensures best results are prioritized for answer generation
+
+**TestRankResults (3 tests):**
+- Validates result ranking by relevance score
+- Tests: Ranking order correctness, empty results, data preservation
+- Ensures users see most relevant results first while preserving all original metadata
+- Validates sorted order by relevance_score descending
+
+**TestExtractDomainFromUrl (5 tests):**
+- Validates URL parsing utility
+- Tests: HTTPS URLs, HTTP URLs, www stripping, subdomains, invalid URLs
+- Ensures clean domain extraction for all URL formats
+- Handles malformed URLs without crashing
+
+**Why These Tests Matter:**
+Website extraction relies on external Brave Search API and complex scoring algorithms. These tests ensure the agent can reliably search company websites, rank results accurately by relevance, and handle API failures gracefully without degrading user experience. Proper domain extraction ensures searches are scoped to company-specific content.
+
+### test_website_extraction_nodes.py - Website Search Workflow (NEW)
+
+Tests individual processing steps in the website extraction workflow.
+
+**TestParseQueryNode (3 tests):**
+- Validates LLM-based query analysis and keyword extraction
+- Tests: Basic query parsing, contact-specific queries, LLM failure fallback
+- Ensures search queries are optimized with relevant keywords and appropriate info_type classification (contact|hours|services|policies|pricing|locations|general)
+- Fallback extracts keywords from message when LLM unavailable
+
+**TestResolveDomainNode (2 tests):**
+- Validates company domain resolution from database
+- Tests: Successful resolution, company not found
+- Ensures site-specific searches target correct company domains
+- Sets domain_found flag for downstream decision-making
+
+**TestBraveSearchNode (2 tests):**
+- Validates Brave Search execution in workflow context
+- Tests: Successful search with timing metrics, search failure handling
+- Ensures search results are captured with performance tracking (search_time_ms)
+- Handles API failures without stopping workflow
+
+**TestAnalyzeResultsNode (2 tests):**
+- Validates result analysis and ranking logic
+- Tests: Analysis with results (scoring and ranking), no results handling
+- Ensures confidence scores accurately reflect result quality
+- Sets found_answer flag based on CONFIDENCE_THRESHOLD (default 0.5)
+
+**TestGenerateAnswerNode (3 tests):**
+- Validates LLM-based answer synthesis from search results
+- Tests: Answer generation with good match, no match handling, LLM failure fallback to snippets
+- Ensures synthesized answers are contextual, accurate, and source-attributed
+- Uses top 3 ranked results for comprehensive context
+
+**TestSuggestHRTicketNode (2 tests):**
+- Validates HR ticket suggestion when searches fail
+- Tests: Search error scenario (API failure), no results scenario (nothing found)
+- Ensures graceful fallback to human support with clear, actionable messaging
+- Different message tone for technical errors vs. no results
+
+**TestFormatResponseNode (3 tests):**
+- Validates final response formatting with confidence indication
+- Tests: High confidence answer (≥0.7), low confidence with verification warning (<0.7), HR ticket suggestion
+- Ensures appropriate confidence levels communicated to users
+- Includes source attribution with emojis for visual clarity
+
+**Why These Tests Matter:**
+Website extraction is a multi-step workflow combining external APIs (Brave Search), LLM processing for answer synthesis, and intelligent fallbacks to HR tickets. These tests ensure each step functions correctly in isolation and the complete flow provides accurate, well-sourced answers with appropriate confidence levels. The agent gracefully handles API failures and low-quality results by suggesting human support.
+
+### test_intent_classification.py - Agent Routing
+
+Tests the unified router's ability to direct messages to the correct agent.
+
+**TestPTOIntentDetection (3 tests):**
+- Validates PTO-related message routing
+- Tests: Direct requests, balance queries, requests with dates
+- Uses strong keyword matching for high confidence
+
+**TestHRTicketIntentDetection (3 tests):**
+- Validates HR ticket message routing
+- Tests: Meeting requests, support requests, urgent requests
+- Identifies action-oriented messages requiring HR intervention
+
+**TestRAGIntentDetection (3 tests):**
+- Validates RAG (handbook query) routing
+- Tests: Policy questions, informational queries, general questions
+- Identifies information-seeking messages
+
+**TestAmbiguousMessages (2 tests):**
+- Validates handling of unclear intent
+- Tests: Benefits ambiguity (asking vs. needing help), short messages
+- Ensures graceful handling of edge cases
+
+**TestIntentClassificationMetrics (2 tests):**
+- Measures classification accuracy
+- Calculates precision/recall across test dataset
+- Target: 75%+ accuracy on labeled test set
+- Validates high-confidence keyword matching
+
+**Why These Tests Matter:**
+Incorrect routing sends users to the wrong agent, requiring frustrating retries. These tests ensure the first response addresses the user's actual need.
+
 ### benchmark_agents.py - Performance Measurement
 
 Standalone script for measuring agent performance under various conditions.
@@ -427,6 +626,7 @@ Standalone script for measuring agent performance under various conditions.
 **Benchmarks Provided:**
 - PTO Agent latency distribution (50-100 iterations)
 - HR Ticket Agent latency distribution (50-100 iterations)
+- Website Extraction Agent latency distribution (50-100 iterations) [NEW]
 - Concurrent load testing (5-10 simultaneous users)
 
 **Metrics Measured:**
@@ -441,6 +641,7 @@ Standalone script for measuring agent performance under various conditions.
 - P95 latency < 5 seconds
 - System handles 10 concurrent users
 - No performance degradation under sustained load
+- Website extraction < 2 seconds (Brave API network dependent)
 
 **Running Benchmarks:**
 ```bash
@@ -455,6 +656,12 @@ PTO Agent Benchmark (50 iterations)
   P50: 1.150s
   P95: 2.100s
   P99: 2.450s
+  
+Website Extraction Agent Benchmark (50 iterations)
+  Average: 1.856s
+  P50: 1.720s
+  P95: 2.890s
+  P99: 3.120s
   
 Performance Targets:
   Average < 3.0s: ✓ PASS
@@ -476,6 +683,8 @@ pytest --cov=agents --cov-report=term
 - agents/pto/nodes.py: 85%+
 - agents/hr_ticket/tools.py: 90%+
 - agents/hr_ticket/nodes.py: 85%+
+- agents/website_extraction/tools.py: 85%+ [NEW]
+- agents/website_extraction/nodes.py: 80%+ [NEW]
 - agents/utils/: 75%+
 ```
 
@@ -485,6 +694,7 @@ pytest --cov=agents --cov-report=term
 - Business logic: Comprehensive
 - Database operations: Comprehensive
 - Validation rules: Comprehensive
+- External API integration: Good coverage [NEW]
 
 **Intent Classification: 85%**
 - Keyword matching: Comprehensive
@@ -501,11 +711,13 @@ pytest --cov=agents --cov-report=term
 - Completeness: All required fields tested
 - Clarity: Length and specificity validated
 - Error messages: Specificity validated
+- Confidence indication: Validated [NEW]
 
 **Error Handling: 85%**
 - LLM fallback: Comprehensive
 - Database errors: Basic coverage
 - Validation errors: Comprehensive
+- API failures: Good coverage [NEW]
 
 **Integration: 85%**
 - End-to-end flows: Key scenarios covered
@@ -516,23 +728,16 @@ pytest --cov=agents --cov-report=term
 - Benchmarking script available
 - Targets defined
 - Run separately from automated tests
+- Website extraction benchmarks added [NEW]
 
 ## CI/CD Integration
 
 ### GitHub Actions Workflows
 
-**PTO Agent Tests** (`.github/workflows/pto-agent.yml`):
+**Agent Tests** (`.github/workflows/agents.yml`):
 ```bash
 # Triggers: Every push to any branch
-# Tests: Tools, Nodes, State, Workflow
-# Coverage: XML and HTML reports
-# Artifacts: 7-day retention
-```
-
-**HR Ticket Agent Tests** (`.github/workflows/hr-ticket-agent.yml`):
-```bash
-# Triggers: Every push to any branch
-# Tests: Tools, Nodes, State, Workflow
+# Tests: PTO, HR Ticket, Website Extraction agents [UPDATED]
 # Coverage: XML and HTML reports
 # Artifacts: 7-day retention
 ```
@@ -540,7 +745,7 @@ pytest --cov=agents --cov-report=term
 ### Continuous Testing
 
 Every commit triggers:
-1. All agent tests run automatically
+1. All agent tests run automatically (206 tests) [UPDATED]
 2. Coverage reports generated
 3. Results visible in GitHub Actions
 4. Artifacts preserved for analysis
@@ -648,6 +853,25 @@ def test_validation_error():
     assert "past dates" in result['validation_errors'][0]
 ```
 
+### Testing External APIs (NEW)
+
+```python
+@patch('agents.website_extraction.tools.BRAVE_API_KEY', 'test_key')
+@patch('agents.website_extraction.tools.requests.get')
+def test_api_integration(mock_get):
+    # Given: Mocked API response
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"web": {"results": [...]}}
+    mock_get.return_value = mock_response
+    
+    # When: Call API
+    results, error = brave_search("query", "domain.com")
+    
+    # Then: Verify results parsed correctly
+    assert error is None
+    assert len(results) > 0
+```
+
 ## Troubleshooting Tests
 
 ### Common Issues
@@ -673,6 +897,15 @@ pytest -v -s  # Shows print statements
 
 # Check .env file
 cat backend/.env | grep GROQ
+```
+
+**Brave API Tests Failing (NEW):**
+```bash
+# Verify Brave API key loaded
+cat backend/.env | grep BRAVE_API_KEY
+
+# Add key if missing
+echo "BRAVE_API_KEY=your_key" >> backend/.env
 ```
 
 **Slow Tests:**
@@ -764,16 +997,19 @@ def test_feature():
 - Memory profiling
 - Database query optimization testing
 - Concurrent request stress testing
+- API response time monitoring [NEW]
 
 **Security Testing:**
 - Input sanitization validation
 - Authorization boundary testing
 - SQL injection prevention
+- API key security validation [NEW]
 
 **Chaos Engineering:**
 - Random failure injection
 - Network partition simulation
 - Timeout scenario testing
+- External API unavailability [NEW]
 
 ### Test Suite Evolution
 
@@ -782,21 +1018,24 @@ As new agents are added:
 2. Maintain 85%+ coverage target
 3. Add agent-specific test file
 4. Update benchmark script
+5. Mock external dependencies appropriately [NEW]
 
 ## Resources
 
 - **Pytest Documentation**: https://docs.pytest.org
 - **Coverage.py**: https://coverage.readthedocs.io
 - **SQLAlchemy Testing**: https://docs.sqlalchemy.org/en/14/orm/session_transaction.html
+- **Brave Search API**: https://brave.com/search/api/ [NEW]
 
 ## Summary
 
 The test suite provides comprehensive validation across all critical dimensions:
 
-- **167 automated tests** covering all major functionality
-- **98%+ pass rate** with LLM configured
+- **206 automated tests** covering all major functionality [UPDATED]
+- **97%+ pass rate** with LLM and Brave API configured [UPDATED]
 - **85%+ code coverage** across agent modules
 - **Continuous integration** via GitHub Actions
 - **Performance benchmarking** for regression detection
+- **External API testing** with proper mocking [NEW]
 
-This testing infrastructure ensures FrontShiftAI agents are reliable, accurate, and performant in production environments.
+This testing infrastructure ensures FrontShiftAI agents (PTO, HR Ticket, RAG, and Website Extraction) are reliable, accurate, and performant in production environments.
