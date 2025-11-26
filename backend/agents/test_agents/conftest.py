@@ -246,3 +246,16 @@ def pto_balance_with_usage(db_session, sample_user, sample_company):
     db_session.add(balance)
     db_session.commit()
     return balance
+
+@pytest.fixture
+def sample_company_with_url(db_session):
+    """Create a sample company with URL for website extraction tests"""
+    company = Company(
+        name="Crouse Medical Practice",
+        domain="Healthcare",
+        email_domain="crousemedical.com",
+        url="https://crousemed.com/media/1449/cmp-employee-handbook.pdf"
+    )
+    db_session.add(company)
+    db_session.commit()
+    return company

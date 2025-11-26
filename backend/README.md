@@ -35,15 +35,22 @@ backend/
 │   │   ├── nodes.py        # Workflow nodes
 │   │   ├── state.py        # State definition
 │   │   └── tools.py        # Utility functions
+│   ├── website_extraction/ # Website Search Agent [NEW]
+│   │   ├── agent.py        # LangGraph workflow
+│   │   ├── nodes.py        # Workflow nodes
+│   │   ├── state.py        # State definition
+│   │   └── tools.py        # Brave Search integration
 │   ├── utils/              # Shared utilities
 │   │   ├── llm_client.py   # LLM client with fallback
 │   │   └── llm_config.py   # Provider configuration
-│   └── test_agents/        # Agent tests
+│   └── test_agents/        # Agent tests (206 tests) [UPDATED]
 │       ├── conftest.py
 │       ├── test_pto_tools.py
 │       ├── test_pto_nodes.py
 │       ├── test_hr_ticket_tools.py
-│       └── test_hr_ticket_nodes.py
+│       ├── test_hr_ticket_nodes.py
+│       ├── test_website_extraction_tools.py [NEW]
+│       └── test_website_extraction_nodes.py [NEW]
 │
 ├── api/                     # API Endpoints
 │   ├── admin.py            # Admin management
@@ -51,11 +58,12 @@ backend/
 │   ├── rag.py              # RAG queries
 │   ├── pto_agent.py        # PTO agent endpoints
 │   ├── hr_ticket_agent.py  # HR ticket endpoints
-│   └── unified_agent.py    # Unified chat router
+│   ├── unified_agent.py    # Unified chat router [UPDATED]
+│   └── company_management.py # Company management [NEW]
 │
 ├── db/                      # Database Layer
 │   ├── connection.py       # SQLAlchemy setup
-│   ├── models.py           # ORM models
+│   ├── models.py           # ORM models [UPDATED]
 │   └── seed.py             # Initial data
 │
 ├── schemas/                 # Data Validation
@@ -78,7 +86,7 @@ backend/
 │   └── workflows/
 │       ├── backend.yml     # Backend tests
 │       ├── frontend.yml    # Frontend build
-│       ├── agents.yml      # Agent tests
+│       ├── agents.yml      # Agent tests [UPDATED]
 │       └── config.yml      # Config validation
 │
 ├── .env                     # Environment variables
@@ -87,25 +95,45 @@ backend/
 └── users.db                # SQLite database
 ```
 
-## Unified Agent Router
+## Unified Agent Router with Automatic Fallback
 
 ### Overview
 
-The unified agent router provides a single endpoint that intelligently routes user messages to the appropriate agent (RAG, PTO, or HR Ticket) based on intent detection. This enables seamless conversational experiences where users can naturally switch between querying handbooks, requesting time off, and creating support tickets within the same chat session.
+The unified agent router provides intelligent message routing with **automatic fallback chain** for comprehensive information retrieval. When one agent can't answer a question, the system automatically tries the next best option.
 
-### Architecture
+### Fallback Architecture
 
-**Intent Detection Flow:**
+**Agent Fallback Chain:**
 ```
 User Message
     ↓
-LLM Intent Classification
+Intent Detection (LLM)
     ↓
-├─→ RAG Agent (handbook queries)
 ├─→ PTO Agent (time off requests)
-└─→ HR Ticket Agent (support requests)
+├─→ HR Ticket Agent (support requests)  
+└─→ RAG Agent (handbook queries)
     ↓
-Unified Response
+    No answer in handbook?
+    ↓
+    ✓ Automatic Fallback ✓
+    ↓
+    Website Extraction Agent (search company website)
+    ↓
+    Still no answer?
+    ↓
+    HR Ticket Suggestion (human support)
+```
+
+**Example Flow:**
+```
+User: "What are the office hours for Crouse Medical?"
+
+1. Intent Detection → "rag" (policy question)
+2. RAG Agent searches handbook PDF → No relevant context found
+3. **Automatic trigger** → Website Extraction Agent
+4. Brave Search → crousemedical.com site:crousemedical.com office hours
+5. Finds: "Mon-Fri 8AM-5PM" on /contact page
+6. Returns answer with source attribution
 ```
 
 ### Implementation
@@ -113,125 +141,203 @@ Unified Response
 **Endpoint:**
 ```
 POST /api/chat/message
-Request: {"message": "What is the PTO policy?"}
+Request: {
+  "message": "What are the office hours?",
+  "conversation_id": "uuid" (optional)
+}
+
 Response: {
-  "response": "According to the handbook...",
-  "agent_used": "rag",
-  "sources": [...]
+  "response": "🔍 Found on Crouse Medical Practice's website:...",
+  "agent_used": "website_extraction",
+  "conversation_id": "uuid",
+  "metadata": {
+    "found_answer": true,
+    "source_urls": ["https://crousemedical.com/contact"],
+    "confidence": 0.85,
+    "triggered_by": "rag_fallback"
+  }
 }
 ```
 
-**Intent Detection Logic:**
+**Fallback Trigger Logic:**
 ```python
-def detect_intent(message: str) -> dict:
-    """
-    Uses LLM to classify user intent into three categories:
-    - rag: Queries about company policies, procedures, benefits
-    - pto: Requests for time off, PTO balance checks
-    - hr_ticket: Support requests, meeting scheduling, complaints
+# In unified_agent.py
+rag_result = await rag_query(request, current_user)
+
+# Check if RAG found nothing
+if "No relevant context found" in rag_result.answer:
+    # Automatically trigger Website Extraction
+    website_agent = WebsiteExtractionAgent(db)
+    website_result = await website_agent.execute(
+        user_email=current_user["email"],
+        company=current_user["company"],
+        message=request.message,
+        triggered_by="rag_fallback",
+        original_query=request.message
+    )
     
-    Fallback mechanism:
-    1. LLM classification (primary)
-    2. Keyword matching (fallback)
-    3. Default to RAG (safest)
-    """
-    
-    # Primary: LLM classification
-    llm_result = classify_with_llm(message)
-    if llm_result['confidence'] > 0.7:
-        return llm_result
-    
-    # Fallback: Keyword matching
-    pto_keywords = ['pto', 'leave', 'vacation', 'time off', 'days off']
-    hr_keywords = ['hr', 'ticket', 'meeting', 'discuss', 'complaint']
-    
-    if any(keyword in message.lower() for keyword in pto_keywords):
-        return {'intent': 'pto', 'confidence': 0.8}
-    elif any(keyword in message.lower() for keyword in hr_keywords):
-        return {'intent': 'hr_ticket', 'confidence': 0.8}
-    
-    # Default: RAG
-    return {'intent': 'rag', 'confidence': 0.6}
+    if website_result["found_answer"]:
+        return website_result  # Success!
+    else:
+        return website_result["hr_ticket_suggestion"]  # Final fallback
 ```
 
-**Router Implementation:**
-```python
-@router.post("/message", response_model=ChatResponse)
-async def unified_chat(
-    request: ChatRequest,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Routes messages to appropriate agent based on intent.
-    Maintains conversation context across agent boundaries.
-    """
-    intent_data = detect_intent(request.message)
-    
-    if intent_data['intent'] == 'pto':
-        pto_agent = get_pto_agent()
-        result = pto_agent.process(
-            user_email=current_user['email'],
-            company=current_user['company'],
-            user_message=request.message,
-            db=db
-        )
-        return ChatResponse(
-            response=result['agent_response'],
-            agent_used='pto',
-            metadata={'request_id': result.get('request_id')}
-        )
-    
-    elif intent_data['intent'] == 'hr_ticket':
-        hr_agent = get_hr_ticket_agent()
-        result = hr_agent.process(
-            user_email=current_user['email'],
-            company=current_user['company'],
-            user_message=request.message,
-            db=db
-        )
-        return ChatResponse(
-            response=result['agent_response'],
-            agent_used='hr_ticket',
-            metadata={'ticket_id': result.get('ticket_id')}
-        )
-    
-    else:  # Default to RAG
-        rag_result = await rag_query(
-            RAGQueryRequest(query=request.message),
-            current_user
-        )
-        return ChatResponse(
-            response=rag_result.answer,
-            agent_used='rag',
-            metadata={'sources': rag_result.sources}
-        )
+### Website Extraction Agent (NEW)
+
+**Purpose:**
+Automatically searches company websites when handbook PDFs don't contain the requested information. Handles operational details typically found on websites but not in employee handbooks.
+
+**Use Cases:**
+- Office hours and contact information
+- Department-specific phone numbers
+- Physical location addresses
+- Staff directory and employee listings
+- Current services and offerings
+- Parking and facility information
+- Real-time operational updates
+
+**Workflow:**
 ```
+START
+  ↓
+Parse Query (extract keywords, optimize search)
+  ↓
+Resolve Domain (get company website from database)
+  ↓
+Brave Search (API call with site: filter)
+  ↓
+Analyze Results (rank by relevance, score confidence)
+  ↓
+Found answer? (confidence ≥ 0.5)
+  ↓
+├─ YES → Generate Answer (LLM synthesis with sources)
+└─ NO → Suggest HR Ticket (human support fallback)
+  ↓
+Format Response (with confidence indicator)
+  ↓
+END
+```
+
+**State Definition:**
+```python
+class WebsiteExtractionState(TypedDict):
+    # Input
+    user_email: str
+    company: str
+    user_message: str
+    triggered_by: str  # 'rag_fallback' or 'direct'
+    
+    # Search optimization
+    search_topic: str
+    search_keywords: List[str]
+    search_query: str
+    info_type: str  # contact|hours|services|policies|pricing|locations
+    
+    # Domain resolution
+    company_domain: str
+    domain_found: bool
+    
+    # Search results
+    brave_results: List[dict]
+    ranked_results: List[dict]
+    confidence_score: float
+    found_answer: bool
+    
+    # Output
+    answer: str
+    source_urls: List[str]
+    suggest_hr_ticket: bool
+    agent_response: str
+```
+
+**Brave Search Integration:**
+```python
+def brave_search(query: str, site_domain: str) -> Tuple[List[dict], Optional[str]]:
+    """
+    Execute Brave Search API with site-specific filtering
+    
+    Example:
+    query = "office hours"
+    site_domain = "crousemedical.com"
+    
+    Actual search: "office hours site:crousemedical.com"
+    
+    Returns: (results, error)
+    - results: List of {title, url, description, extra_snippets}
+    - error: None on success, error message on failure
+    """
+```
+
+**Relevance Scoring:**
+```python
+def score_result_relevance(result: dict, keywords: List[str], topic: str) -> float:
+    """
+    Multi-factor scoring (0.0 - 1.0):
+    - Keyword match: 40% (presence in title/description)
+    - Title relevance: 25% (topic match in title)
+    - Snippet quality: 25% (description length, extra snippets, contact info)
+    - Page type boost: 10% (/contact, /about pages boosted; /blog penalized)
+    
+    Contact pages with rich snippets score highest (0.8+)
+    Blog posts score lowest (0.2-)
+    """
+```
+
+**Confidence Thresholds:**
+- **High Confidence (≥0.7)**: Answer presented with full confidence
+- **Medium Confidence (0.5-0.7)**: Answer with verification suggestion
+- **Low Confidence (<0.5)**: Suggest HR ticket for accurate information
+
+**Example Interaction:**
+```
+User: "Who are the doctors at Crouse Medical?"
+
+RAG Agent: No relevant context found in handbook
+↓ (automatic fallback)
+Website Extraction Agent:
+  - Searches: "doctors site:crousemedical.com"
+  - Finds: Staff directory page
+  - Confidence: 0.82 (high)
+  - Response: "🔍 Found on Crouse Medical Practice's website:
+              
+              Dr. Smith (Cardiology), Dr. Jones (Pediatrics)...
+              
+              📎 Source: crousemedical.com/our-team"
+```
+
+**API Integration:**
+- Uses Brave Search API for web search
+- Requires `BRAVE_API_KEY` in environment
+- Handles rate limits and timeouts gracefully
+- Falls back to HR ticket on API failures
 
 ### Conversation Examples
 
-**Multi-Agent Conversation:**
+**Multi-Agent with Fallback:**
 ```
 User: "What is the remote work policy?"
 System: [RAG Agent] According to the handbook, employees may work remotely...
 
+User: "What are the office hours?"
+System: [RAG → Website Extraction fallback] 🔍 Found on company website: Mon-Fri 8AM-5PM
+
 User: "I need 3 days off next week"
-System: [PTO Agent] PTO request created for Dec 24-26. Your request is pending approval...
+System: [PTO Agent] PTO request created for Dec 24-26...
 
-User: "Also, can I schedule a meeting with HR about benefits?"
-System: [HR Ticket Agent] Support ticket created. You are #5 in queue...
+User: "Who is the benefits coordinator?"
+System: [RAG → Website Extraction fallback] 🔍 Based on the website, Jane Doe handles benefits
 
-User: "What documents do I need for the benefits meeting?"
-System: [RAG Agent] For benefits enrollment, you will need...
+User: "Schedule a meeting with her"
+System: [HR Ticket Agent] Support ticket created. You are #3 in queue...
 ```
 
 ### Benefits
 
-1. **Single Entry Point**: Users interact with one endpoint regardless of request type
-2. **Seamless Context Switching**: Natural conversation flow across different agent domains
-3. **Intelligent Routing**: LLM-based classification with keyword fallback
-4. **Unified Response Format**: Consistent response structure across all agents
-5. **Metadata Preservation**: Agent-specific data (request IDs, ticket numbers) included in responses
+1. **Seamless Fallback**: Users don't see "not found" errors - system automatically searches alternative sources
+2. **Comprehensive Coverage**: Handbook + Website + Human support = complete information access
+3. **Source Attribution**: All website-sourced answers include URL references
+4. **Confidence Indication**: Users know when to verify information independently
+5. **Intelligent Search**: Site-specific searches ensure results come from official company sources only
 
 ## AI Agents System
 
@@ -302,87 +408,6 @@ Generate Response (user confirmation)
 END
 ```
 
-**State Definition:**
-```python
-class PTOAgentState(TypedDict):
-    # Input
-    user_email: str
-    company: str
-    user_message: str
-    
-    # Parsed data
-    start_date: Optional[date]
-    end_date: Optional[date]
-    intent: str
-    
-    # Validation
-    is_valid: bool
-    validation_errors: List[str]
-    total_business_days: float
-    
-    # Balance check
-    remaining_days: float
-    has_sufficient_balance: bool
-    
-    # Conflicts
-    has_conflicts: bool
-    conflicting_requests: List[dict]
-    
-    # Output
-    request_id: Optional[str]
-    agent_response: str
-```
-
-**Graph Implementation:**
-```python
-class PTOAgent:
-    def _build_graph(self):
-        workflow = StateGraph(PTOAgentState)
-        
-        # Add nodes
-        workflow.add_node("parse_intent", parse_intent_node)
-        workflow.add_node("validate_dates", validate_dates_node)
-        workflow.add_node("check_balance", check_balance_node)
-        workflow.add_node("check_conflicts", check_conflicts_node)
-        workflow.add_node("create_request", create_request_node)
-        workflow.add_node("generate_response", generate_response_node)
-        
-        # Define flow
-        workflow.set_entry_point("parse_intent")
-        workflow.add_conditional_edges("validate_dates", router, {...})
-        workflow.add_edge("create_request", "generate_response")
-        workflow.add_edge("generate_response", END)
-        
-        return workflow.compile()
-```
-
-**Node Example:**
-```python
-def validate_dates_node(state: PTOAgentState, db: Session) -> PTOAgentState:
-    """
-    Validates dates against:
-    - Past dates (reject)
-    - Company holidays (exclude)
-    - Blackout periods (reject)
-    - Weekend-only requests (reject)
-    """
-    if state["start_date"] < date.today():
-        state["validation_errors"].append("Cannot request PTO for past dates")
-        state["is_valid"] = False
-        return state
-    
-    holidays = get_company_holidays(db, state["company"], state["start_date"].year)
-    business_days = calculate_business_days(
-        state["start_date"], 
-        state["end_date"], 
-        holidays
-    )
-    
-    state["total_business_days"] = business_days
-    state["is_valid"] = True
-    return state
-```
-
 ### HR Ticket Agent
 
 Automates HR support requests and meeting scheduling: parsing employee inquiries, categorizing tickets, managing queue, and facilitating admin-employee communication.
@@ -404,72 +429,98 @@ Generate Response (user confirmation with ticket details)
 END
 ```
 
-**State Definition:**
-```python
-class HRTicketState(TypedDict):
-    # Input
-    user_email: str
-    company: str
-    user_message: str
-    
-    # Parsed data
-    intent: str
-    subject: Optional[str]
-    description: Optional[str]
-    category: Optional[str]  # benefits, payroll, workplace_issue, etc.
-    meeting_type: Optional[str]  # in_person, online, phone, no_meeting
-    preferred_date: Optional[date]
-    preferred_time_slot: Optional[str]  # morning, afternoon, evening
-    urgency: str  # normal, urgent
-    
-    # Validation
-    is_valid: bool
-    validation_errors: List[str]
-    
-    # Duplicate check
-    has_open_tickets: bool
-    open_ticket_ids: List[str]
-    
-    # Output
-    ticket_id: Optional[str]
-    queue_position: Optional[int]
-    agent_response: str
+### Website Extraction Agent (NEW)
+
+**Purpose:**
+Automatic fallback when RAG agent finds no information in handbook PDFs. Searches company websites via Brave Search API to find operational information not typically documented in employee handbooks.
+
+**When Triggered:**
+- **Automatically**: When RAG returns "No relevant context found"
+- **Seamlessly**: User doesn't see the fallback - just gets an answer
+- **Intelligently**: Only for information likely to be on websites (hours, contacts, locations, staff)
+
+**What It Finds:**
+- Office hours and operating schedules
+- Contact information (phone, email, departments)
+- Physical locations and addresses
+- Staff directories and employee listings
+- Services and offerings
+- Parking and facility details
+- Information not in static PDFs
+
+**Workflow:**
+```
+START (triggered by RAG fallback)
+  ↓
+Parse Query (extract keywords: "office hours" → ["office", "hours", "contact"])
+  ↓
+Resolve Domain (database: "Crouse Medical Practice" → crousemedical.com)
+  ↓
+Brave Search (API: "office hours site:crousemedical.com")
+  ↓
+Rank Results (relevance scoring: contact pages boosted, blogs penalized)
+  ↓
+Confidence ≥ 0.5?
+  ├─ YES → Generate Answer (LLM synthesis from top 3 results)
+  └─ NO → Suggest HR Ticket (human support)
+  ↓
+Format Response (with source URLs and confidence indicator)
+  ↓
+END
 ```
 
-**Features:**
-- **Smart Categorization**: Automatically categorizes requests (benefits, payroll, workplace issues, etc.)
-- **Queue Management**: Assigns position based on pending tickets
-- **Meeting Coordination**: Captures preferred dates/times for HR meetings
-- **Admin Dashboard**: Queue view with filtering and sorting
-- **Meeting Scheduling**: Admin can schedule meetings with links/locations
-- **Ticket Lifecycle**: Pending → In Progress → Scheduled → Resolved/Closed
-- **Admin Notes System**: Admins can add notes visible to users for transparency
-
-**Example User Interactions:**
+**Relevance Scoring Algorithm:**
 ```python
-# Benefits inquiry
-"I need to discuss my health insurance options"
-→ Category: benefits, Meeting: online
+# Multi-factor scoring (0.0 - 1.0):
+- Keyword Match: 40%     # "hours" in content
+- Title Relevance: 25%   # "Office Hours" in title
+- Snippet Quality: 25%   # Long description, contact info present
+- Page Type: 10%         # /contact boosted, /blog penalized
 
-# Urgent payroll issue
-"URGENT: There's a problem with my paycheck"
-→ Category: payroll, Urgency: urgent
-
-# Policy question
-"What's the remote work policy?"
-→ Category: policy_question, Meeting: no_meeting_needed
-
-# Workplace concern
-"I'd like to meet in person to discuss a workplace issue"
-→ Category: workplace_issue, Meeting: in_person
+# Example scores:
+/contact page with hours: 0.85 (high)
+/about page mentioning hours: 0.45 (medium)  
+/blog post: 0.15 (low)
 ```
 
-**Admin Workflow:**
-1. View ticket queue (filter by status, category, urgency)
-2. Pick up ticket (assigns to admin, status: in_progress)
-3. Add notes (visible to user for communication)
-4. Schedule meeting (if needed, status: scheduled)
-5. Resolve/Close ticket (status: resolved/closed)
+**Confidence Levels:**
+- **≥0.7**: "Found on company's website" (high confidence)
+- **0.5-0.7**: "Found some information... verify directly" (medium confidence)
+- **<0.5**: "Couldn't find... create HR ticket?" (low confidence)
+
+**Example Interaction:**
+```
+User: "What are the office hours for Crouse Medical?"
+
+1. Unified Agent → detect_intent() → "rag"
+2. RAG Agent → searches handbook → "No relevant context found"
+3. ✓ Automatic Fallback ✓
+4. Website Extraction Agent:
+   - Domain: crousemedical.com
+   - Search: "office hours site:crousemedical.com"
+   - Results: Contact page found
+   - Rank: 0.85 confidence
+   - Answer: "Mon-Fri 8AM-5PM"
+5. Response: "🔍 Found on Crouse Medical Practice's website:
+              
+              Office Hours: Monday-Friday 8:00 AM - 5:00 PM
+              
+              📎 Source: crousemedical.com/contact"
+```
+
+**API Requirements:**
+- **Brave Search API Key**: Required for web search functionality
+- Set in `.env`: `BRAVE_API_KEY=your_brave_api_key`
+- Free tier available at https://brave.com/search/api/
+- Timeout handling: 10 seconds default
+- Rate limiting: Handled gracefully with error messages
+
+**Error Handling:**
+- **API Timeout**: Suggests HR ticket
+- **No API Key**: Suggests HR ticket  
+- **Rate Limited**: Suggests HR ticket
+- **No Results Found**: Suggests HR ticket with specific topic
+- **Low Confidence**: Presents answer with verification suggestion
 
 ### LLM Integration
 
@@ -513,38 +564,6 @@ class AgentLLMClient:
         raise Exception("All LLM providers failed")
 ```
 
-**Natural Language Processing:**
-```python
-async def parse_user_intent(user_message: str) -> Dict:
-    """
-    PTO Example:
-    Input: "I need leave from December 25 to December 27"
-    Output: {
-        "intent": "request_pto",
-        "start_date": "2025-12-25",
-        "end_date": "2025-12-27"
-    }
-    
-    HR Ticket Example:
-    Input: "I need to discuss my health insurance options"
-    Output: {
-        "intent": "create_ticket",
-        "subject": "Health Insurance Discussion",
-        "category": "benefits",
-        "meeting_type": "online"
-    }
-    """
-    llm_client = get_llm_client()
-    
-    messages = [
-        {"role": "system", "content": "Extract request details..."},
-        {"role": "user", "content": user_message}
-    ]
-    
-    response = llm_client.chat(messages, json_mode=True, temperature=0.3)
-    return json.loads(response)
-```
-
 ## Database Schema
 
 ### User Management
@@ -563,6 +582,28 @@ class Company(Base):
     domain = Column(String)  # Industry
     email_domain = Column(String, unique=True)
     url = Column(String)  # Handbook URL
+```
+
+### Chat Persistence (NEW)
+```python
+class Conversation(Base):
+    """User chat conversations"""
+    id = Column(String, primary_key=True)  # UUID
+    email = Column(String, index=True)
+    company = Column(String, index=True)
+    title = Column(String)  # First user message
+    created_at = Column(DateTime)
+    updated_at = Column(DateTime)
+
+class Message(Base):
+    """Individual messages within conversations"""
+    id = Column(String, primary_key=True)  # UUID
+    conversation_id = Column(String, index=True)
+    role = Column(String)  # 'user' or 'assistant'
+    content = Column(String)
+    agent_type = Column(String)  # 'rag', 'pto', 'hr_ticket', 'website_extraction'
+    message_metadata = Column(String)  # JSON metadata
+    created_at = Column(DateTime)
 ```
 
 ### PTO System
@@ -623,11 +664,7 @@ class HRTicket(Base):
     subject = Column(String)
     description = Column(String)
     category = Column(Enum(TicketCategory))
-    # benefits, payroll, workplace_issue, general_inquiry,
-    # policy_question, leave_related, other
-    
     meeting_type = Column(Enum(MeetingType))
-    # in_person, online, phone, no_meeting_needed
     
     preferred_date = Column(Date, nullable=True)
     preferred_time_slot = Column(String, nullable=True)
@@ -635,7 +672,6 @@ class HRTicket(Base):
     
     # Queue management
     status = Column(Enum(TicketStatus))
-    # pending, in_progress, scheduled, resolved, closed
     queue_position = Column(Integer)
     created_at = Column(DateTime)
     
@@ -653,20 +689,6 @@ class HRTicket(Base):
     resolution_notes = Column(String, nullable=True)
     
     updated_at = Column(DateTime)
-
-class HRTicketNote(Base):
-    """
-    Admin notes that are visible to users.
-    Provides transparent communication between admins and employees.
-    """
-    id = Column(String, primary_key=True)  # UUID
-    ticket_id = Column(String, ForeignKey('hr_tickets.id'))
-    admin_email = Column(String)
-    note = Column(String)
-    created_at = Column(DateTime)
-    
-    # Relationship
-    ticket = relationship("HRTicket", backref="notes")
 ```
 
 ## API Endpoints
@@ -681,30 +703,88 @@ GET /api/auth/me
   Response: {"email": "user@company.com", "company": "...", "role": "user"}
 ```
 
-### Unified Chat Router
+### Unified Chat Router (UPDATED)
 ```
 POST /api/chat/message
-  Request: {"message": "What is the PTO policy?"}
+  Request: {
+    "message": "What is the PTO policy?",
+    "conversation_id": "uuid" (optional)
+  }
   Response: {
     "response": "According to the handbook...",
     "agent_used": "rag",
+    "conversation_id": "uuid",
     "metadata": {"sources": [...]}
   }
 
+# Website Extraction Example (automatic fallback)
 POST /api/chat/message
-  Request: {"message": "I need 3 days off next week"}
+  Request: {"message": "What are the office hours?"}
   Response: {
-    "response": "PTO request created...",
-    "agent_used": "pto",
-    "metadata": {"request_id": "uuid", "balance_info": {...}}
+    "response": "🔍 Found on company's website: Mon-Fri 8AM-5PM",
+    "agent_used": "website_extraction",
+    "conversation_id": "uuid",
+    "metadata": {
+      "found_answer": true,
+      "source_urls": ["https://company.com/contact"],
+      "confidence": 0.85,
+      "triggered_by": "rag_fallback"
+    }
   }
 
-POST /api/chat/message
-  Request: {"message": "I need to schedule a meeting with HR"}
+# Chat History (NEW)
+GET /api/chat/conversations
+  Response: [
+    {
+      "id": "uuid",
+      "title": "What is the PTO policy?",
+      "created_at": "2025-11-26T10:00:00",
+      "updated_at": "2025-11-26T10:05:00"
+    }
+  ]
+
+GET /api/chat/conversations/{id}/messages
+  Response: [
+    {
+      "id": "msg_uuid",
+      "role": "user",
+      "content": "What are the hours?",
+      "agent_type": null,
+      "created_at": "2025-11-26T10:00:00"
+    },
+    {
+      "id": "msg_uuid2",
+      "role": "assistant",
+      "content": "Mon-Fri 8AM-5PM",
+      "agent_type": "website_extraction",
+      "created_at": "2025-11-26T10:00:15"
+    }
+  ]
+
+DELETE /api/chat/conversations/{id}
+  Response: {"message": "Conversation deleted"}
+```
+
+### Company Management (NEW)
+```
+POST /api/company/add
+  Request: {
+    "company_name": "New Medical Center",
+    "domain": "Healthcare",
+    "url": "https://newmedical.com/handbook.pdf"
+  }
   Response: {
-    "response": "Ticket created successfully...",
-    "agent_used": "hr_ticket",
-    "metadata": {"ticket_id": "uuid", "queue_position": 5}
+    "message": "Company processing started",
+    "task_id": "uuid",
+    "company_name": "New Medical Center"
+  }
+
+GET /api/company/task-status/{task_id}
+  Response: {
+    "task_id": "uuid",
+    "status": "running",
+    "message": "Running data pipeline...",
+    "started_at": "2025-11-26T10:00:00"
   }
 ```
 
@@ -713,212 +793,6 @@ POST /api/chat/message
 POST /api/rag/query
   Request: {"query": "What is the PTO policy?", "top_k": 3}
   Response: {"answer": "...", "sources": [...], "company": "..."}
-```
-
-### PTO Agent (User)
-```
-POST /api/pto/chat
-  Request: {"message": "I need leave from Dec 25-27"}
-  Response: {
-    "response": "PTO Request Submitted...",
-    "request_created": true,
-    "request_id": "uuid",
-    "balance_info": {...}
-  }
-
-GET /api/pto/balance
-  Response: {
-    "total_days": 15.0,
-    "used_days": 0.0,
-    "pending_days": 2.0,
-    "remaining_days": 13.0
-  }
-
-GET /api/pto/requests
-  Response: [{"id": "...", "start_date": "...", "status": "pending", ...}]
-```
-
-### PTO Agent (Admin)
-```
-GET /api/pto/admin/requests?status_filter=pending
-  Response: [{"id": "...", "email": "...", "status": "pending", ...}]
-
-POST /api/pto/admin/approve
-  Request: {
-    "request_id": "uuid",
-    "status": "approved",
-    "admin_notes": "Approved"
-  }
-
-GET /api/pto/admin/balances
-  Response: [{"email": "...", "total_days": 15, "remaining_days": 13, ...}]
-
-PUT /api/pto/admin/balance/{email}?total_days=20
-  Response: {"message": "Balance updated"}
-
-POST /api/pto/admin/reset-balance/{email}
-  Response: {"message": "Balance reset", "available_now": 15.0}
-
-POST /api/pto/admin/reset-all-balances
-  Response: {"message": "Reset 10 employees", "employees_reset": 10}
-
-DELETE /api/pto/admin/balance/{email}
-  Response: {"message": "Balance deleted"}
-```
-
-### HR Ticket Agent (User)
-```
-POST /api/hr-tickets/chat
-  Request: {"message": "I need to discuss my health insurance options"}
-  Response: {
-    "response": "Ticket created successfully...",
-    "ticket_created": true,
-    "ticket_id": "uuid",
-    "queue_position": 5,
-    "ticket_details": {...}
-  }
-
-GET /api/hr-tickets/my-tickets
-  Response: {
-    "tickets": [
-      {
-        "id": "uuid",
-        "subject": "Health Insurance Discussion",
-        "status": "pending",
-        "queue_position": 5,
-        "created_at": "2025-11-21T10:30:00",
-        "notes": [
-          {
-            "id": "note_uuid",
-            "admin_email": "admin@company.com",
-            "note": "Reviewing your request",
-            "created_at": "2025-11-21T11:00:00"
-          }
-        ],
-        ...
-      }
-    ],
-    "total_count": 3
-  }
-
-GET /api/hr-tickets/{ticket_id}
-  Response: {
-    "id": "uuid",
-    "subject": "...",
-    "status": "scheduled",
-    "scheduled_datetime": "2025-11-25T14:00:00",
-    "meeting_link": "https://meet.google.com/...",
-    "notes": [
-      {
-        "admin_email": "admin@company.com",
-        "note": "Meeting scheduled for next week",
-        "created_at": "2025-11-21T12:00:00"
-      }
-    ],
-    ...
-  }
-
-DELETE /api/hr-tickets/{ticket_id}
-  Response: {"message": "Ticket cancelled successfully"}
-```
-
-### HR Ticket Agent (Admin)
-```
-GET /api/hr-tickets/admin/queue
-  Query params:
-    - status_filter: pending|in_progress|scheduled|all
-    - category_filter: benefits|payroll|workplace_issue|...
-    - urgency_filter: urgent|normal
-    - sort_by: created_at|urgency|category
-  
-  Response: {
-    "tickets": [
-      {
-        "id": "uuid",
-        "email": "user@company.com",
-        "subject": "Health Insurance",
-        "category": "benefits",
-        "urgency": "normal",
-        "status": "pending",
-        "queue_position": 1,
-        "created_at": "2025-11-21T09:00:00",
-        ...
-      }
-    ],
-    "total_count": 12
-  }
-
-POST /api/hr-tickets/admin/pick-ticket
-  Request: {"ticket_id": "uuid"}
-  Response: {"message": "Ticket assigned to you"}
-
-POST /api/hr-tickets/admin/schedule-meeting
-  Request: {
-    "ticket_id": "uuid",
-    "scheduled_datetime": "2025-11-25T14:00:00",
-    "meeting_link": "https://meet.google.com/...",
-    "meeting_location": null,
-    "admin_notes": "Looking forward to our meeting"
-  }
-  Response: {"message": "Meeting scheduled successfully"}
-
-POST /api/hr-tickets/admin/resolve
-  Request: {
-    "ticket_id": "uuid",
-    "status": "resolved",
-    "resolution_notes": "Issue resolved successfully"
-  }
-  Response: {"message": "Ticket resolved successfully"}
-
-POST /api/hr-tickets/admin/add-note
-  Request: {
-    "ticket_id": "uuid",
-    "note": "Waiting for additional information"
-  }
-  Response: {
-    "message": "Note added successfully",
-    "note": {
-      "id": "note_uuid",
-      "admin_email": "admin@company.com",
-      "note": "Waiting for additional information",
-      "created_at": "2025-11-21T13:30:00"
-    }
-  }
-
-GET /api/hr-tickets/admin/stats
-  Response: {
-    "total_pending": 12,
-    "total_in_progress": 5,
-    "total_scheduled": 3,
-    "total_resolved_today": 8,
-    "total_closed_today": 2,
-    "average_resolution_time_hours": 4.5,
-    "by_category": {
-      "benefits": 5,
-      "payroll": 3,
-      "workplace_issue": 2,
-      ...
-    },
-    "by_urgency": {
-      "normal": 15,
-      "urgent": 5
-    }
-  }
-```
-
-### Admin Management
-```
-GET /api/admin/company-users
-  Response: {"users": [...]}
-
-POST /api/admin/add-user
-  Request: {"email": "...", "password": "...", "name": "..."}
-
-DELETE /api/admin/delete-user
-  Request: {"email": "..."}
-
-PUT /api/admin/update-password
-  Request: {"email": "...", "new_password": "..."}
 ```
 
 ## Continuous Integration
@@ -936,11 +810,11 @@ PUT /api/admin/update-password
 - Build: Production bundle with npm
 - Artifacts: Build output (7-day retention)
 
-**Agent Tests** (`.github/workflows/agents.yml`):
+**Agent Tests** (`.github/workflows/agents.yml`) [UPDATED]:
 - Triggers: Push/PR to any branch with agent changes
-- Tests: PTO Agent (Tools, Nodes), HR Ticket Agent (Tools, Nodes)
+- Tests: PTO Agent, HR Ticket Agent, Website Extraction Agent [NEW]
 - Coverage: Agent-specific reports
-- Future: Scalable for additional agents
+- Total: 206 automated tests (was 167)
 
 **Config Validation** (`.github/workflows/config.yml`):
 - Triggers: Push/PR to any branch with config changes
@@ -970,12 +844,14 @@ pytest
 # Backend tests only
 pytest tests/
 
-# Agent tests only
+# Agent tests only (206 tests) [UPDATED]
 pytest agents/test_agents/
 
 # Specific agent tests
 pytest agents/test_agents/test_pto_tools.py
 pytest agents/test_agents/test_hr_ticket_nodes.py
+pytest agents/test_agents/test_website_extraction_tools.py [NEW]
+pytest agents/test_agents/test_website_extraction_nodes.py [NEW]
 
 # Specific test file
 pytest tests/test_api/test_auth.py
@@ -983,94 +859,8 @@ pytest tests/test_api/test_auth.py
 # With coverage
 pytest --cov=. --cov-report=html --cov-report=term
 
-# Agent coverage
+# Agent coverage (includes website extraction) [UPDATED]
 pytest agents/test_agents/ --cov=agents --cov-report=term
-```
-
-### Test Structure
-```python
-# conftest.py - Fixtures
-@pytest.fixture
-def db_session():
-    """In-memory test database"""
-    engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(bind=engine)
-    yield session
-
-@pytest.fixture
-def sample_pto_balance(db_session):
-    """Sample PTO balance for testing"""
-    balance = PTOBalance(...)
-    db_session.add(balance)
-    db_session.commit()
-    return balance
-
-@pytest.fixture
-def sample_hr_ticket(db_session):
-    """Sample HR ticket for testing"""
-    ticket = HRTicket(...)
-    db_session.add(ticket)
-    db_session.commit()
-    return ticket
-```
-```python
-# test_pto_tools.py
-def test_calculate_business_days_with_holidays():
-    start = date(2025, 12, 24)
-    end = date(2025, 12, 26)
-    holidays = [date(2025, 12, 25)]
-    
-    result = calculate_business_days(start, end, holidays)
-    assert result == 2.0  # Wed and Fri only
-
-def test_check_conflicting_requests(db_session):
-    # Create existing request
-    existing = PTORequest(...)
-    db_session.add(existing)
-    
-    # Check for conflicts
-    has_conflicts, conflicts = check_conflicting_requests(...)
-    assert has_conflicts is True
-```
-```python
-# test_hr_ticket_tools.py
-def test_check_open_tickets(db_session, sample_hr_ticket):
-    has_open, ticket_ids = check_open_tickets(
-        db_session,
-        sample_hr_ticket.email,
-        sample_hr_ticket.company
-    )
-    assert has_open is True
-    assert sample_hr_ticket.id in ticket_ids
-
-def test_calculate_queue_position(db_session):
-    position = calculate_queue_position(db_session, "Crouse Medical Practice")
-    assert position == 1
-```
-```python
-# test_pto_nodes.py
-def test_validate_dates_past_dates(db_session):
-    state = PTOAgentState(
-        start_date=date(2020, 1, 1),
-        is_valid=False,
-        ...
-    )
-    
-    result = validate_dates_node(state, db_session)
-    assert result['is_valid'] is False
-    assert "past dates" in result['validation_errors'][0]
-```
-```python
-# test_hr_ticket_nodes.py
-def test_parse_intent_node(db_session):
-    state = HRTicketState(
-        user_message="I need to discuss my health insurance",
-        ...
-    )
-    
-    result = parse_intent_node(state, db_session)
-    assert result['category'] in ['benefits', 'general_inquiry']
-    assert result['is_valid'] is True
 ```
 
 ## Development Workflow
@@ -1084,9 +874,11 @@ pip install -r requirements.txt
 
 # Configure environment
 cat > .env << EOF
-GROQ_API_KEY=your_key
+GROQ_API_KEY=your_groq_key
+BRAVE_API_KEY=your_brave_key
 JWT_SECRET_KEY=secure_random_key
 GENERATION_BACKEND=auto
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/gcs-key.json
 EOF
 
 # Initialize database
@@ -1111,7 +903,8 @@ sqlite3 users.db
 > SELECT * FROM users;
 > SELECT * FROM pto_requests WHERE status = 'pending';
 > SELECT * FROM hr_tickets WHERE status = 'pending';
-> SELECT * FROM hr_ticket_notes WHERE ticket_id = 'uuid';
+> SELECT * FROM conversations LIMIT 10;
+> SELECT * FROM messages WHERE conversation_id = 'uuid';
 
 # Reset database
 rm users.db
@@ -1143,9 +936,15 @@ GROQ_API_KEY=your_groq_key
 LLAMA_MODEL_PATH=/path/to/model  # Optional
 INCEPTION_API_KEY=your_mercury_key
 
+# External APIs [NEW]
+BRAVE_API_KEY=your_brave_key
+
 # Security
 JWT_SECRET_KEY=secure_random_key
 CORS_ORIGINS=https://yourdomain.com
+
+# Google Cloud Storage [NEW]
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-key.json
 
 # Database
 DATABASE_URL=sqlite:///./users.db
@@ -1165,6 +964,7 @@ LOG_LEVEL=info
 - Set secure JWT secret
 - Enable CORS for trusted origins only
 - Implement rate limiting
+- Secure API keys (Brave, Groq) [NEW]
 
 **Database:**
 - Migrate to PostgreSQL
@@ -1172,6 +972,7 @@ LOG_LEVEL=info
 - Set up automated backups
 - Implement migration tool (Alembic)
 - Add database indexes
+- Chat history retention policies [NEW]
 
 **Monitoring:**
 - Configure application logging
@@ -1179,6 +980,7 @@ LOG_LEVEL=info
 - Implement health check monitoring
 - Configure performance metrics
 - Set up alerting
+- Monitor external API usage (Brave Search) [NEW]
 
 **Infrastructure:**
 - Configure reverse proxy
@@ -1186,6 +988,7 @@ LOG_LEVEL=info
 - Implement container orchestration
 - Configure auto-scaling
 - Set up deployment pipeline
+- GCS sync for data pipeline [NEW]
 
 ## Troubleshooting
 
@@ -1212,13 +1015,19 @@ pip install -r requirements.txt --force-reinstall
 
 **Agent Failures:**
 - Check LLM provider availability
-- Verify API keys in environment
+- Verify API keys in environment (Groq, Brave) [UPDATED]
 - Review agent workflow logs
 
 **Database Issues:**
 - Verify database file exists
 - Check file permissions
 - Reset database if corrupted
+
+**Website Extraction Failures (NEW):**
+- Verify BRAVE_API_KEY is set
+- Check Brave API rate limits
+- Ensure company has URL in database
+- Review search timeout settings
 
 ## Future Agents
 
@@ -1227,6 +1036,7 @@ The architecture supports multiple agents:
 agents/
 ├── pto/              # ✓ Implemented: PTO Request Agent
 ├── hr_ticket/        # ✓ Implemented: HR Ticket Agent
+├── website_extraction/ # ✓ Implemented: Website Search Agent [NEW]
 ├── expense/          # Planned: Expense Report Agent
 ├── scheduling/       # Planned: Scheduling Agent
 └── utils/            # Shared utilities
@@ -1243,6 +1053,7 @@ Each agent follows the same pattern:
 **Implemented Agents:**
 - **PTO Request Agent**: Automated vacation request processing with balance tracking
 - **HR Ticket Agent**: Employee support ticketing with queue management and meeting coordination
+- **Website Extraction Agent**: Automatic web search fallback for information not in handbooks [NEW]
 
 **Planned Agents:**
 - **Expense Report Agent**: Automated expense submission and approval workflow
@@ -1256,6 +1067,7 @@ Each agent follows the same pattern:
 - **SQLAlchemy**: https://docs.sqlalchemy.org
 - **LangGraph**: https://langchain-ai.github.io/langgraph
 - **Pytest**: https://docs.pytest.org
+- **Brave Search API**: https://brave.com/search/api/ [NEW]
 
 ## Default Credentials
 ```
