@@ -9,6 +9,12 @@ jobs:
     timeout-minutes: 120
 
     steps:
+      - name: Configure toolcache directory
+        run: |
+          mkdir -p $HOME/actions-runner/_work/_tool
+          echo "AGENT_TOOLSDIRECTORY=$HOME/actions-runner/_work/_tool" >> $GITHUB_ENV
+        shell: bash
+
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
