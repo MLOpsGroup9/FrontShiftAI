@@ -59,7 +59,7 @@ def test_get_user_info_without_token(client):
     """Test getting user info without authentication"""
     response = client.get("/api/auth/me")
     
-    assert response.status_code == 403  # Forbidden
+    assert response.status_code == 401  # Unauthorized
 
 def test_get_user_info_invalid_token(client):
     """Test getting user info with invalid token"""

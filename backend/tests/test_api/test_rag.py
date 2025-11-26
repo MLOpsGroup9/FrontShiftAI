@@ -9,7 +9,7 @@ def test_rag_query_without_auth(client):
         json={"query": "What is the PTO policy?", "top_k": 3}
     )
     
-    assert response.status_code == 403
+    assert response.status_code == 401      
 
 @patch('api.rag.pipeline')
 def test_rag_query_with_auth(mock_pipeline, client, auth_headers):
