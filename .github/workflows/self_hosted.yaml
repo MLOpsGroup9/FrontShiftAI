@@ -33,6 +33,8 @@ jobs:
           echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
           echo "TOKENIZERS_PARALLELISM=false" >> $GITHUB_ENV
           echo "CHAT_PIPELINE_ALLOW_HEAVY_FALLBACKS=1" >> $GITHUB_ENV
+          echo "LLAMA_MODEL_PATH=/Users/sriks/Documents/Projects/FrontShiftAI/models/Llama-3.2-3B-Instruct-Q4_K_M.gguf" >> $GITHUB_ENV
+          echo "GENERATION_BACKEND=local" >> $GITHUB_ENV
         shell: bash
 
       - name: Auth to GCP
