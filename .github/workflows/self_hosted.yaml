@@ -8,21 +8,19 @@ jobs:
     runs-on: [self-hosted, macos]
     timeout-minutes: 120
 
-    env:
-      AGENT_TOOLSDIRECTORY: /Users/sriks/actions-runner/_work/_tool
-      RUNNER_TOOL_CACHE: /Users/sriks/actions-runner/_work/_tool
-
     steps:
-      - name: Prepare toolcache directory
-        run: |
-          mkdir -p /Users/sriks/actions-runner/_work/_tool
-          echo "Using custom toolcache at: $AGENT_TOOLSDIRECTORY"
-        shell: bash
-
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           lfs: true
+
+      - name: Prepare toolcache directory
+        run: |
+          mkdir -p /Users/sriks/actions-runner/_work/_tool
+          echo "AGENT_TOOLSDIRECTORY=/Users/sriks/actions-runner/_work/_tool" >> $GITHUB_ENV
+          echo "RUNNER_TOOL_CACHE=/Users/sriks/actions-runner/_work/_tool" >> $GITHUB_ENV
+          echo "Using custom toolcache at: /Users/sriks/actions-runner/_work/_tool"
+        shell: bash
 
       - name: Set up Python
         uses: actions/setup-python@v5
