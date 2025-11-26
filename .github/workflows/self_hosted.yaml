@@ -8,11 +8,15 @@ jobs:
     runs-on: [self-hosted, macos]
     timeout-minutes: 120
 
+    env:
+      AGENT_TOOLSDIRECTORY: /Users/sriks/actions-runner/_work/_tool
+      RUNNER_TOOL_CACHE: /Users/sriks/actions-runner/_work/_tool
+
     steps:
-      - name: Configure toolcache directory
+      - name: Prepare toolcache directory
         run: |
-          mkdir -p $HOME/actions-runner/_work/_tool
-          echo "AGENT_TOOLSDIRECTORY=$HOME/actions-runner/_work/_tool" >> $GITHUB_ENV
+          mkdir -p /Users/sriks/actions-runner/_work/_tool
+          echo "Using custom toolcache at: $AGENT_TOOLSDIRECTORY"
         shell: bash
 
       - name: Checkout Repository
@@ -24,7 +28,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: 'pip'
+          cache: pip
 
       - name: Install Dependencies
         run: |
@@ -39,7 +43,7 @@ jobs:
           echo "CHAT_PIPELINE_ALLOW_HEAVY_FALLBACKS=1" >> $GITHUB_ENV
         shell: bash
 
-      - name: Load local env file
+      - name: Load local .env file
         run: |
           set -a
           source chat_pipeline/.env
@@ -82,18 +86,18 @@ jobs:
       - name: Verify Core Evaluation Results
         run: |
           if [ ! -f "chat_pipeline/results/core_experiment_summary.json" ]; then
-            echo "❌ chat_pipeline/results/core_experiment_summary.json not found"
+            echo "❌ core_experiment_summary.json missing"
             exit 1
           fi
           if [ ! -f "chat_pipeline/results/core_eval_main/summary.json" ]; then
-            echo "❌ chat_pipeline/results/core_eval_main/summary.json not found"
+            echo "❌ core_eval_main/summary.json missing"
             exit 1
           fi
           if [ ! -f "chat_pipeline/results/core_eval_slices/summary.json" ]; then
-            echo "❌ chat_pipeline/results/core_eval_slices/summary.json not found"
+            echo "❌ core_eval_slices/summary.json missing"
             exit 1
           fi
-          echo "✅ Core evaluation results generated successfully"
+          echo "✅ Core evaluation results generated"
 
       - name: Generate Full Evaluation Responses
         env:
@@ -110,11 +114,11 @@ jobs:
       - name: Verify Evaluation Results
         run: |
           if [ ! -f "chat_pipeline/results/experiment_summary.json" ]; then
-            echo "❌ chat_pipeline/results/experiment_summary.json not found"
+            echo "❌ experiment_summary.json missing"
             exit 1
           fi
           if [ ! -f "chat_pipeline/results/eval_main/summary.json" ]; then
-            echo "❌ chat_pipeline/results/eval_main/summary.json not found"
+            echo "❌ eval_main/summary.json missing"
             exit 1
           fi
           echo "✅ Evaluation results generated successfully"
