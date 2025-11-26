@@ -84,14 +84,14 @@ jobs:
       - name: Upload HTML coverage report
         uses: actions/upload-artifact@v4
         with:
-          name: pto-agent-coverage-html-${{ github.ref_name }}
+          name: pto-agent-coverage-html-${{ github.run_id }}
           path: backend/htmlcov/
           retention-days: 7
       
       - name: PTO Agent summary
         if: success()
         run: |
-          echo "✅ PTO Agent tests passed on branch ${{ github.ref_name }}"
+          echo "✅ PTO Agent tests passed on branch ${{ github.run_id }}"
           echo "📊 Coverage reports generated"
           echo ""
           echo "Test Breakdown:"
@@ -103,5 +103,5 @@ jobs:
       - name: PTO Agent failure
         if: failure()
         run: |
-          echo "❌ PTO Agent tests failed on branch ${{ github.ref_name }}"
+          echo "❌ PTO Agent tests failed on branch ${{ github.run_id }}"
           echo "Check the logs above for details"

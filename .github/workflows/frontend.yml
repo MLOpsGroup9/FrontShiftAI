@@ -47,14 +47,14 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-build-${{ github.ref_name }}
+          name: frontend-build-${{ github.run_id }}
           path: frontend/dist/
           retention-days: 7
       
       - name: Build summary
         if: success()
-        run: echo "✅ Frontend build successful on branch ${{ github.ref_name }}"
+        run: echo "✅ Frontend build successful on branch ${{ github.run_id }}"
       
       - name: Build failure
         if: failure()
-        run: echo "❌ Frontend build failed on branch ${{ github.ref_name }}"
+        run: echo "❌ Frontend build failed on branch ${{ github.run_id }}"
