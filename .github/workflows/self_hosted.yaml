@@ -35,13 +35,6 @@ jobs:
           echo "CHAT_PIPELINE_ALLOW_HEAVY_FALLBACKS=1" >> $GITHUB_ENV
         shell: bash
 
-      - name: Load local .env file
-        run: |
-          set -a
-          source chat_pipeline/.env
-          set +a
-        shell: bash
-
       - name: Auth to GCP
         uses: google-github-actions/auth@v2
         with:
