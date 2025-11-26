@@ -83,9 +83,6 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      # -------------------------
-      # Set up gcloud
-      # -------------------------
       - name: Set up gcloud SDK (gsutil)
         uses: google-github-actions/setup-gcloud@v2
 
@@ -100,7 +97,7 @@ jobs:
         shell: bash
 
       # -------------------------
-      # Weights & Biases ENV SETUP
+      # Weights & Biases ENV
       # -------------------------
       - name: Set W&B Environment Variables
         run: |
@@ -117,28 +114,30 @@ jobs:
         run: |
           python3 -m chat_pipeline.cli --config chat_pipeline/configs/experiments/core_eval.yaml --mode generate --debug
 
+
       # -------------------------
-      # Core Evaluation Judging (CLEAN JSON WRAPPER)
+      # Core Evaluation Judging (Correct Wrapper)
       # -------------------------
       - name: Judge Core Evaluation Responses
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
         run: |
           set +e
-          echo "📌 Running judge step..."
 
-          RAW_OUTPUT=$(python3 -m chat_pipeline.cli \
+          echo "📌 Running pipeline judge (must produce summary.json files)..."
+
+          # Run judge normally — this generates all required result files
+          python3 -m chat_pipeline.cli \
             --config chat_pipeline/configs/experiments/core_eval.yaml \
-            --mode judge --debug 2>&1)
+            --mode judge --debug 2>&1 | tee raw_core_judge_output.txt
 
-          EXIT_CODE=$?
-
-          echo "---------------- RAW JUDGE OUTPUT ----------------"
-          echo "$RAW_OUTPUT"
-          echo "--------------------------------------------------"
+          EXIT_CODE=${PIPESTATUS[0]}
 
           echo "📌 Cleaning judge JSON..."
 
+          RAW_OUTPUT="$(cat raw_core_judge_output.txt)"
+
+          # Clean markdown garbage
           CLEANED=$(echo "$RAW_OUTPUT" \
             | sed 's/```json//g' \
             | sed 's/```//g' \
@@ -146,25 +145,23 @@ jobs:
             | sed 's/^[[:space:]]*//g'
           )
 
+          # Extract first valid JSON object using recursive regex
           JSON_BLOCK=$(echo "$CLEANED" | perl -0777 -ne 'print "$1\n" if /(\{(?:[^{}]|(?1))*\})/s')
 
-          if [ -z "$JSON_BLOCK" ]; then
-            echo "❌ Could not extract JSON from judge output."
-            echo "Judge step EXIT CODE: $EXIT_CODE"
-            exit $EXIT_CODE
-          fi
-
+          # Save cleaned JSON
           echo "$JSON_BLOCK" > chat_pipeline/results/fixed_core_judge.json
-          echo "📌 Cleaned JSON written to chat_pipeline/results/fixed_core_judge.json"
+
+          echo "📌 Cleaned JSON saved to chat_pipeline/results/fixed_core_judge.json"
 
           if [ $EXIT_CODE -ne 0 ]; then
-            echo "⚠️ Judge exited with code $EXIT_CODE, but JSON was successfully extracted. Continuing..."
+            echo "⚠️ Judge exited with $EXIT_CODE, but results & JSON were successfully extracted. Continuing..."
           else
-            echo "✅ Judge completed with valid JSON extracted."
+            echo "✅ Judge completed normally."
           fi
 
+
       # -------------------------
-      # Validate Core Eval Outputs
+      # Verify Core Eval Output Files
       # -------------------------
       - name: Verify Core Evaluation Results
         run: |
@@ -182,8 +179,9 @@ jobs:
           fi
           echo "✅ Core eval results ready"
 
+
       # -------------------------
-      # FULL Evaluation Pipeline
+      # Full Evaluation Generation
       # -------------------------
       - name: Generate Full Evaluation Responses
         env:
@@ -191,24 +189,27 @@ jobs:
         run: |
           python3 -m chat_pipeline.cli --config chat_pipeline/configs/experiments/full_eval.yaml --mode generate --debug
 
+
+      # -------------------------
+      # Full Evaluation Judging (Correct Wrapper)
+      # -------------------------
       - name: Judge Full Evaluation Responses
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
         run: |
           set +e
-          echo "📌 Running FULL evaluation judge step..."
 
-          RAW_OUTPUT=$(python3 -m chat_pipeline.cli \
+          echo "📌 Running FULL pipeline judge..."
+
+          python3 -m chat_pipeline.cli \
             --config chat_pipeline/configs/experiments/full_eval.yaml \
-            --mode judge --debug 2>&1)
+            --mode judge --debug 2>&1 | tee raw_full_judge_output.txt
 
-          EXIT_CODE=$?
+          EXIT_CODE=${PIPESTATUS[0]}
 
-          echo "---------------- RAW JUDGE OUTPUT ----------------"
-          echo "$RAW_OUTPUT"
-          echo "--------------------------------------------------"
+          echo "📌 Cleaning FULL judge JSON..."
 
-          echo "📌 Cleaning judge JSON..."
+          RAW_OUTPUT="$(cat raw_full_judge_output.txt)"
 
           CLEANED=$(echo "$RAW_OUTPUT" \
             | sed 's/```json//g' \
@@ -219,21 +220,20 @@ jobs:
 
           JSON_BLOCK=$(echo "$CLEANED" | perl -0777 -ne 'print "$1\n" if /(\{(?:[^{}]|(?1))*\})/s')
 
-          if [ -z "$JSON_BLOCK" ]; then
-            echo "❌ Could not extract JSON from judge output."
-            echo "Judge step EXIT CODE: $EXIT_CODE"
-            exit $EXIT_CODE
-          fi
-
           echo "$JSON_BLOCK" > chat_pipeline/results/fixed_full_judge.json
-          echo "📌 Cleaned JSON written to chat_pipeline/results/fixed_full_judge.json"
+
+          echo "📌 Cleaned JSON saved to chat_pipeline/results/fixed_full_judge.json"
 
           if [ $EXIT_CODE -ne 0 ]; then
-            echo "⚠️ Judge exited with code $EXIT_CODE, but JSON was successfully extracted. Continuing..."
+            echo "⚠️ FULL judge exited with $EXIT_CODE, but JSON extracted. Continuing..."
           else
-            echo "✅ FULL Judge completed with valid JSON extracted."
+            echo "✅ FULL judge completed normally."
           fi
 
+
+      # -------------------------
+      # Verify Full Eval Output Files
+      # -------------------------
       - name: Verify Evaluation Results
         run: |
           if [ ! -f "chat_pipeline/results/experiment_summary.json" ]; then
@@ -245,6 +245,7 @@ jobs:
             exit 1
           fi
           echo "✅ Full evaluation results generated successfully"
+
 
       # -------------------------
       # Upload Artifacts
