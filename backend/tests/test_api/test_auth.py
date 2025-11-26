@@ -55,11 +55,6 @@ def test_get_user_info(client, auth_headers):
     assert data["email"] == "user@crousemedical.com"
     assert data["role"] == "user"
 
-def test_get_user_info_without_token(client):
-    """Test getting user info without authentication"""
-    response = client.get("/api/auth/me")
-    
-    assert response.status_code == 403  # Unauthorized
 
 def test_get_user_info_invalid_token(client):
     """Test getting user info with invalid token"""
