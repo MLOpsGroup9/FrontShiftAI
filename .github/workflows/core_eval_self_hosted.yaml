@@ -1,4 +1,4 @@
-name: Chat Pipeline - Mac Self-Hosted Check
+name: Chat Pipeline - core eval Mac Self-Hosted Check
 
 on:
   workflow_dispatch:
