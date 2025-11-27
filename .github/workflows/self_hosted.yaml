@@ -66,6 +66,9 @@ jobs:
           echo "WANDB_ENTITY=group9mlops-northeastern-university" >> $GITHUB_ENV
           echo "WANDB_PROJECT=FrontShiftAI" >> $GITHUB_ENV
 
+      # ------------------------------------------------------------------
+      # Core Eval Generate
+      # ------------------------------------------------------------------
       - name: Core Eval Generate
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
@@ -74,24 +77,36 @@ jobs:
             --config chat_pipeline/configs/experiments/core_eval.yaml \
             --mode generate --debug
 
+      # ------------------------------------------------------------------
+      # Core Eval Judge  (corrected; does NOT break summaries)
+      # ------------------------------------------------------------------
       - name: Core Eval Judge
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
         run: |
-          set +e
-          mkdir -p chat_pipeline/results/core_eval_main
-          mkdir -p chat_pipeline/results/core_eval_slices
           mkdir -p chat_pipeline/results
 
+          # Run judge normally so chat_pipeline can complete its internal lifecycle
           python3 -m chat_pipeline.cli \
             --config chat_pipeline/configs/experiments/core_eval.yaml \
-            --mode judge --debug 2>&1 | tee raw_core.txt
+            --mode judge --debug \
+            > raw_core_judge_output.txt 2>&1 || true
 
-          RAW=$(cat raw_core.txt)
-          CLEAN=$(echo "$RAW" | sed 's/```json//g' | sed 's/```//g' | sed 's/\*\*\*//g')
+          # Extract JSON cleanly AFTER the judge finishes
+          RAW=$(cat raw_core_judge_output.txt)
+          CLEAN=$(echo "$RAW" \
+            | sed 's/```json//g' \
+            | sed 's/```//g' \
+            | sed 's/\*\*\*//g'
+          )
           JSON=$(echo "$CLEAN" | perl -0777 -ne 'print "$1" if /(\{(?:[^{}]|(?1))*\})/s')
-          echo "$JSON" > chat_pipeline/results/fixed_core_judge.json
 
+          echo "$JSON" > chat_pipeline/results/fixed_core_judge.json
+          echo "Core judge done"
+
+      # ------------------------------------------------------------------
+      # Verify Core Eval Summaries
+      # ------------------------------------------------------------------
       - name: Verify Core Eval
         run: |
           test -f chat_pipeline/results/core_experiment_summary.json
@@ -99,6 +114,9 @@ jobs:
           test -f chat_pipeline/results/core_eval_slices/summary.json
           echo "Core eval OK"
 
+      # ------------------------------------------------------------------
+      # Full Eval Generate
+      # ------------------------------------------------------------------
       - name: Full Eval Generate
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
@@ -107,23 +125,34 @@ jobs:
             --config chat_pipeline/configs/experiments/full_eval.yaml \
             --mode generate --debug
 
+      # ------------------------------------------------------------------
+      # Full Eval Judge  (same safe pattern)
+      # ------------------------------------------------------------------
       - name: Full Eval Judge
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
         run: |
-          set +e
-          mkdir -p chat_pipeline/results/eval_main
           mkdir -p chat_pipeline/results
 
           python3 -m chat_pipeline.cli \
             --config chat_pipeline/configs/experiments/full_eval.yaml \
-            --mode judge --debug 2>&1 | tee raw_full.txt
+            --mode judge --debug \
+            > raw_full_judge_output.txt 2>&1 || true
 
-          RAW=$(cat raw_full.txt)
-          CLEAN=$(echo "$RAW" | sed 's/```json//g' | sed 's/```//g' | sed 's/\*\*\*//g')
+          RAW=$(cat raw_full_judge_output.txt)
+          CLEAN=$(echo "$RAW" \
+            | sed 's/```json//g' \
+            | sed 's/```//g' \
+            | sed 's/\*\*\*//g'
+          )
           JSON=$(echo "$CLEAN" | perl -0777 -ne 'print "$1" if /(\{(?:[^{}]|(?1))*\})/s')
-          echo "$JSON" > chat_pipeline/results/fixed_full_judge.json
 
+          echo "$JSON" > chat_pipeline/results/fixed_full_judge.json
+          echo "Full judge done"
+
+      # ------------------------------------------------------------------
+      # Verify Full Eval Summaries
+      # ------------------------------------------------------------------
       - name: Verify Full Eval
         run: |
           test -f chat_pipeline/results/experiment_summary.json
