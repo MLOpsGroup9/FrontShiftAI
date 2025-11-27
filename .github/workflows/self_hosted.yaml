@@ -26,10 +26,8 @@ jobs:
       # -------------------------
       - name: Set up Python (system)
         run: |
-          echo "Using system Python:"
           which python3
           python3 --version
-        shell: bash
 
       # -------------------------
       # Install Python Dependencies
@@ -38,12 +36,11 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           pip3 install -r chat_pipeline/requirements.txt
-          
+
           echo "Installing llama-cpp-python with Accelerate..."
           CMAKE_ARGS="-DLLAMA_ACCELERATE=on" pip3 install --force-reinstall --upgrade llama-cpp-python
 
           pip3 install pyyaml
-        shell: bash
 
       # -------------------------
       # Export LLaMA Environment Variables
@@ -53,7 +50,6 @@ jobs:
           echo "LLAMA_MODEL_PATH=/Users/sriks/Documents/Projects/FrontShiftAI/models/Llama-3.2-3B-Instruct-Q4_K_M.gguf" >> $GITHUB_ENV
           echo "GENERATION_BACKEND=local" >> $GITHUB_ENV
           echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
-        shell: bash
 
       # -------------------------
       # Debug: Test if LLaMA loads
@@ -63,13 +59,9 @@ jobs:
           python3 - << 'EOF'
           from llama_cpp import Llama
           import os
-
-          model_path = os.getenv("LLAMA_MODEL_PATH")
-          print("LLAMA_MODEL_PATH =", model_path)
-
           try:
-              llm = Llama(model_path=model_path)
-              print("✅ LLaMA model loaded successfully!")
+              llm = Llama(model_path=os.getenv("LLAMA_MODEL_PATH"))
+              print("✅ LLaMA model loaded successfully")
           except Exception as e:
               print("❌ LLaMA load failed:", e)
               raise
@@ -94,7 +86,6 @@ jobs:
           mkdir -p chat_pipeline/data_pipeline/data/vector_db
           gsutil -m rsync -r gs://frontshiftai-data/data/vector_db chat_pipeline/data_pipeline/data/vector_db
           echo "CHROMA_DIR=chat_pipeline/data_pipeline/data/vector_db" >> $GITHUB_ENV
-        shell: bash
 
       # -------------------------
       # Weights & Biases ENV
@@ -103,30 +94,34 @@ jobs:
         run: |
           echo "WANDB_ENTITY=group9mlops-northeastern-university" >> $GITHUB_ENV
           echo "WANDB_PROJECT=FrontShiftAI" >> $GITHUB_ENV
-        shell: bash
 
       # -------------------------
-      # Core Evaluation Generation
+      # Core Eval: Generation
       # -------------------------
       - name: Generate Core Evaluation Responses
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
         run: |
-          python3 -m chat_pipeline.cli --config chat_pipeline/configs/experiments/core_eval.yaml --mode generate --debug
+          python3 -m chat_pipeline.cli \
+            --config chat_pipeline/configs/experiments/core_eval.yaml \
+            --mode generate --debug
 
-
-      # -------------------------
-      # Core Evaluation Judging (Correct Wrapper)
-      # -------------------------
+      # ----------------------------------------------
+      # Core Eval: Judge (correct wrapper)
+      # ----------------------------------------------
       - name: Judge Core Evaluation Responses
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
         run: |
           set +e
 
-          echo "📌 Running pipeline judge (must produce summary.json files)..."
+          # FIX: ensure required result folders exist
+          mkdir -p chat_pipeline/results/core_eval_main
+          mkdir -p chat_pipeline/results/core_eval_slices
+          mkdir -p chat_pipeline/results
 
-          # Run judge normally — this generates all required result files
+          echo "📌 Running pipeline judge..."
+
           python3 -m chat_pipeline.cli \
             --config chat_pipeline/configs/experiments/core_eval.yaml \
             --mode judge --debug 2>&1 | tee raw_core_judge_output.txt
@@ -137,69 +132,64 @@ jobs:
 
           RAW_OUTPUT="$(cat raw_core_judge_output.txt)"
 
-          # Clean markdown garbage
           CLEANED=$(echo "$RAW_OUTPUT" \
             | sed 's/```json//g' \
             | sed 's/```//g' \
             | sed 's/\*\*\*//g' \
-            | sed 's/^[[:space:]]*//g'
-          )
+            | sed 's/^[[:space:]]*//g')
 
-          # Extract first valid JSON object using recursive regex
           JSON_BLOCK=$(echo "$CLEANED" | perl -0777 -ne 'print "$1\n" if /(\{(?:[^{}]|(?1))*\})/s')
 
-          # Save cleaned JSON
           echo "$JSON_BLOCK" > chat_pipeline/results/fixed_core_judge.json
 
-          echo "📌 Cleaned JSON saved to chat_pipeline/results/fixed_core_judge.json"
+          echo "📌 Cleaned Core Judge JSON saved."
 
           if [ $EXIT_CODE -ne 0 ]; then
-            echo "⚠️ Judge exited with $EXIT_CODE, but results & JSON were successfully extracted. Continuing..."
+            echo "⚠️ Judge had errors but JSON extracted. Continuing anyway."
           else
             echo "✅ Judge completed normally."
           fi
 
-
-      # -------------------------
+      # ----------------------------------------------
       # Verify Core Eval Output Files
-      # -------------------------
+      # ----------------------------------------------
       - name: Verify Core Evaluation Results
         run: |
           if [ ! -f "chat_pipeline/results/core_experiment_summary.json" ]; then
-            echo "❌ core_experiment_summary.json missing"
-            exit 1
+            echo "❌ core_experiment_summary.json missing"; exit 1
           fi
           if [ ! -f "chat_pipeline/results/core_eval_main/summary.json" ]; then
-            echo "❌ core_eval_main/summary.json missing"
-            exit 1
+            echo "❌ core_eval_main/summary.json missing"; exit 1
           fi
           if [ ! -f "chat_pipeline/results/core_eval_slices/summary.json" ]; then
-            echo "❌ core_eval_slices/summary.json missing"
-            exit 1
+            echo "❌ core_eval_slices/summary.json missing"; exit 1
           fi
-          echo "✅ Core eval results ready"
-
+          echo "✅ Core evaluation results ready"
 
       # -------------------------
-      # Full Evaluation Generation
+      # Full Eval: Generation
       # -------------------------
       - name: Generate Full Evaluation Responses
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
         run: |
-          python3 -m chat_pipeline.cli --config chat_pipeline/configs/experiments/full_eval.yaml --mode generate --debug
+          python3 -m chat_pipeline.cli \
+            --config chat_pipeline/configs/experiments/full_eval.yaml \
+            --mode generate --debug
 
-
-      # -------------------------
-      # Full Evaluation Judging (Correct Wrapper)
-      # -------------------------
+      # ----------------------------------------------
+      # Full Eval: Judge (correct wrapper)
+      # ----------------------------------------------
       - name: Judge Full Evaluation Responses
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
         run: |
           set +e
 
-          echo "📌 Running FULL pipeline judge..."
+          mkdir -p chat_pipeline/results/eval_main
+          mkdir -p chat_pipeline/results
+
+          echo "📌 Running FULL judge..."
 
           python3 -m chat_pipeline.cli \
             --config chat_pipeline/configs/experiments/full_eval.yaml \
@@ -207,45 +197,36 @@ jobs:
 
           EXIT_CODE=${PIPESTATUS[0]}
 
-          echo "📌 Cleaning FULL judge JSON..."
-
           RAW_OUTPUT="$(cat raw_full_judge_output.txt)"
 
           CLEANED=$(echo "$RAW_OUTPUT" \
             | sed 's/```json//g' \
             | sed 's/```//g' \
             | sed 's/\*\*\*//g' \
-            | sed 's/^[[:space:]]*//g'
-          )
+            | sed 's/^[[:space:]]*//g')
 
           JSON_BLOCK=$(echo "$CLEANED" | perl -0777 -ne 'print "$1\n" if /(\{(?:[^{}]|(?1))*\})/s')
 
           echo "$JSON_BLOCK" > chat_pipeline/results/fixed_full_judge.json
 
-          echo "📌 Cleaned JSON saved to chat_pipeline/results/fixed_full_judge.json"
-
           if [ $EXIT_CODE -ne 0 ]; then
-            echo "⚠️ FULL judge exited with $EXIT_CODE, but JSON extracted. Continuing..."
+            echo "⚠️ Judge had errors but JSON extracted."
           else
-            echo "✅ FULL judge completed normally."
+            echo "✅ FULL judge ran successfully."
           fi
 
-
-      # -------------------------
+      # ----------------------------------------------
       # Verify Full Eval Output Files
-      # -------------------------
+      # ----------------------------------------------
       - name: Verify Evaluation Results
         run: |
           if [ ! -f "chat_pipeline/results/experiment_summary.json" ]; then
-            echo "❌ experiment_summary.json missing"
-            exit 1
+            echo "❌ experiment_summary.json missing"; exit 1
           fi
           if [ ! -f "chat_pipeline/results/eval_main/summary.json" ]; then
-            echo "❌ eval_main/summary.json missing"
-            exit 1
+            echo "❌ eval_main/summary.json missing"; exit 1
           fi
           echo "✅ Full evaluation results generated successfully"
-
 
       # -------------------------
       # Upload Artifacts
