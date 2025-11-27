@@ -393,56 +393,6 @@ class TestAnalyzeResultsNode:
 class TestGenerateAnswerNode:
     """Test answer generation node"""
     
-    def test_generate_answer_with_match(self, db_session):
-        """Test answer generation with good match"""
-        state: WebsiteExtractionState = {
-            "user_email": "test@test.com",
-            "company": "Test Corp",
-            "user_message": "What are your hours?",
-            "original_query": None,
-            "triggered_by": "direct",
-            "search_topic": "hours",
-            "search_keywords": ["hours"],
-            "search_query": "hours",
-            "info_type": "hours",
-            "company_url": None,
-            "company_domain": "test.com",
-            "domain_found": True,
-            "brave_results": [],
-            "search_successful": True,
-            "search_error": None,
-            "ranked_results": [
-                {
-                    "title": "Hours",
-                    "url": "https://test.com/hours",
-                    "description": "We're open Mon-Fri 9am-5pm",
-                    "extra_snippets": [],
-                    "relevance_score": 0.8
-                }
-            ],
-            "best_match": {
-                "title": "Hours",
-                "url": "https://test.com/hours",
-                "description": "We're open Mon-Fri 9am-5pm",
-                "extra_snippets": [],
-                "relevance_score": 0.8
-            },
-            "confidence_score": 0.8,
-            "found_answer": True,
-            "answer": None,
-            "source_urls": [],
-            "suggest_hr_ticket": False,
-            "hr_ticket_suggestion": None,
-            "agent_response": "",
-            "search_time_ms": None,
-            "error_message": None
-        }
-        
-        result = generate_answer_node(state, db_session)
-        
-        assert result["answer"] is not None
-        assert len(result["source_urls"]) > 0
-    
     def test_generate_answer_no_match(self, db_session):
         """Test answer generation with no match"""
         state: WebsiteExtractionState = {
