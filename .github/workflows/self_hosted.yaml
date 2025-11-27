@@ -25,7 +25,6 @@ jobs:
           echo "Using system Python:"
           which python3
           python3 --version
-        shell: bash
 
       - name: Install Dependencies
         run: |
@@ -33,7 +32,6 @@ jobs:
           pip3 install -r chat_pipeline/requirements.txt
           pip3 install llama-cpp-python
           pip3 install pyyaml
-        shell: bash
 
       - name: Export PYTHONPATH
         run: |
@@ -47,12 +45,16 @@ jobs:
       - name: Set up gcloud SDK (gsutil)
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Sync vector DB from GCS
+      - name: Sync vector DB from GCS (NO MULTITHREADING)
         run: |
           mkdir -p chat_pipeline/data_pipeline/data/vector_db
-          gsutil -m rsync -r gs://frontshiftai-data/data/vector_db chat_pipeline/data_pipeline/data/vector_db
+          gsutil \
+            -o "GSUtil:parallel_process_count=1" \
+            -o "GSUtil:parallel_thread_count=1" \
+            -m rsync -r \
+            gs://frontshiftai-data/data/vector_db \
+            chat_pipeline/data_pipeline/data/vector_db
           echo "CHROMA_DIR=chat_pipeline/data_pipeline/data/vector_db" >> $GITHUB_ENV
-        shell: bash
 
       - name: Set W&B Environment Variables
         run: |
