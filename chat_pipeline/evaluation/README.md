@@ -28,7 +28,25 @@ All of the above is orchestrated by `chat_pipeline/cli.py` using the configurati
 
 ---
 
-## 3. Outputs Explained
+## 3. Core Metrics We Care About
+
+The quality gate focuses on a small set of “must-pass” metrics. Each one has a simple interpretation so non-technical reviewers can make decisions quickly:
+
+| Metric | What it means | Target |
+| --- | --- | --- |
+| **Groundedness** | How closely the answer sticks to the retrieved passages. A perfect score means every sentence can be traced back to the cited context. | ≥ 3.5 (on a 1–5 scale) |
+| **Answer Relevance** | Whether the response actually answers the user’s question without drifting into unrelated topics. | ≥ 3.5 |
+| **Factual Correctness** | Checks for factual mistakes compared to the references. Low scores signal hallucinations or misread facts. | ≥ 3.5 |
+| **Hallucination Score** | Penalty score (lower is better). Captures the judge’s confidence that the model invented information. | ≤ 0.5 |
+| **Latency Total (seconds)** | End-to-end time per question, from retrieval through judge scoring. Keeps the experience responsive. | ≤ 2.0s on average |
+
+Slice bias checks reuse the same metrics but allow slightly lower thresholds (≥ 3.0) so we can catch regressions in specific domains while tolerating natural variance.
+
+These metrics are computed inside `eval_judge.py` for every example, averaged in `summary.json`, and ultimately consumed by `compute_quality_gate.py`.
+
+---
+
+## 4. Outputs Explained
 
 After running `chat_pipeline.cli`, you will find the following files:
 
@@ -44,7 +62,7 @@ All logs are plain JSON so they can be versioned, plotted, or shipped to monitor
 
 ---
 
-## 4. How to Run Evaluations
+## 5. How to Run Evaluations
 
 ### Smoke Test
 ```
@@ -71,7 +89,7 @@ The CLI supports `--mode generate`, `--mode judge`, or `--mode full` depending o
 
 ---
 
-## 5. Connecting to the Quality Gate
+## 6. Connecting to the Quality Gate
 
 After any evaluation run, execute:
 ```bash
@@ -87,7 +105,7 @@ It then writes `PASS` or `FAIL` to `chat_pipeline/results/quality_gate.txt`. The
 
 ---
 
-## 6. Tips for Non-Technical Operators
+## 7. Tips for Non-Technical Operators
 
 - **Need to inspect a single failure?** Open `examples.jsonl` in a JSONL viewer and search for the question ID. Each record contains the contexts, generated answer, and judge comments.
 - **Want to compare two runs?** Place the two `summary.json` files side by side and focus on groundedness and factual correctness first; these correlate strongly with user trust.

@@ -8,52 +8,60 @@ on:
   workflow_call:
     inputs:
       model_path:
-        description: 'Path to model file (optional)'
+        description: Path to model file (optional)
         required: false
         type: string
+        default: ""
       model_name:
-        description: 'Logical model name to use inside the registry'
+        description: Logical model name to use inside the registry
         required: false
         type: string
-        default: 'frontshift-rag'
+        default: frontshift-rag
       evaluation_artifact_name:
-        description: 'Name of the artifact that contains chat_pipeline/results and models'
+        description: Artifact containing chat_pipeline/results and models
         required: false
         type: string
-        default: 'core-eval-results'
+        default: core-eval-results
       quality_gate_status:
-        description: 'Quality gate status'
+        description: Quality gate status
         required: false
         type: string
-        default: 'AUTO'
+        default: AUTO
+    outputs:
+      deploy_status:
+        description: "Result of the deploy-to-registry job"
+        value: ${{ jobs.deploy-to-registry.outputs.status }}
+      deploy_error:
+        description: "Error output when deployment fails"
+        value: ${{ jobs.deploy-to-registry.outputs.error }}
   workflow_dispatch:
     inputs:
       model_path:
-        description: 'Path to model file (optional)'
+        description: Path to model file (optional)
         required: false
         type: string
+        default: ""
       model_name:
-        description: 'Logical model name to use inside the registry'
+        description: Logical model name to use inside the registry
         required: false
         type: string
-        default: 'frontshift-rag'
+        default: frontshift-rag
       evaluation_artifact_name:
-        description: 'Name of the artifact that contains chat_pipeline/results and models'
+        description: Artifact containing chat_pipeline/results and models
         required: false
         type: string
-        default: 'core-eval-results'
+        default: core-eval-results
       quality_gate_status:
-        description: 'Quality gate status'
+        description: Quality gate status
         required: false
         type: string
-        default: 'AUTO'
+        default: AUTO
 
 jobs:
   pre-deployment-validation:
     name: Pre-deployment Validation
     runs-on: ubuntu-latest
     timeout-minutes: 10
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -64,16 +72,15 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: 'pip'
+          cache: "pip"
 
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r chat_pipeline/requirements.txt
 
       - name: Set Environment Variables
-        run: |
-          echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
+        run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
         shell: bash
 
       - name: Download Evaluation + Model Artifacts (optional)
@@ -85,26 +92,22 @@ jobs:
         continue-on-error: true
 
       - name: Verify Model File Integrity
+        if: ${{ inputs.model_path != '' }}
         run: |
           MODEL_PATH="${{ inputs.model_path }}"
-          if [ -z "$MODEL_PATH" ]; then
-            MODEL_PATH="models/Llama-3.2-3B-Instruct-Q4_K_S.gguf"
-          fi
-          
           if [ ! -f "$MODEL_PATH" ]; then
             echo "❌ Model file not found: $MODEL_PATH"
             exit 1
           fi
-          
           SIZE_MB=$(du -m "$MODEL_PATH" | cut -f1)
           echo "✅ Model file validated: $MODEL_PATH ($SIZE_MB MB)"
           echo "model_path=$MODEL_PATH" >> $GITHUB_ENV
 
       - name: Test Model Loading (if applicable)
+        if: ${{ inputs.model_path != '' }}
         run: |
           echo "⚠️ Model inference test skipped (requires model-specific implementation)"
-          # In a real scenario, you would load the model and test inference here
-          # For GGUF models, this might require llama.cpp or similar
+          # Placeholder for real smoke inference
         continue-on-error: true
 
   quality-gate:
@@ -114,7 +117,6 @@ jobs:
     timeout-minutes: 10
     outputs:
       status: ${{ steps.quality_gate_result.outputs.status }}
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -125,7 +127,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: 'pip'
+          cache: "pip"
 
       - name: Install Dependencies
         run: |
@@ -133,8 +135,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Set Environment Variables
-        run: |
-          echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
+        run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
         shell: bash
 
       - name: Download Evaluation Artifacts (if available)
@@ -176,7 +177,9 @@ jobs:
       - pre-deployment-validation
       - quality-gate
     timeout-minutes: 10
-
+    outputs:
+      status: ${{ steps.deploy.outputs.status }}
+      error: ${{ steps.deploy.outputs.error }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -187,7 +190,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: 'pip'
+          cache: "pip"
 
       - name: Install Dependencies
         run: |
@@ -195,8 +198,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Set Environment Variables
-        run: |
-          echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
+        run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
         shell: bash
 
       - name: Download Evaluation Artifacts (if available)
@@ -208,21 +210,43 @@ jobs:
         continue-on-error: true
 
       - name: Deploy Model to Registry
+        id: deploy
         env:
           QUALITY_GATE_STATUS: ${{ needs.quality-gate.outputs.status }}
+        shell: bash
         run: |
-          MODEL_PATH="${{ inputs.model_path }}"
-          if [ -z "$MODEL_PATH" ]; then
-            MODEL_PATH="models/Llama-3.2-3B-Instruct-Q4_K_S.gguf"
-          fi
+          set -o pipefail
+          LOG_FILE=$(mktemp)
 
+          MODEL_PATH="${{ inputs.model_path }}"
           echo "Deploying model '${{ inputs.model_name }}' with quality gate status ${QUALITY_GATE_STATUS}"
 
-          python -m chat_pipeline.tracking.deploy_model \
-            --model-path "$MODEL_PATH" \
-            --model-name "${{ inputs.model_name }}" \
-            --quality-gate-status "$QUALITY_GATE_STATUS" \
+          ARGS=(
+            -m chat_pipeline.tracking.deploy_model
+            --model-name "${{ inputs.model_name }}"
+            --quality-gate-status "$QUALITY_GATE_STATUS"
             --metadata-output "models_registry/metadata_last_push.json"
+          )
+
+          if [ -n "$MODEL_PATH" ]; then
+            ARGS+=(--model-path "$MODEL_PATH")
+          fi
+
+          python "${ARGS[@]}" 2>&1 | tee "$LOG_FILE"
+          EXIT_CODE=${PIPESTATUS[0]}
+
+          if [ "$EXIT_CODE" -eq 0 ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+            echo "error=" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+            {
+              echo "error<<'EOF'"
+              tail -n 200 "$LOG_FILE"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+            exit "$EXIT_CODE"
+          fi
 
       - name: Upload Model Registry
         uses: actions/upload-artifact@v4
@@ -236,7 +260,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: deploy-to-registry
     timeout-minutes: 5
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -247,7 +270,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: 'pip'
+          cache: "pip"
 
       - name: Install Dependencies
         run: |
@@ -255,8 +278,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Set Environment Variables
-        run: |
-          echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
+        run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
         shell: bash
 
       - name: Download Model Registry
@@ -267,22 +289,20 @@ jobs:
 
       - name: Verify Deployed Model
         run: |
-          python3 << 'EOF'
+          python3 <<'EOF'
           import json
           from pathlib import Path
-          
+
           registry_dir = Path("models_registry")
           latest_path = registry_dir / "latest"
-          
-          # Find latest version
+
           if latest_path.exists():
               if latest_path.is_symlink():
                   version_dir = latest_path.resolve()
               else:
-                  # Windows: read from file
                   with open(latest_path, 'r') as f:
                       version_dir = Path(f.read().strip())
-              
+
               metadata_path = version_dir / "metadata.json"
               if metadata_path.exists():
                   with open(metadata_path, 'r') as f:
@@ -290,7 +310,7 @@ jobs:
                   print(f"✅ Deployed model verified:")
                   print(f"   Version: {metadata.get('version')}")
                   print(f"   Model: {metadata.get('model_name')}")
-                  print(f"   Metrics: {metadata.get('metrics', {})}")
+                  print(f"   Metrics: {metadata.get('evaluation', {})}")
               else:
                   print("⚠️ Metadata not found")
           else:
@@ -300,5 +320,5 @@ jobs:
       - name: Run Sample Queries (if RAG available)
         run: |
           echo "⚠️ Sample query test skipped (requires ChromaDB in CI)"
-          # In a real scenario, you would run 3 sample queries against the deployed model
+          # In a real scenario, run smoke queries against the deployed model
         continue-on-error: true
