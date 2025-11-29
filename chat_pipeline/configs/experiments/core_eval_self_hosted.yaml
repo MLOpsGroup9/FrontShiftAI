@@ -7,6 +7,7 @@ wandb:
   project: FrontShiftAI_Latest
   entity: group9mlops-northeastern-university
   disable: false
+  run_name_prefix: self-hosted-core-eval
 
 execution_modes:
   local:
@@ -20,15 +21,17 @@ eval:
   pipeline_overrides:
     generation:
       backend: local
-  main:
-    test_dir: chat_pipeline/evaluation/test_questions
-    output_dir: chat_pipeline/results/core_eval_main
-    max_examples: 20
-  slices:
-    enabled: True
-    test_dir: chat_pipeline/evaluation/test_questions/slices
-    output_dir: chat_pipeline/results/core_eval_slices
-    max_examples: 20
+
+main:
+  test_dir: chat_pipeline/evaluation/test_questions
+  output_dir: chat_pipeline/results/core_eval_main
+  max_examples: 20
+
+slices:
+  enabled: True
+  test_dir: chat_pipeline/evaluation/test_questions/slices
+  output_dir: chat_pipeline/results/core_eval_slices
+  max_examples: 20
 
 tuning:
   enabled: true
