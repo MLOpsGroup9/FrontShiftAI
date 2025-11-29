@@ -1,4 +1,4 @@
-name: Agent Tests for HR Ticket Agent
+name: HR Ticket Agent Tests
 on:
   push:
     branches: [ '**' ]

@@ -145,6 +145,11 @@ def _execute_eval_payloads(payloads: List[Dict[str, Any]], parallelism: str) -> 
     if not payloads:
         return []
 
+    # Check if Ray should be disabled via environment variable
+    if os.environ.get("CHAT_PIPELINE_DISABLE_RAY", "0") == "1":
+        logger.info("Ray disabled via CHAT_PIPELINE_DISABLE_RAY; forcing sequential execution")
+        return [_eval_block_worker(payload) for payload in payloads]
+
     if parallelism == "ray" and len(payloads) > 1:
         ray_results = _maybe_run_with_ray(payloads)
         if ray_results is not None:
@@ -161,7 +166,13 @@ def _execute_eval_payloads(payloads: List[Dict[str, Any]], parallelism: str) -> 
     return [_eval_block_worker(payload) for payload in payloads]
 
 
-def _determine_parallelism(cfg: Dict[str, Any]) -> str:
+def _determine_parallelism(cfg: Dict[str, Any], cli_parallelism: Optional[int] = None) -> str:
+    # CLI argument takes highest priority
+    if cli_parallelism is not None:
+        if cli_parallelism == 1:
+            return "sequential"
+        return "ray"
+    
     execution_cfg = cfg.get("execution_modes") or {}
     override_mode = os.getenv("CHAT_PIPELINE_EXECUTION_MODE")
     if override_mode:
@@ -253,6 +264,12 @@ def main(argv: Optional[List[str]] = None) -> None:
         default="full",
         help="Run mode: full (default), generate-only, or judge-only.",
     )
+    parser.add_argument(
+        "--parallelism",
+        type=int,
+        default=None,
+        help="Number of parallel workers (1 for sequential execution)",
+    )
     args = parser.parse_args(argv)
 
     cfg = _load_config(args.config)
@@ -280,7 +297,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     run_mode_tag = f"mode:{args.mode}"
     wandb_tags.append(run_mode_tag)
     base_run_name = run_type_tag.replace("run-type:", "") if run_type_tag else args.config.stem.lower()
-    parallelism = _determine_parallelism(cfg)
+    parallelism = _determine_parallelism(cfg, args.parallelism)
 
     results: List[Dict[str, Any]] = []
     eval_payloads: List[Dict[str, Any]] = []
