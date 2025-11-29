@@ -15,6 +15,15 @@ jobs:
       CHAT_PIPELINE_ALLOW_HEAVY_FALLBACKS: 1
       CHAT_PIPELINE_EXECUTION_MODE: local
 
+      # 🔥 Hard-disable Ray & multiprocessing everywhere
+      CHAT_PIPELINE_DISABLE_RAY: 1
+      RAY_DISABLE_AUTO_INIT: 1
+      RAY_USAGE_STATS_ENABLED: 0
+      RAY_memory_monitor_refresh_ms: 0
+      OMP_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      NUMEXPR_NUM_THREADS: 1
+
     steps:
       # -------------------------------
       # Checkout Code
