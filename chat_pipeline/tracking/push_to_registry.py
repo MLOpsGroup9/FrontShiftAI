@@ -83,7 +83,7 @@ def _update_latest_symlink(registry: Path, version_dir: Path) -> None:
 
 def push_to_registry(
     model_name: str,
-    model_path: str,
+    model_path: Optional[str],
     pipeline_config: Dict,
     evaluation_metrics: Dict,
     artifacts: Dict[str, str],
@@ -95,7 +95,8 @@ def push_to_registry(
     model_name:
         Logical name of the model (used for versioned folder naming).
     model_path:
-        Full path to the model weights on disk (referenced, not copied).
+        Optional path or URI to the model weights. If it exists locally we compute a
+        SHA256 checksum; otherwise the raw value is stored for reference only.
     pipeline_config:
         Dict describing the pipeline configuration to persist.
     evaluation_metrics:
@@ -107,16 +108,27 @@ def push_to_registry(
     """
 
     registry = _ensure_registry_dir()
-    model_file = Path(model_path).expanduser().resolve()
-    if not model_file.exists():
-        raise FileNotFoundError(f"Model file not found: {model_file}")
 
     version = _next_version(model_name, registry)
     version_dir = registry / f"{model_name}_{version}"
     version_dir.mkdir(parents=True, exist_ok=True)
 
-    # Compute hash of the referenced model weights (do not copy).
-    model_sha = _compute_sha256(model_file)
+    model_reference = {"path": None, "sha256": None}
+    if model_path:
+        raw_path = model_path.strip()
+        model_reference["path"] = raw_path
+        model_file = Path(raw_path).expanduser()
+        if model_file.exists():
+            resolved = str(model_file.resolve())
+            model_reference["path"] = resolved
+            model_reference["sha256"] = _compute_sha256(model_file)
+        else:
+            logger.warning(
+                "Model path '%s' does not exist locally; metadata will record the raw reference without checksum.",
+                raw_path,
+            )
+    else:
+        logger.warning("No model path provided; registry entry will omit model_reference details.")
 
     # Copy allowed artifacts.
     copied_artifacts: Dict[str, str] = {}
@@ -139,10 +151,7 @@ def push_to_registry(
         "model_name": model_name,
         "version": version,
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "model_reference": {
-            "path": str(model_file),
-            "sha256": model_sha,
-        },
+        "model_reference": model_reference,
         "pipeline_config": pipeline_config or {},
         "evaluation": {
             "groundedness": evaluation_metrics.get("groundedness"),

@@ -4,10 +4,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  core-eval:
+  core_eval:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -18,7 +17,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: 'pip'
+          cache: "pip"
 
       - name: Install Dependencies
         run: |
@@ -50,8 +49,8 @@ jobs:
           gsutil -m rsync -r gs://frontshiftai-data/data/vector_db/ chat_pipeline/data_pipeline/data/vector_db
           echo "CHROMA_DIR=chat_pipeline/data_pipeline/data/vector_db" >> $GITHUB_ENV
         shell: bash
-
-      - name: Set W&B Environment Variables
+        
+      - name: "Set W&B Environment Variables"
         run: |
           echo "WANDB_API_KEY=${{ secrets.WANDB_API_KEY }}" >> $GITHUB_ENV
           echo "WANDB_ENTITY=group9mlops-northeastern-university" >> $GITHUB_ENV
@@ -63,8 +62,7 @@ jobs:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
           WANDB_ENTITY: group9mlops-northeastern-university
           WANDB_PROJECT: FrontShiftAI
-        run: |
-          python -m chat_pipeline.cli --config chat_pipeline/configs/experiments/core_eval.yaml
+        run: python -m chat_pipeline.cli --config chat_pipeline/configs/experiments/core_eval.yaml
 
       - name: Verify Core Evaluation Results
         run: |
@@ -89,8 +87,9 @@ jobs:
 
       - name: Output Metrics
         id: metrics
+        continue-on-error: true
         run: |
-          python3 << 'EOF'
+          python3 <<'EOF'
           import json
           from pathlib import Path
 
@@ -107,10 +106,63 @@ jobs:
           print(f"recall={recall}")
           print(f"groundedness={groundedness}")
           EOF
-        continue-on-error: true
+
+  deploy_model:
+    needs: core_eval
+    if: ${{ needs.core_eval.result == 'success' }}
+    uses: ./.github/workflows/model_deploy.yml
+    with:
+      model_name: frontshift-rag
+      evaluation_artifact_name: core-eval-results
+    secrets: inherit
+
+  notify:
+    needs:
+      - core_eval
+      - deploy_model
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compose Email Body
+        id: compose_email
+        run: |
+          CORE_STATUS="${{ needs.core_eval.result }}"
+          DEPLOY_JOB_STATUS="${{ needs.deploy_model.result }}"
+          DEPLOY_STATUS="${{ needs.deploy_model.outputs.deploy_status }}"
+          DEPLOY_ERROR="${{ needs.deploy_model.outputs.deploy_error }}"
+
+          SUMMARY_FILE=email_body.txt
+          {
+            echo "Repository: ${{ github.repository }}"
+            echo "Workflow: ${{ github.workflow }}"
+            echo "Run: ${{ github.run_id }}"
+            echo "Core Eval Job Status: ${CORE_STATUS}"
+          } > "$SUMMARY_FILE"
+
+          if [ -z "$DEPLOY_JOB_STATUS" ]; then
+            echo "Model Deploy Job: not-run" >> "$SUMMARY_FILE"
+          else
+            echo "Model Deploy Job Status: ${DEPLOY_JOB_STATUS}" >> "$SUMMARY_FILE"
+            if [ "${DEPLOY_STATUS}" = "failure" ]; then
+              echo "" >> "$SUMMARY_FILE"
+              echo "Model deploy failed. Last error output:" >> "$SUMMARY_FILE"
+              if [ -n "$DEPLOY_ERROR" ]; then
+                echo "$DEPLOY_ERROR" >> "$SUMMARY_FILE"
+              else
+                echo "No additional error details were captured. Check workflow logs." >> "$SUMMARY_FILE"
+              fi
+            elif [ "${DEPLOY_JOB_STATUS}" = "success" ] && [ "${DEPLOY_STATUS}" = "success" ]; then
+              echo "Model deployment succeeded." >> "$SUMMARY_FILE"
+            fi
+          fi
+
+          {
+            echo "body<<'EOF'"
+            cat "$SUMMARY_FILE"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Send Email Notification
-        if: always()
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
@@ -119,9 +171,5 @@ jobs:
           password: ${{ secrets.EMAIL_PASSWORD }}
           to: ${{ secrets.EMAIL_RECEIVER }}
           from: ${{ secrets.EMAIL_SENDER }}
-          subject: "Core Eval ${{ job.status }} - ${{ github.workflow }}"
-          body: |
-            Repository: ${{ github.repository }}
-            Workflow: ${{ github.workflow }}
-            Run: ${{ github.run_id }}
-            Status: ${{ job.status }}
+          subject: "Core Eval ${{ needs.core_eval.result }} - ${{ github.workflow }}"
+          body: ${{ steps.compose_email.outputs.body }}

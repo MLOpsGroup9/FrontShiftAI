@@ -16,7 +16,7 @@ from chat_pipeline.tracking import push_to_registry
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_MODEL_PATH = os.getenv("LLAMA_MODEL_PATH", "models/Llama-3.2-3B-Instruct-Q4_K_S.gguf")
+DEFAULT_MODEL_PATH = os.getenv("LLAMA_MODEL_PATH")
 DEFAULT_MODEL_NAME = os.getenv("MODEL_NAME", "frontshift-rag")
 DEFAULT_RESULTS_DIR = Path(os.getenv("RESULTS_DIR", "chat_pipeline/results"))
 DEFAULT_REGISTRY_TARGET = os.getenv("MODEL_REGISTRY_DIR", str(PROJECT_ROOT / "models_registry"))
@@ -31,7 +31,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--model-path",
         default=DEFAULT_MODEL_PATH,
-        help="Path to the model weights on disk.",
+        help="Path to the model weights on disk (optional).",
     )
     parser.add_argument(
         "--model-name",
@@ -193,11 +193,24 @@ def _sync_remote_registry(remote_uri: str, local_dir: Path, direction: str) -> N
 def main() -> None:
     args = _parse_args()
 
+    raw_model_path = (args.model_path or "").strip()
+    model_path: Optional[str] = None
+    if raw_model_path:
+        model_candidate = Path(raw_model_path).expanduser()
+        if model_candidate.exists():
+            model_path = str(model_candidate.resolve())
+        else:
+            model_path = raw_model_path
+
+    if model_path:
+        print(f"Using model reference: {model_path}")
+    else:
+        print("No model path provided; registry entry will not include a local model checksum.")
+
     results_dir = args.results_dir
     summary_path = args.summary_path or (results_dir / "core_eval_main" / "summary.json")
     bias_report_path = args.bias_report_path or (results_dir / "core_eval_slices" / "bias_report.json")
     quality_gate_path = args.quality_gate_path or (results_dir / "quality_gate.txt")
-    model_path = Path(args.model_path).expanduser().resolve()
     local_registry_dir, remote_registry_uri = _configure_registry(
         registry_target=args.registry_dir,
         cache_dir=args.registry_cache_dir,
@@ -222,7 +235,7 @@ def main() -> None:
 
     metadata = push_to_registry.push_to_registry(
         model_name=args.model_name,
-        model_path=str(model_path),
+        model_path=model_path,
         pipeline_config=_pipeline_config(args.pipeline_config),
         evaluation_metrics=evaluation_metrics,
         artifacts=artifacts,
