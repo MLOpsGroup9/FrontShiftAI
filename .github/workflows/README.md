@@ -1,15 +1,68 @@
-# GitHub Workflows Overview
+# GitHub Workflows Playbook
 
-This repository uses separate workflows for fast checks, full evaluations, and deployment helpers.
+This document explains every workflow under `.github/workflows/` in plain English so anyone can tell which automation to trigger, what inputs it expects, and where to find the results. Workflows fall into four categories:
 
-- `smoke_test.yaml`: Runs on push/PR to main. Installs dependencies, syncs the Chroma vector DB from GCS, and runs the test suite against mocked/tiny fixtures.
+1. **Fast safety checks** – make sure code changes don’t break unit tests or the lightweight smoke suite.
+2. **Heavy evaluations** – run the core/full chat-pipeline assessments after major changes.
+3. **Deployment & recovery** – promote a model into the registry or roll back to a previous safe version.
+4. **App-specific helpers** – CI for the backend, frontend, and specialized agents.
 
-- `full_eval.yaml`: Manual trigger. Syncs the vector DB from GCS, then runs the full evaluation via `chat_pipeline.cli` using the `full_eval.yaml` experiment config. Uploads eval artifacts and prints key metrics.
+All workflows set `PYTHONPATH` to the repo root, disable tokenizer parallelism, and rely on secrets stored in the repository settings (`GCP_SA_KEY`, API keys, email creds, etc.).
 
-- `self_hosted.yaml`: Manual trigger for macOS self-hosted runners. Syncs the vector DB from GCS and runs the full evaluation locally on the self-hosted machine.
+---
 
-- `model_deploy.yml`: Standalone deployment workflow (manual or callable). Validates a model file, then pushes it using the legacy deploy script. Artifacts can be uploaded as part of the run.
+## 1. Fast Safety Checks
 
-- `component_test.yml` / `rollback.yml`: Auxiliary workflows for component-level tests or rollback procedures as needed by the project.
+| Workflow | Trigger | What it does | Artifacts / Notes |
+| --- | --- | --- | --- |
+| `component_test.yml` | Manual (or can be wired to PRs) | Installs chat-pipeline dependencies, runs unit tests, and lints with Black/Flake8 for quick feedback. | No artifacts; fails fast if tests or style checks break. |
+| `smoke_test.yaml` | Manual (default) | Syncs the Chroma vector DB from GCS, installs deps, and runs `pytest chat_pipeline/tests -q` using mocked fixtures. Tests generation/routing logic without touching large models. | Uploads nothing; useful for verifying infrastructure/secrets. |
 
-Each workflow sets `PYTHONPATH` to the repo root and disables tokenizer parallelism. GCS access requires a service account JSON stored in `GCP_SA_KEY` and uses `google-github-actions/auth` plus `gsutil rsync` to stage the vector DB locally.***
+Use these workflows whenever you want confidence before running heavier evals.
+
+---
+
+## 2. Heavy Evaluation Runs
+
+| Workflow | Trigger | Config used | Key steps | Outputs |
+| --- | --- | --- | --- | --- |
+| `core_eval.yaml` | Manual | `chat_pipeline/configs/experiments/core_eval.yaml` | Auth to GCP, sync vector DB (`gsutil rsync`), set env vars, run `chat_pipeline.cli` (main + slices), verify key files exist, upload `chat_pipeline/results/` and `models/`. | Artifact: `core-eval-results`. Email notification on completion. |
+| `full_eval.yaml` | Manual | `chat_pipeline/configs/experiments/full_eval.yaml` | Same as core eval but with the full dataset and longer timeout. | Artifact: `eval-results`. Email notification. |
+| `core_eval_self_hosted.yml` | Manual on Mac runner | `core_eval_self_hosted.yaml` (uses Ray + local llama backend) | Installs dependencies on the self-hosted Mac, runs `cli` twice (`--mode generate`, `--mode judge`), performs relaxed verification, uploads results. | Great for validating the local hardware path. |
+| `full_eval_self_hosted.yml` | Manual on Mac runner | `core_eval_self_hosted.yaml` (core) + `full_eval_self_hosted.yaml` (full) | Runs both core and full evaluations sequentially on the same runner, again splitting generate vs judge passes. | Artifact: `all-eval-results`. |
+
+These workflows populate `chat_pipeline/results/` and are the source of truth for the quality gate and registry push.
+
+---
+
+## 3. Deployment & Recovery
+
+| Workflow | Trigger | Purpose | Highlights |
+| --- | --- | --- | --- |
+| `model_deploy.yml` | Manual or callable via `workflow_call` | Validates model artifacts, runs/uses the quality gate, then calls `python -m chat_pipeline.tracking.deploy_model` to push metadata into the registry (local folder or GCS). | Jobs: pre-validation → quality gate → deploy → post-deploy smoke check. Uploads the `models_registry/` artifact for downstream use. |
+| `rollback.yml` | Manual | Rolls the registry back to a previous version when a deployment regresses. | Uses the new `chat_pipeline.tracking.rollback_model` helper to list versions, resolve targets, require approval on `main`, execute the rollback, run a verification snippet, and send notifications plus GitHub issues for auditing. |
+
+Both workflows share the same registry helpers, so local dry runs behave exactly like CI.
+
+---
+
+## 4. Application-Specific Pipelines
+
+| Workflow | Description |
+| --- | --- |
+| `backend.yml`, `frontend.yml` | CI for the backend API and frontend interface (install deps, run component tests, optionally build artifacts). |
+| `LLM_backend_config.yml` | Keeps configuration files or secrets for the hosted LLM backend in sync. |
+| `hr-ticket-agent.yml`, `pto_agent.yml`, `website-extraction-agent.yml` | Specialized agent workflows for other teams. They follow the same pattern: install deps, run targeted tests/evals, and upload artifacts. |
+
+These workflows are orthogonal to the chat pipeline but live here for convenience.
+
+---
+
+## 5. Secrets & Reusable Patterns
+
+- **GCP access** – Workflows that touch the vector DB call `google-github-actions/auth@v2` with `secrets.GCP_SA_KEY`, followed by `google-github-actions/setup-gcloud@v2`, then `gsutil rsync` to stage the embeddings.
+- **Weights & Biases** – Set `WANDB_API_KEY`, `WANDB_ENTITY`, and `WANDB_PROJECT` via secrets to enable experiment logging. Workflows export these into the environment right before calling the CLI.
+- **Email notifications** – `core_eval.yaml`, `full_eval.yaml`, and `rollback.yml` send summary emails using `dawidd6/action-send-mail` or the lightweight SMTP helper. Credentials come from `EMAIL_SENDER`, `EMAIL_PASSWORD`, and `EMAIL_RECEIVER`.
+- **PYTHONPATH** – Every job runs `echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV` so modules resolve correctly without installing the package.
+
+If you add a new workflow, copy these patterns to stay consistent with the rest of the automation.***
