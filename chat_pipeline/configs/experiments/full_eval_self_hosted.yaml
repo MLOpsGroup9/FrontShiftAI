@@ -1,0 +1,34 @@
+logging:
+  level: INFO
+  to_file: true
+  log_dir: logs
+
+wandb:
+  project: FrontShiftAI_Latest
+  entity: group9mlops-northeastern-university
+  disable: false
+
+execution_modes:
+  local:
+    parallelism: ray
+  ci:
+    parallelism: sequential
+
+eval:
+  summary_output: chat_pipeline/results/full_experiment_summary_self_hosted.json
+  slice_fields: [slice]
+  pipeline_overrides:
+    generation:
+      backend: local
+  main:
+    test_dir: chat_pipeline/evaluation/test_questions
+    output_dir: chat_pipeline/results/full_eval_main
+    max_examples: null
+  slices:
+    enabled: True
+    test_dir: chat_pipeline/evaluation/test_questions/slices
+    output_dir: chat_pipeline/results/full_eval_slices
+    max_examples: null
+
+tuning:
+  enabled: false
