@@ -1,4 +1,4 @@
-name: Chat Pipeline - core eval Mac Self-Hosted Check
+name: Chat Pipeline - Mac Self-Hosted Check (Core + Full Eval)
 
 on:
   workflow_dispatch:
@@ -13,6 +13,7 @@ jobs:
       GENERATION_BACKEND: local
       TOKENIZERS_PARALLELISM: false
       CHAT_PIPELINE_ALLOW_HEAVY_FALLBACKS: 1
+      CHAT_PIPELINE_EXECUTION_MODE: local
 
     steps:
       # -------------------------------
@@ -55,7 +56,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       # -------------------------------
-      # Sync Vector DB (single-threaded)
+      # Sync Vector DB (NO MULTIPROCESSING / NO MULTITHREADING)
       # -------------------------------
       - name: Sync vector DB from GCS (single-threaded)
         run: |
@@ -78,33 +79,28 @@ jobs:
           echo "WANDB_ENTITY=group9mlops-northeastern-university" >> $GITHUB_ENV
           echo "WANDB_PROJECT=FrontShiftAI" >> $GITHUB_ENV
 
-      # -------------------------------
-      # CORE EVAL - GENERATE
-      # -------------------------------
+      # =====================================================
+      #                  CORE EVAL
+      # =====================================================
+
       - name: Generate Core Evaluation Responses
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
         run: |
           python3 -m chat_pipeline.cli \
-            --config chat_pipeline/configs/experiments/core_eval.yaml \
+            --config chat_pipeline/configs/experiments/core_eval_self_hosted.yaml \
             --mode generate \
             --debug
 
-      # -------------------------------
-      # CORE EVAL - JUDGE
-      # -------------------------------
       - name: Judge Core Evaluation Responses
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
         run: |
           python3 -m chat_pipeline.cli \
-            --config chat_pipeline/configs/experiments/core_eval.yaml \
+            --config chat_pipeline/configs/experiments/core_eval_self_hosted.yaml \
             --mode judge \
             --debug || true
 
-      # -------------------------------
-      # VERIFY CORE EVAL (RELAXED)
-      # -------------------------------
       - name: Verify Core Eval (Relaxed)
         run: |
           echo "🔍 Listing evaluation results:"
@@ -112,7 +108,7 @@ jobs:
 
           MAIN_EXAMPLES="chat_pipeline/results/core_eval_main/examples.jsonl"
           SLICES_EXAMPLES="chat_pipeline/results/core_eval_slices/examples.jsonl"
-          EXP_SUMMARY="chat_pipeline/results/core_experiment_summary.json"
+          EXP_SUMMARY="chat_pipeline/results/core_experiment_summary_self_hosted.json"
 
           if [ -f "$MAIN_EXAMPLES" ] || \
              [ -f "$SLICES_EXAMPLES" ] || \
@@ -121,7 +117,46 @@ jobs:
               exit 0
           fi
 
-          echo "❌ No eval output detected — failing."
+          echo "❌ No core eval output detected — failing."
+          exit 1
+
+      # =====================================================
+      #                  FULL EVAL
+      # =====================================================
+
+      - name: Generate Full Evaluation Responses
+        env:
+          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+        run: |
+          python3 -m chat_pipeline.cli \
+            --config chat_pipeline/configs/experiments/full_eval_self_hosted.yaml \
+            --mode generate \
+            --debug
+
+      - name: Judge Full Evaluation Responses
+        env:
+          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+        run: |
+          python3 -m chat_pipeline.cli \
+            --config chat_pipeline/configs/experiments/full_eval_self_hosted.yaml \
+            --mode judge \
+            --debug || true
+
+      - name: Verify Full Eval (Relaxed)
+        run: |
+          echo "🔍 Listing evaluation results:"
+          ls -R chat_pipeline/results || true
+
+          F_MAIN="chat_pipeline/results/full_eval_main/examples.jsonl"
+          F_SLICES="chat_pipeline/results/full_eval_slices/examples.jsonl"
+
+          if [ -f "$F_MAIN" ] || \
+             [ -f "$F_SLICES" ]; then
+              echo "✅ Full eval produced output files."
+              exit 0
+          fi
+
+          echo "❌ No full eval output detected — failing."
           exit 1
 
       # -------------------------------
@@ -130,7 +165,7 @@ jobs:
       - name: Upload Evaluation Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: core-eval-results
+          name: all-eval-results
           path: |
             chat_pipeline/results/
             models/
