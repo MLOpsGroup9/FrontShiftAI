@@ -7,6 +7,11 @@ name: Model Rollback - Manual Rollback Workflow
 on:
   workflow_dispatch:
     inputs:
+      model_name:
+        description: 'Logical model name to rollback (default frontshift-rag)'
+        required: false
+        type: string
+        default: 'frontshift-rag'
       target_version:
         description: 'Target version to rollback to (e.g., v5). Leave empty for previous version.'
         required: false
@@ -26,6 +31,11 @@ jobs:
     name: Validate Rollback Target
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    outputs:
+      target_version: ${{ steps.resolve_version.outputs.target_version }}
+      groundedness: ${{ steps.metadata.outputs.groundedness }}
+      answer_relevance: ${{ steps.metadata.outputs.answer_relevance }}
+      factual_correctness: ${{ steps.metadata.outputs.factual_correctness }}
 
     steps:
       - name: Checkout Repository
@@ -51,74 +61,55 @@ jobs:
 
       - name: List Available Versions
         run: |
-          python ml_pipeline/ci_cd/rollback_model.py --list-versions
+          python -m chat_pipeline.tracking.rollback_model \
+            --model-name "${{ inputs.model_name }}" \
+            --list-versions
 
-      - name: Validate Target Version Exists
-        id: validate
+      - name: Resolve Target Version
+        id: resolve_version
+        env:
+          TARGET_VERSION_INPUT: ${{ inputs.target_version }}
+          USE_PREVIOUS: ${{ inputs.use_previous }}
+          MODEL_NAME: ${{ inputs.model_name }}
         run: |
-          TARGET_VERSION="${{ inputs.target_version }}"
-          USE_PREVIOUS="${{ inputs.use_previous }}"
-          
-          if [ "$USE_PREVIOUS" == "true" ]; then
-            echo "target_version=previous" >> $GITHUB_OUTPUT
-            echo "✅ Will rollback to previous version"
-          elif [ -n "$TARGET_VERSION" ]; then
-            # Check if version exists
-            if [ -d "models_registry/llama_3b_instruct_${TARGET_VERSION}" ]; then
-              echo "target_version=$TARGET_VERSION" >> $GITHUB_OUTPUT
-              echo "✅ Target version found: $TARGET_VERSION"
-            else
-              echo "❌ Target version not found: $TARGET_VERSION"
-              exit 1
-            fi
-          else
-            echo "❌ Must specify target_version or use_previous"
+          if [ "$USE_PREVIOUS" = "true" ] && [ -n "$TARGET_VERSION_INPUT" ]; then
+            echo "❌ Cannot set target_version when use_previous is true."
             exit 1
           fi
+          ARGS=()
+          if [ -n "$TARGET_VERSION_INPUT" ]; then
+            ARGS+=(--target-version "$TARGET_VERSION_INPUT")
+          fi
+          if [ "$USE_PREVIOUS" = "true" ]; then
+            ARGS+=(--previous)
+          fi
+          if [ ${#ARGS[@]} -eq 0 ]; then
+            echo "❌ Must specify target_version or enable use_previous."
+            exit 1
+          fi
+          TARGET=$(python -m chat_pipeline.tracking.rollback_model \
+            --model-name "$MODEL_NAME" \
+            --resolve-target "${ARGS[@]}")
+          if [ -z "$TARGET" ] || [ "$TARGET" = "none" ]; then
+            echo "❌ Unable to resolve target version."
+            exit 1
+          fi
+          echo "Resolved rollback target: $TARGET"
+          echo "target_version=$TARGET" >> $GITHUB_OUTPUT
 
       - name: Load Target Metadata
         id: metadata
+        env:
+          TARGET_VERSION: ${{ steps.resolve_version.outputs.target_version }}
+          MODEL_NAME: ${{ inputs.model_name }}
         run: |
-          TARGET_VERSION="${{ steps.validate.outputs.target_version }}"
-          
-          if [ "$TARGET_VERSION" == "previous" ]; then
-            # Get previous version
-            PREV_V=$(python3 << 'EOF'
-            import sys
-            from pathlib import Path
-            sys.path.insert(0, str(Path.cwd()))
-            from ml_pipeline.ci_cd.rollback_model import get_previous_version, load_pipeline_config
-            config = load_pipeline_config()
-            model_name = config.get("model", {}).get("name", "llama_3b_instruct")
-            registry_dir = Path("models_registry")
-            prev = get_previous_version(model_name, registry_dir)
-            print(prev if prev else "none")
-            EOF
-            )
-            TARGET_VERSION="v$PREV_V"
+          VERSION_DIR="models_registry/${MODEL_NAME}_${TARGET_VERSION}"
+          METADATA_PATH="${VERSION_DIR}/metadata.json"
+          if [ ! -f "$METADATA_PATH" ]; then
+            echo "❌ Metadata not found for ${MODEL_NAME}_${TARGET_VERSION}"
+            exit 1
           fi
-          
-          METADATA_PATH="models_registry/llama_3b_instruct_${TARGET_VERSION}/metadata.json"
-          
-          if [ -f "$METADATA_PATH" ]; then
-            python3 << 'EOF'
-            import json
-            import sys
-            
-            with open(sys.argv[1], 'r') as f:
-                metadata = json.load(f)
-            
-            metrics = metadata.get('metrics', {})
-            mean_sim = metrics.get('mean_semantic_sim', 0.0)
-            mean_prec = metrics.get('mean_precision_at_k', 0.0)
-            
-            print(f"mean_sim={mean_sim}")
-            print(f"mean_prec={mean_prec}")
-            EOF
-            "$METADATA_PATH"
-          else
-            echo "⚠️ Metadata not found for target version"
-          fi
+          python3 <<'EOF' "$METADATA_PATH" "$GITHUB_OUTPUT"
 
       - name: Require Manual Approval for Production
         if: github.ref == 'refs/heads/main'
@@ -129,13 +120,14 @@ jobs:
           minimum-approvals: 1
           issue-title: "Rollback Approval Required"
           issue-body: |
-            A rollback to version ${{ steps.validate.outputs.target_version }} has been requested.
+            A rollback to version ${{ steps.resolve_version.outputs.target_version }} has been requested.
             
             **Reason:** ${{ inputs.reason }}
             
             **Target Metrics:**
-            - Mean Semantic Similarity: ${{ steps.metadata.outputs.mean_sim }}
-            - Mean Precision@K: ${{ steps.metadata.outputs.mean_prec }}
+            - Groundedness: ${{ steps.metadata.outputs.groundedness }}
+            - Answer Relevance: ${{ steps.metadata.outputs.answer_relevance }}
+            - Factual Correctness: ${{ steps.metadata.outputs.factual_correctness }}
             
             Please review and approve this rollback.
 
@@ -168,25 +160,19 @@ jobs:
         shell: bash
 
       - name: Execute Rollback
+        env:
+          TARGET_VERSION: ${{ needs.validate-rollback-target.outputs.target_version }}
+          MODEL_NAME: ${{ inputs.model_name }}
+          REASON: ${{ inputs.reason }}
         run: |
-          TARGET_VERSION="${{ steps.validate.outputs.target_version }}"
-          USE_PREVIOUS="${{ inputs.use_previous }}"
-          REASON="${{ inputs.reason }}"
-          
-          if [ "$USE_PREVIOUS" == "true" ]; then
-            python ml_pipeline/ci_cd/rollback_model.py \
-              --previous \
-              --reason "$REASON"
-          elif [ -n "$TARGET_VERSION" ] && [ "$TARGET_VERSION" != "previous" ]; then
-            python ml_pipeline/ci_cd/rollback_model.py \
-              --target-version "$TARGET_VERSION" \
-              --reason "$REASON"
-          else
-            # Get previous version
-            python ml_pipeline/ci_cd/rollback_model.py \
-              --previous \
-              --reason "$REASON"
+          if [ -z "$TARGET_VERSION" ]; then
+            echo "❌ Target version output missing from validation job."
+            exit 1
           fi
+          python -m chat_pipeline.tracking.rollback_model \
+            --model-name "$MODEL_NAME" \
+            --target-version "$TARGET_VERSION" \
+            --reason "$REASON"
 
       - name: Upload Rollback Logs
         uses: actions/upload-artifact@v4
@@ -247,14 +233,14 @@ jobs:
                   with open(latest_path, 'r') as f:
                       version_dir = Path(f.read().strip())
               
-              metadata_path = version_dir / "metadata.json"
-              if metadata_path.exists():
-                  with open(metadata_path, 'r') as f:
-                      metadata = json.load(f)
+                  metadata_path = version_dir / "metadata.json"
+                  if metadata_path.exists():
+                      with open(metadata_path, 'r') as f:
+                          metadata = json.load(f)
                   print(f"✅ Rollback verified:")
                   print(f"   Active version: {metadata.get('version')}")
                   print(f"   Model: {metadata.get('model_name')}")
-                  print(f"   Metrics: {metadata.get('metrics', {})}")
+                  print(f"   Evaluation: {metadata.get('evaluation', {})}")
               else:
                   print("⚠️ Metadata not found")
           else:
@@ -312,7 +298,7 @@ jobs:
           subject = f"FrontShiftAI Model Rollback Executed"
           body = f"""Model Rollback Executed
           
-          Target Version: ${{ steps.validate.outputs.target_version }}
+          Target Version: ${{ needs.validate-rollback-target.outputs.target_version }}
           Reason: ${{ inputs.reason }}
           Executed By: ${{ github.actor }}
           Timestamp: ${{ github.event.head_commit.timestamp }}
@@ -346,10 +332,10 @@ jobs:
             github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: `[Rollback] Model rolled back to ${{ steps.validate.outputs.target_version }}`,
+              title: `[Rollback] Model rolled back to ${{ needs.validate-rollback-target.outputs.target_version }}`,
               body: `## Model Rollback Executed
               
-              **Target Version:** ${{ steps.validate.outputs.target_version }}
+              **Target Version:** ${{ needs.validate-rollback-target.outputs.target_version }}
               **Reason:** ${{ inputs.reason }}
               **Executed By:** ${{ github.actor }}
               **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -360,4 +346,3 @@ jobs:
               `,
               labels: ['rollback', 'incident']
             })
-
