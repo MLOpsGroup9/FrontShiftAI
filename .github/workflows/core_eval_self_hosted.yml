@@ -15,11 +15,15 @@ jobs:
       CHAT_PIPELINE_ALLOW_HEAVY_FALLBACKS: 1
       CHAT_PIPELINE_EXECUTION_MODE: local
 
-      # 🔥 Fully disable Ray + multiprocessing everywhere
+      # 🔥 FULL RAY DISABLE (correct method for chat_pipeline)
       CHAT_PIPELINE_DISABLE_RAY: 1
       RAY_DISABLE_AUTO_INIT: 1
       RAY_USAGE_STATS_ENABLED: 0
+      RAY_DEDUP_LOGS: 0
       RAY_memory_monitor_refresh_ms: 0
+      PYTHONWARNINGS: "ignore"
+
+      # 🔥 Disable all multiprocessing pools
       OMP_NUM_THREADS: 1
       MKL_NUM_THREADS: 1
       NUMEXPR_NUM_THREADS: 1
@@ -38,7 +42,6 @@ jobs:
       # -------------------------------
       - name: Validate Python
         run: |
-          echo "Using system Python:"
           which python3
           python3 --version
 
@@ -98,7 +101,6 @@ jobs:
           python3 -m chat_pipeline.cli \
             --config chat_pipeline/configs/experiments/core_eval_self_hosted.yaml \
             --mode generate \
-            --parallelism 1 \
             --debug
 
       # -------------------------------
@@ -111,7 +113,6 @@ jobs:
           python3 -m chat_pipeline.cli \
             --config chat_pipeline/configs/experiments/core_eval_self_hosted.yaml \
             --mode judge \
-            --parallelism 1 \
             --debug || true
 
       # -------------------------------
