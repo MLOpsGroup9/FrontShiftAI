@@ -15,7 +15,7 @@ jobs:
       CHAT_PIPELINE_ALLOW_HEAVY_FALLBACKS: 1
       CHAT_PIPELINE_EXECUTION_MODE: local
 
-      # 🔥 Hard-disable Ray & multiprocessing everywhere
+      # 🔥 Fully disable Ray + multiprocessing everywhere
       CHAT_PIPELINE_DISABLE_RAY: 1
       RAY_DISABLE_AUTO_INIT: 1
       RAY_USAGE_STATS_ENABLED: 0
@@ -98,6 +98,7 @@ jobs:
           python3 -m chat_pipeline.cli \
             --config chat_pipeline/configs/experiments/core_eval_self_hosted.yaml \
             --mode generate \
+            --parallelism 1 \
             --debug
 
       # -------------------------------
@@ -110,6 +111,7 @@ jobs:
           python3 -m chat_pipeline.cli \
             --config chat_pipeline/configs/experiments/core_eval_self_hosted.yaml \
             --mode judge \
+            --parallelism 1 \
             --debug || true
 
       # -------------------------------
