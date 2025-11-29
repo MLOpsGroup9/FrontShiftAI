@@ -296,7 +296,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     wandb_tags = sorted({tag for tag in base_tags if tag})
     run_mode_tag = f"mode:{args.mode}"
     wandb_tags.append(run_mode_tag)
-    base_run_name = run_type_tag.replace("run-type:", "") if run_type_tag else args.config.stem.lower()
+    base_run_name = wandb_cfg.get("run_name_prefix", run_type_tag.replace("run-type:", "") if run_type_tag else args.config.stem.lower())
     parallelism = _determine_parallelism(cfg, args.parallelism)
 
     results: List[Dict[str, Any]] = []
