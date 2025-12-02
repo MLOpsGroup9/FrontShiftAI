@@ -32,7 +32,7 @@ class WebsiteExtractionAgent:
         workflow.add_node("brave_search", lambda s: brave_search_node(s, self.db))
         workflow.add_node("analyze_results", lambda s: analyze_results_node(s, self.db))
         workflow.add_node("generate_answer", lambda s: generate_answer_node(s, self.db))
-        workflow.add_node("suggest_hr_ticket", lambda s: suggest_hr_ticket_node(s, self.db))
+        workflow.add_node("suggest_ticket", lambda s: suggest_hr_ticket_node(s, self.db))
         workflow.add_node("format_response", lambda s: format_response_node(s, self.db))
         
         workflow.set_entry_point("parse_query")
@@ -45,12 +45,12 @@ class WebsiteExtractionAgent:
             self._route_after_analysis,
             {
                 "generate": "generate_answer",
-                "suggest_hr": "suggest_hr_ticket"
+                "suggest_hr": "suggest_ticket"
             }
         )
         
         workflow.add_edge("generate_answer", "format_response")
-        workflow.add_edge("suggest_hr_ticket", "format_response")
+        workflow.add_edge("suggest_ticket", "format_response")
         workflow.add_edge("format_response", END)
         
         return workflow.compile()
