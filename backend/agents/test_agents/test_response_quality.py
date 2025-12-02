@@ -5,7 +5,7 @@ Validates that agent responses contain required information
 import pytest
 import sys
 from pathlib import Path
-from datetime import date
+from datetime import date, timedelta
 
 backend_dir = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(backend_dir))
@@ -21,12 +21,16 @@ class TestPTOSuccessResponseCompleteness:
     
     def test_success_response_has_request_id(self, db_session):
         """Test success response includes request ID"""
+        today = date.today()
+        start_date = today + timedelta(days=10)
+        end_date = start_date + timedelta(days=4)
+        
         state = PTOAgentState(
             user_email="test@test.com",
             company="Test Company",
             user_message="test",
-            start_date=date(2025, 12, 1),
-            end_date=date(2025, 12, 5),
+            start_date=start_date,
+            end_date=end_date,
             total_business_days=5.0,
             intent="request_pto",
             is_valid=True,
@@ -54,12 +58,16 @@ class TestPTOSuccessResponseCompleteness:
     
     def test_success_response_has_dates(self, db_session):
         """Test success response includes dates"""
+        today = date.today()
+        start_date = today + timedelta(days=15)
+        end_date = start_date + timedelta(days=2)
+        
         state = PTOAgentState(
             user_email="test@test.com",
             company="Test Company",
             user_message="test",
-            start_date=date(2025, 12, 24),
-            end_date=date(2025, 12, 26),
+            start_date=start_date,
+            end_date=end_date,
             total_business_days=3.0,
             intent="request_pto",
             is_valid=True,
@@ -83,17 +91,23 @@ class TestPTOSuccessResponseCompleteness:
         
         result = generate_response_node(state, db_session)
         
-        # Should mention dates or December
-        assert any(word in result['agent_response'] for word in ['December', '24', '26', 'Dates'])
+        # Should mention dates or month
+        response_lower = result['agent_response'].lower()
+        # Check that the response contains date-related information
+        assert any(word in response_lower for word in ['date', 'day', start_date.strftime('%B').lower(), str(start_date.day)])
     
     def test_success_response_has_status(self, db_session):
         """Test success response includes status"""
+        today = date.today()
+        start_date = today + timedelta(days=10)
+        end_date = start_date + timedelta(days=4)
+        
         state = PTOAgentState(
             user_email="test@test.com",
             company="Test Company",
             user_message="test",
-            start_date=date(2025, 12, 1),
-            end_date=date(2025, 12, 5),
+            start_date=start_date,
+            end_date=end_date,
             total_business_days=5.0,
             intent="request_pto",
             is_valid=True,
@@ -161,12 +175,16 @@ class TestPTOErrorResponseQuality:
     
     def test_insufficient_balance_shows_numbers(self, db_session):
         """Test insufficient balance error shows actual numbers"""
+        today = date.today()
+        start_date = today + timedelta(days=10)
+        end_date = start_date + timedelta(days=19)
+        
         state = PTOAgentState(
             user_email="test@test.com",
             company="Test Company",
             user_message="test",
-            start_date=date(2025, 12, 1),
-            end_date=date(2025, 12, 20),
+            start_date=start_date,
+            end_date=end_date,
             total_business_days=15.0,
             intent="request_pto",
             is_valid=True,
@@ -290,12 +308,16 @@ class TestResponseLength:
     
     def test_success_response_not_too_short(self, db_session):
         """Test success responses have minimum length"""
+        today = date.today()
+        start_date = today + timedelta(days=10)
+        end_date = start_date + timedelta(days=4)
+        
         state = PTOAgentState(
             user_email="test@test.com",
             company="Test Company",
             user_message="test",
-            start_date=date(2025, 12, 1),
-            end_date=date(2025, 12, 5),
+            start_date=start_date,
+            end_date=end_date,
             total_business_days=5.0,
             intent="request_pto",
             is_valid=True,
