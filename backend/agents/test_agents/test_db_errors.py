@@ -5,7 +5,7 @@ Validates graceful degradation when database operations fail
 import pytest
 import sys
 from pathlib import Path
-from datetime import date
+from datetime import date, timedelta
 from sqlalchemy.exc import IntegrityError, OperationalError
 
 backend_dir = Path(__file__).resolve().parent.parent.parent
@@ -25,14 +25,21 @@ class TestPTODatabaseErrors:
         """Test handling duplicate request ID (though UUID should prevent this)"""
         import uuid
         
+        today = date.today()
+        existing_start = today + timedelta(days=10)
+        existing_end = existing_start + timedelta(days=4)
+        
+        new_start = today + timedelta(days=20)
+        new_end = new_start + timedelta(days=4)
+        
         # Create request with specific ID
         existing_id = str(uuid.uuid4())
         existing = PTORequest(
             id=existing_id,
             email=sample_pto_balance.email,
             company=sample_pto_balance.company,
-            start_date=date(2025, 11, 1),
-            end_date=date(2025, 11, 5),
+            start_date=existing_start,
+            end_date=existing_end,
             days_requested=5.0,
             status="pending"
         )
@@ -45,8 +52,8 @@ class TestPTODatabaseErrors:
             user_email=sample_pto_balance.email,
             company=sample_pto_balance.company,
             user_message="test",
-            start_date=date(2025, 12, 1),
-            end_date=date(2025, 12, 5),
+            start_date=new_start,
+            end_date=new_end,
             total_business_days=5.0,
             reason="Test",
             intent="request_pto",
@@ -157,5 +164,3 @@ class TestDataIntegrityValidation:
         # Should return data, even if logically inconsistent
         assert balance is not None
         assert balance['remaining_days'] < 0  # Negative is possible
-    
-    

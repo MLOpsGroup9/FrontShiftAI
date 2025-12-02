@@ -18,8 +18,12 @@ class TestCalculateBusinessDays:
     
     def test_calculate_business_days_no_holidays(self):
         """Test business days calculation without holidays"""
-        start = date(2025, 12, 1)  # Monday
-        end = date(2025, 12, 5)    # Friday
+        # Use future dates starting on a Monday
+        today = date.today()
+        start = today + timedelta(days=(7 - today.weekday()) % 7)  # Next Monday
+        if start == today:
+            start += timedelta(days=7)
+        end = start + timedelta(days=4)  # Friday
         holidays = []
         
         result = calculate_business_days(start, end, holidays)
@@ -27,8 +31,12 @@ class TestCalculateBusinessDays:
     
     def test_calculate_business_days_with_weekend(self):
         """Test business days calculation excluding weekends"""
-        start = date(2025, 12, 1)  # Monday
-        end = date(2025, 12, 7)    # Sunday
+        # Use future dates starting on a Monday
+        today = date.today()
+        start = today + timedelta(days=(7 - today.weekday()) % 7)  # Next Monday
+        if start == today:
+            start += timedelta(days=7)
+        end = start + timedelta(days=6)  # Sunday (Mon-Sun = 7 days)
         holidays = []
         
         result = calculate_business_days(start, end, holidays)
@@ -36,17 +44,27 @@ class TestCalculateBusinessDays:
     
     def test_calculate_business_days_with_holidays(self):
         """Test business days calculation with holidays"""
-        start = date(2025, 12, 24)  # Wednesday
-        end = date(2025, 12, 26)    # Friday
-        holidays = [date(2025, 12, 25)]  # Christmas
+        # Use future dates starting on a Wednesday
+        today = date.today()
+        start = today + timedelta(days=14)
+        while start.weekday() != 2:  # Wednesday = 2
+            start += timedelta(days=1)
+        end = start + timedelta(days=2)  # Friday
+        
+        # Add a holiday on Thursday
+        holidays = [start + timedelta(days=1)]
         
         result = calculate_business_days(start, end, holidays)
         assert result == 2.0  # Wed and Fri only
     
     def test_weekend_only_request(self):
         """Test that weekend-only requests return zero"""
-        start = date(2025, 12, 6)   # Saturday
-        end = date(2025, 12, 7)     # Sunday
+        # Find next Saturday
+        today = date.today()
+        start = today + timedelta(days=(5 - today.weekday() + 7) % 7)
+        if start == today or start < today:
+            start += timedelta(days=7)
+        end = start + timedelta(days=1)  # Sunday
         holidays = []
         
         result = calculate_business_days(start, end, holidays)
@@ -54,8 +72,12 @@ class TestCalculateBusinessDays:
     
     def test_single_day_request(self):
         """Test single business day request"""
-        start = date(2025, 12, 1)  # Monday
-        end = date(2025, 12, 1)    # Same Monday
+        # Use future date on a Monday
+        today = date.today()
+        start = today + timedelta(days=(7 - today.weekday()) % 7)  # Next Monday
+        if start == today:
+            start += timedelta(days=7)
+        end = start  # Same day
         holidays = []
         
         result = calculate_business_days(start, end, holidays)
@@ -63,8 +85,12 @@ class TestCalculateBusinessDays:
     
     def test_multiple_weeks_span(self):
         """Test calculation spanning multiple weeks"""
-        start = date(2025, 12, 1)   # Monday
-        end = date(2025, 12, 12)    # Friday (almost 2 weeks)
+        # Use future dates starting on a Monday
+        today = date.today()
+        start = today + timedelta(days=(7 - today.weekday()) % 7)  # Next Monday
+        if start == today:
+            start += timedelta(days=7)
+        end = start + timedelta(days=11)  # Almost 2 weeks later (Friday)
         holidays = []
         
         result = calculate_business_days(start, end, holidays)
@@ -72,12 +98,18 @@ class TestCalculateBusinessDays:
     
     def test_all_holidays(self):
         """Test when all days are holidays"""
-        start = date(2025, 12, 24)  # Wednesday
-        end = date(2025, 12, 26)    # Friday
+        # Use future dates starting on a Wednesday
+        today = date.today()
+        start = today + timedelta(days=14)
+        while start.weekday() != 2:  # Wednesday = 2
+            start += timedelta(days=1)
+        end = start + timedelta(days=2)  # Friday
+        
+        # Mark all three days as holidays
         holidays = [
-            date(2025, 12, 24),
-            date(2025, 12, 25),
-            date(2025, 12, 26)
+            start,
+            start + timedelta(days=1),
+            start + timedelta(days=2)
         ]
         
         result = calculate_business_days(start, end, holidays)
@@ -85,8 +117,9 @@ class TestCalculateBusinessDays:
     
     def test_end_before_start(self):
         """Test invalid date range (end before start)"""
-        start = date(2025, 12, 5)
-        end = date(2025, 12, 1)
+        today = date.today()
+        start = today + timedelta(days=10)
+        end = today + timedelta(days=5)
         holidays = []
         
         result = calculate_business_days(start, end, holidays)
@@ -158,8 +191,9 @@ class TestCheckConflictingRequests:
     
     def test_check_conflicting_requests_no_conflicts(self, db_session, sample_user):
         """Test checking for conflicts when none exist"""
-        start = date(2025, 12, 1)
-        end = date(2025, 12, 5)
+        today = date.today()
+        start = today + timedelta(days=30)
+        end = start + timedelta(days=4)
         
         has_conflicts, conflicts = check_conflicting_requests(
             db_session, sample_user.email, start, end
@@ -173,13 +207,17 @@ class TestCheckConflictingRequests:
         from db.models import PTORequest, PTOStatus
         import uuid
         
+        today = date.today()
+        conflict_start = today + timedelta(days=20)
+        conflict_end = conflict_start + timedelta(days=2)
+        
         # Create existing request
         existing_request = PTORequest(
             id=str(uuid.uuid4()),
             email=sample_user.email,
             company=sample_user.company,
-            start_date=date(2025, 12, 3),
-            end_date=date(2025, 12, 5),
+            start_date=conflict_start,
+            end_date=conflict_end,
             days_requested=3.0,
             status=PTOStatus.APPROVED
         )
@@ -187,8 +225,8 @@ class TestCheckConflictingRequests:
         db_session.commit()
         
         # Check for conflicts with overlapping dates
-        start = date(2025, 12, 1)
-        end = date(2025, 12, 4)
+        start = conflict_start - timedelta(days=2)
+        end = conflict_start + timedelta(days=1)
         
         has_conflicts, conflicts = check_conflicting_requests(
             db_session, sample_user.email, start, end
@@ -203,13 +241,17 @@ class TestCheckConflictingRequests:
         from db.models import PTORequest, PTOStatus
         import uuid
         
+        today = date.today()
+        conflict_start = today + timedelta(days=25)
+        conflict_end = conflict_start + timedelta(days=2)
+        
         # Create pending request
         pending_request = PTORequest(
             id=str(uuid.uuid4()),
             email=sample_user.email,
             company=sample_user.company,
-            start_date=date(2025, 12, 3),
-            end_date=date(2025, 12, 5),
+            start_date=conflict_start,
+            end_date=conflict_end,
             days_requested=3.0,
             status=PTOStatus.PENDING
         )
@@ -217,8 +259,8 @@ class TestCheckConflictingRequests:
         db_session.commit()
         
         # Check for conflicts
-        start = date(2025, 12, 1)
-        end = date(2025, 12, 4)
+        start = conflict_start - timedelta(days=2)
+        end = conflict_start + timedelta(days=1)
         
         has_conflicts, conflicts = check_conflicting_requests(
             db_session, sample_user.email, start, end
@@ -233,13 +275,17 @@ class TestCheckConflictingRequests:
         from db.models import PTORequest, PTOStatus
         import uuid
         
+        today = date.today()
+        denied_start = today + timedelta(days=30)
+        denied_end = denied_start + timedelta(days=2)
+        
         # Create denied request
         denied_request = PTORequest(
             id=str(uuid.uuid4()),
             email=sample_user.email,
             company=sample_user.company,
-            start_date=date(2025, 12, 3),
-            end_date=date(2025, 12, 5),
+            start_date=denied_start,
+            end_date=denied_end,
             days_requested=3.0,
             status=PTOStatus.DENIED
         )
@@ -247,8 +293,8 @@ class TestCheckConflictingRequests:
         db_session.commit()
         
         # Check for conflicts
-        start = date(2025, 12, 1)
-        end = date(2025, 12, 4)
+        start = denied_start - timedelta(days=2)
+        end = denied_start + timedelta(days=1)
         
         has_conflicts, conflicts = check_conflicting_requests(
             db_session, sample_user.email, start, end
@@ -270,8 +316,8 @@ class TestCheckConflictingRequests:
     
     def test_partial_overlap_start(self, db_session, sample_approved_pto_request):
         """Test detection with partial overlap at start"""
-        # Existing: Dec 10-15
-        # New: Dec 8-12 (overlaps at start)
+        # Existing: sample dates
+        # New: 2 days before start to 2 days after start (overlaps at start)
         start = sample_approved_pto_request.start_date - timedelta(days=2)
         end = sample_approved_pto_request.start_date + timedelta(days=2)
         
@@ -286,8 +332,8 @@ class TestCheckConflictingRequests:
     
     def test_partial_overlap_end(self, db_session, sample_approved_pto_request):
         """Test detection with partial overlap at end"""
-        # Existing: Dec 10-15
-        # New: Dec 13-17 (overlaps at end)
+        # Existing: sample dates
+        # New: 2 days before end to 2 days after end (overlaps at end)
         start = sample_approved_pto_request.end_date - timedelta(days=2)
         end = sample_approved_pto_request.end_date + timedelta(days=2)
         
@@ -302,8 +348,7 @@ class TestCheckConflictingRequests:
     
     def test_no_overlap_before(self, db_session, sample_approved_pto_request):
         """Test no conflict when request is before existing"""
-        # Existing: Dec 10-15
-        # New: Dec 1-5 (before existing)
+        # New: 10 days before to 5 days before (before existing)
         start = sample_approved_pto_request.start_date - timedelta(days=10)
         end = sample_approved_pto_request.start_date - timedelta(days=5)
         
@@ -318,8 +363,7 @@ class TestCheckConflictingRequests:
     
     def test_no_overlap_after(self, db_session, sample_approved_pto_request):
         """Test no conflict when request is after existing"""
-        # Existing: Dec 10-15
-        # New: Dec 20-25 (after existing)
+        # New: 5 days after to 10 days after (after existing)
         start = sample_approved_pto_request.end_date + timedelta(days=5)
         end = sample_approved_pto_request.end_date + timedelta(days=10)
         
@@ -351,11 +395,15 @@ class TestCheckBlackoutPeriods:
     
     def test_no_blackout_periods(self, db_session, sample_company):
         """Test when no blackout periods exist"""
+        today = date.today()
+        start = today + timedelta(days=40)
+        end = start + timedelta(days=4)
+        
         has_conflicts, conflict_list = check_blackout_periods(
             db_session,
             sample_company.name,
-            date(2025, 12, 1),
-            date(2025, 12, 5)
+            start,
+            end
         )
         
         assert has_conflicts is False
@@ -366,24 +414,31 @@ class TestCheckBlackoutPeriods:
         from db.models import CompanyBlackoutDate
         import uuid
         
+        today = date.today()
+        blackout_start = today + timedelta(days=50)
+        blackout_end = blackout_start + timedelta(days=10)
+        
         # Create blackout period
         blackout = CompanyBlackoutDate(
             id=str(uuid.uuid4()),
             company=sample_company.name,
             period_name="Year-End Shutdown",
-            start_date=date(2025, 12, 20),
-            end_date=date(2025, 12, 31),
+            start_date=blackout_start,
+            end_date=blackout_end,
             reason="Company closed for holidays"
         )
         db_session.add(blackout)
         db_session.commit()
         
         # Check request that overlaps
+        request_start = blackout_start - timedelta(days=5)
+        request_end = blackout_start + timedelta(days=5)
+        
         has_conflicts, conflict_list = check_blackout_periods(
             db_session,
             sample_company.name,
-            date(2025, 12, 15),
-            date(2025, 12, 25)
+            request_start,
+            request_end
         )
         
         assert has_conflicts is True
@@ -395,24 +450,31 @@ class TestCheckBlackoutPeriods:
         from db.models import CompanyBlackoutDate
         import uuid
         
+        today = date.today()
+        blackout_start = today + timedelta(days=60)
+        blackout_end = blackout_start + timedelta(days=10)
+        
         # Create blackout period
         blackout = CompanyBlackoutDate(
             id=str(uuid.uuid4()),
             company=sample_company.name,
             period_name="Year-End Shutdown",
-            start_date=date(2025, 12, 20),
-            end_date=date(2025, 12, 31),
+            start_date=blackout_start,
+            end_date=blackout_end,
             reason="Company closed"
         )
         db_session.add(blackout)
         db_session.commit()
         
         # Check request before blackout
+        request_start = blackout_start - timedelta(days=20)
+        request_end = blackout_start - timedelta(days=10)
+        
         has_conflicts, conflict_list = check_blackout_periods(
             db_session,
             sample_company.name,
-            date(2025, 12, 1),
-            date(2025, 12, 10)
+            request_start,
+            request_end
         )
         
         assert has_conflicts is False

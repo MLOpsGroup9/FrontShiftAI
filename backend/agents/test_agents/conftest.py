@@ -185,12 +185,18 @@ def sample_company_admin(db_session):
 def sample_approved_pto_request(db_session, sample_user):
     """Create an approved PTO request for conflict testing"""
     import uuid
+    
+    # Use future dates to avoid test failures
+    today = date.today()
+    start_date = today + timedelta(days=45)  # 45 days in the future
+    end_date = start_date + timedelta(days=5)  # 6 days total (includes weekend)
+    
     request = PTORequest(
         id=str(uuid.uuid4()),
         email=sample_user.email,
         company=sample_user.company,
-        start_date=date(2025, 12, 10),
-        end_date=date(2025, 12, 15),
+        start_date=start_date,
+        end_date=end_date,
         days_requested=4.0,
         status=PTOStatus.APPROVED,
         reason="Vacation"
@@ -220,7 +226,7 @@ def multiple_hr_tickets(db_session, sample_user):
             subject=f"Ticket - {status.value}",
             description=f"Test ticket with status {status.value}",
             category=TicketCategory.GENERAL_INQUIRY,
-                            meeting_type=MeetingType.NO_MEETING,
+            meeting_type=MeetingType.NO_MEETING,
             urgency=Urgency.NORMAL,
             status=status,
             queue_position=queue_pos,
