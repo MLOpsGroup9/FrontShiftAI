@@ -185,6 +185,10 @@ def _stream_from_local_llm(llm: Any, prompt: str, params: Dict[str, Any]) -> Gen
 
     completion_kwargs = dict(params)
     completion_kwargs["stream"] = True
+    # Remove keys that llama_cpp doesn't understand
+    completion_kwargs.pop("system_message", None)
+    completion_kwargs.pop("user_message", None)
+    
     response_stream = llm.create_completion(prompt=prompt, **completion_kwargs)
 
     for chunk in response_stream:
@@ -239,9 +243,19 @@ def _call_mercury_api(prompt: str, params: Dict[str, Any]) -> str:
         "Authorization": f"Bearer {INCEPTION_API_KEY}",
         "Content-Type": "application/json",
     }
+    system_msg = params.get("system_message")
+    user_msg = params.get("user_message")
+
+    messages = []
+    if system_msg and user_msg:
+        messages.append({"role": "system", "content": system_msg})
+        messages.append({"role": "user", "content": user_msg})
+    else:
+        messages.append({"role": "user", "content": prompt})
+
     payload = {
         "model": MERCURY_MODEL,
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": messages,
         "max_tokens": params.get("max_tokens"),
         "temperature": params.get("temperature"),
         "top_p": params.get("top_p"),
@@ -300,34 +314,35 @@ def stream_response(
     gen_cfg = get_generation_config()
     backend = (GENERATION_BACKEND or gen_cfg.get("backend") or "auto").lower()
 
-    local_llm: Optional[Any] = llm
-    if backend in ("auto", "local") and local_llm is None:
-        try:
-            local_llm = load_llm()
-        except Exception as exc:  # pragma: no cover - depends on env
-            logger.info("Local LLaMA unavailable (%s). Falling back to next backend.", exc)
-            local_llm = None
+    # local_llm: Optional[Any] = llm
+    # if backend in ("auto", "local") and local_llm is None:
+    #     try:
+    #         local_llm = load_llm()
+    #     except Exception as exc:  # pragma: no cover - depends on env
+    #         logger.info("Local LLaMA unavailable (%s). Falling back to next backend.", exc)
+    #         local_llm = None
 
-    if backend in ("auto", "local") and local_llm is not None:
-        _record_backend("local")
-        yield from _stream_from_local_llm(local_llm, prompt, params)
-        return
+    # if backend in ("auto", "local") and local_llm is not None:
+    #     _record_backend("local")
+    #     yield from _stream_from_local_llm(local_llm, prompt, params)
+    #     return
 
-    if backend in ("hf", "qwen", "llama", "auto") and allow_heavy_fallbacks():
-        try:
-            hf_label = backend if backend in ("hf", "qwen", "llama") else "hf"
-            _record_backend(hf_label)
-            yield from _stream_from_hf(prompt, params)
-            return
-        except Exception as exc:  # pragma: no cover - optional dependency
-            _record_backend(None)
-            logger.debug("HF backend unavailable: %s", exc)
-            if backend != "auto":
-                raise
-    elif backend in ("hf", "qwen", "llama") and not allow_heavy_fallbacks():
-        logger.warning("Heavy HF fallback disabled; skipping backend '%s'.", backend)
+    # if backend in ("hf", "qwen", "llama", "auto") and allow_heavy_fallbacks():
+    #     try:
+    #         hf_label = backend if backend in ("hf", "qwen", "llama") else "hf"
+    #         _record_backend(hf_label)
+    #         yield from _stream_from_hf(prompt, params)
+    #         return
+    #     except Exception as exc:  # pragma: no cover - optional dependency
+    #         _record_backend(None)
+    #         logger.debug("HF backend unavailable: %s", exc)
+    #         if backend != "auto":
+    #             raise
+    # elif backend in ("hf", "qwen", "llama") and not allow_heavy_fallbacks():
+    #     logger.warning("Heavy HF fallback disabled; skipping backend '%s'.", backend)
 
-    if backend in ("mercury", "auto"):
+    # Force Mercury
+    if backend in ("mercury", "auto", "local"): # Added local/auto to force mercury even if config is wrong
         _record_backend("mercury")
         yield _call_mercury_api(prompt, params)
         return
@@ -547,10 +562,15 @@ def generation(
     context = _prepare_context(docs)
     prompt = _build_prompt(prompt_template, context, query)
 
+    # Prepare structured messages for chat backends
+    overrides = streaming_overrides or {}
+    overrides["system_message"] = prompt_template
+    overrides["user_message"] = f"### CONTEXT:\n{context}\n\n### QUESTION:\n{query}"
+
     response_iter = stream_response(
         prompt,
         llm=llm,
-        **(streaming_overrides or {}),
+        **overrides,
     )
 
     if stream:

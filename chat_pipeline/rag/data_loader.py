@@ -237,6 +237,23 @@ def get_collection() -> Collection:
         ) from exc
 
 
+def _get_all_companies(collection: Collection) -> List[str]:
+    """Fetch all unique company names from the vector store."""
+    try:
+        # Fetch a large sample of metadata to find unique companies
+        # Note: Chroma doesn't have a "SELECT DISTINCT" so we peek/scan
+        peek = collection.get(include=["metadatas"], limit=10000) 
+        metadatas = peek.get("metadatas", [])
+        companies = set()
+        for m in metadatas:
+            if m and "company" in m:
+                companies.add(m["company"])
+        return list(companies)
+    except Exception as e:
+        logger.error(f"Failed to fetch companies: {e}")
+        return []
+
+
 def resolve_company_filter(collection: Collection, company_name: Optional[str]) -> Dict[str, Dict]:
     """Build a case-insensitive ``where`` clause for the requested company."""
 
@@ -266,6 +283,21 @@ def resolve_company_filter(collection: Collection, company_name: Optional[str]) 
             return {"where": {"company": matches[0]}}
     except Exception as exc:  # pragma: no cover - best effort fallback
         logger.debug("Unable to identify company filter via peek(): %s", exc)
+    
+    # Fallback: Dynamic Lookup (Replaces hardcoded list)
+    known_companies = _get_all_companies(collection)
+    
+    if normalized:
+        # Try to find a known company that contains the search term
+        for known in known_companies:
+            if normalized in known.lower():
+                logger.info(f"Mapped '{company_name}' to known company '{known}'")
+                return {"where": {"company": known}}
+        
+        # If no match found in dynamic list, try raw contains
+        logger.warning(f"Company '{company_name}' not found in dynamic list. Using raw contains.")
+        return {"where": {"company": {"$contains": normalized}}} 
+        
     return {}
 
 
