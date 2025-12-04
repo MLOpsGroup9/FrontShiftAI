@@ -33,10 +33,13 @@ async def rag_query(
         print(f"🔍 RAG Query from {current_user['email']} ({company_name}): {request.query}")
         
         # Run RAG pipeline
+        rag_company_filter = company_name if current_user["role"] != "super_admin" else None
+        print(f"🔒 Filtering RAG by company: '{rag_company_filter}'")
+        
         result = pipeline.run(
             query=request.query,
-            top_k=request.top_k * 3 if current_user["role"] != "super_admin" else request.top_k,
-            company_name=None,
+            top_k=request.top_k,
+            company_name=rag_company_filter,
         )
         
         answer = result.answer
