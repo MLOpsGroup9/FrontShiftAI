@@ -1,4 +1,4 @@
-name: Website Extraction Agent Tests 
+name: Agent Tests - website_extraction
 
 on:
   push:

@@ -1,4 +1,4 @@
-name:  Configuration Check for agent LLM Setup
+name: Agent Tests - LLM Backend Configuration Check 
 on:
   push:
     branches: [ '**' ]
