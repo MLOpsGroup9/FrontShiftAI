@@ -3,7 +3,7 @@ name: Deploy Backend to Cloud Run
 on:
   push:
     branches:
-      - main
+      - krishna-branch
     paths:
       - 'backend/**'
       - 'chat_pipeline/**'
