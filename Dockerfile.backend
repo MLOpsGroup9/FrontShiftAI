@@ -13,8 +13,8 @@ COPY backend/requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Download embedding model to cache
-COPY backend/download_model.py .
-RUN python download_model.py
+# Download embedding model to cache (inline script)
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
 
 # Final stage
 FROM python:3.12-slim
