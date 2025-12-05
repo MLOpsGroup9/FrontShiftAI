@@ -1,18 +1,21 @@
-# FrontShiftAI - GCP Deployment Progress
+# FrontShiftAI - GCP Deployment Documentation
 
-## Project Overview
+## 🎉 PROJECT STATUS: FULLY DEPLOYED TO PRODUCTION! 🎉
 
-**Goal:** Deploy FrontShiftAI (multi-tenant HR/PTO management system with AI agents) to Google Cloud Platform using Cloud Run, with automated CI/CD via GitHub Actions.
-
-**Current Status:** ✅ Phase 1, 2, 3 Complete | ✅ Ready for Production Deployment 🚀
+**Backend URL:** https://frontshiftai-backend-vvukpmzsxa-uc.a.run.app  
+**Frontend URL:** https://frontshiftai-frontend-558177025654.us-central1.run.app  
+**Status:** ✅ Full-Stack Application Live  
+**Deployment Date:** December 4-5, 2025  
+**Total Development Time:** ~16 hours across 7 sessions
 
 ---
 
 ## Deployment Architecture
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     GitHub Repository                        │
-│  (Push to main branch triggers deployment)                  │
+│  (Push to krishna-branch triggers deployment)               │
 └────────────────────┬────────────────────────────────────────┘
                      │
                      ▼
@@ -29,29 +32,30 @@
 │                  Google Cloud Platform                       │
 │                                                              │
 │  ┌──────────────────┐      ┌──────────────────┐            │
-│  │   Cloud Run      │      │   Cloud Run      │            │
-│  │   (Backend)      │◄────►│   (Frontend)     │            │
-│  │                  │      │    (Planned)     │            │
-│  │ • FastAPI        │      │ • React + Nginx  │            │
-│  │ • LangGraph      │      │                  │            │
-│  │ • Mercury API    │      │                  │            │
+│  │   Cloud Run ✅   │◄────►│   Cloud Run ✅   │            │
+│  │   (Backend)      │      │   (Frontend)     │            │
+│  │   LIVE & RUNNING │      │   LIVE & RUNNING │            │
+│  │ • FastAPI        │      │ • React + Vite   │            │
+│  │ • LangGraph      │      │ • Nginx          │            │
+│  │ • Mercury API    │      │ • Tailwind CSS   │            │
+│  │ • Port 8080      │      │ • Port 80        │            │
 │  └────┬─────────────┘      └──────────────────┘            │
 │       │                                                     │
 │       │ Downloads at startup (production):                 │
-│       └────► GCS: ChromaDB Vector Store                    │
+│       └────► GCS: ChromaDB Vector Store (tar.gz)           │
 │                                                             │
 │  ┌──────────────────┐      ┌──────────────────┐           │
-│  │  Cloud SQL       │      │  Cloud Storage   │           │
+│  │  Cloud SQL ✅    │      │  Cloud Storage ✅│           │
 │  │  (PostgreSQL)    │      │  (GCS Bucket)    │           │
 │  │                  │      │                  │           │
-│  │ • User data      │      │ • Models         │           │
-│  │ • PTO requests   │      │ • Vector DB      │           │
+│  │ • User data      │      │ • ChromaDB       │           │
+│  │ • PTO requests   │      │ • chroma_db.tar  │           │
 │  │ • HR tickets     │      │ • Documents      │           │
 │  └──────────────────┘      └──────────────────┘           │
 │                                                             │
 │  ┌──────────────────┐      ┌──────────────────┐           │
 │  │ Artifact Registry│      │  Secret Manager  │           │
-│  │  (Docker Images) │      │   (API Keys)     │           │
+│  │  (2 Repositories)│      │   (6 Secrets) ✅ │           │
 │  └──────────────────┘      └──────────────────┘           │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -61,719 +65,593 @@
 ## Technology Stack
 
 ### Application Layer
-- **Backend:** FastAPI + Python 3.12
-- **Frontend:** React + Nginx (planned)
-- **AI Agents:** LangGraph workflows (PTO, HR Ticket, Website Extraction)
-- **LLMs:** Mercury Labs API (primary), Groq API (fallback)
+- **Backend:** FastAPI + Python 3.12 ✅
+- **Frontend:** React 18 + Vite + Tailwind CSS ✅
+- **AI Agents:** LangGraph workflows (PTO, HR Ticket, Website Extraction) ✅
+- **LLMs:** Mercury Labs API (primary) ✅
 
 ### Data Layer
-- **Vector Store:** ChromaDB (file-based, synced from GCS)
-- **Relational DB:** PostgreSQL 15 on Cloud SQL (with auto-detection fallback to SQLite)
-- **Object Storage:** Google Cloud Storage (bucket: `frontshiftai-data`)
+- **Vector Store:** ChromaDB (tar.gz from GCS, pre-cached embedding model) ✅
+- **Relational DB:** PostgreSQL 15 on Cloud SQL ✅
+- **Object Storage:** Google Cloud Storage ✅
 
-### Orchestration & Deployment
-- **CI/CD:** GitHub Actions (auto-deploy on push to main)
-- **Container Registry:** Google Artifact Registry
-- **Compute:** Cloud Run (serverless containers, auto-scaling)
-- **Build:** Docker multi-stage builds (linux/amd64)
+### Infrastructure
+- **CI/CD:** GitHub Actions (dual workflows for backend + frontend) ✅
+- **Container Registry:** Google Artifact Registry (2 repositories) ✅
+- **Compute:** Cloud Run (2 services, auto-scaling 0-10) ✅
+- **Build:** Docker multi-stage builds (linux/amd64) ✅
 
 ### Security
-- **Secrets:** Google Secret Manager
-- **Authentication:** Workload Identity Federation (keyless)
-- **Database:** Unix socket connection to Cloud SQL
-
-### Monitoring (Planned)
-- **Application Monitoring:** Cloud Monitoring
-- **Data Drift Detection:** Evidently AI
-- **Alerting:** Cloud Monitoring alerts + email notifications
+- **Secrets:** Google Secret Manager (6 secrets) ✅
+- **Authentication:** Workload Identity Federation (keyless) ✅
+- **Database:** Unix socket connection to Cloud SQL ✅
 
 ---
 
-## Phase 1: Infrastructure Setup ✅ COMPLETE
+## Completed Phases
 
-[Keep all Phase 1 content exactly as is from the previous README]
+### Phase 1: Infrastructure Setup ✅ COMPLETE
+**Session 1 (Dec 2, 2025) - 2 hours**
 
----
+- Created Cloud SQL PostgreSQL instance (db-f1-micro)
+- Initialized database with 9 tables
+- Seeded 19 companies with test data
+- Installed Cloud SQL Proxy
+- Created GCS bucket: `frontshiftai-data`
+- Uploaded ChromaDB as `chroma_db.tar.gz`
 
-## Phase 2: Docker Containerization ✅ COMPLETE
+### Phase 2: Docker Containerization ✅ COMPLETE
+**Session 2 (Dec 2, 2025) - 3 hours**
 
-[Keep all Phase 2 content exactly as is from the previous README]
+- Created `Dockerfile.backend` with multi-stage build
+- Port 8080 configuration (Cloud Run requirement)
+- Created `docker-compose.yml` for local testing
+- Fixed module import issues
+- Successfully tested containers
 
----
+### Phase 2.5: Integration Testing ✅ COMPLETE
+**Session 3 (Dec 3, 2025) - 1 hour**
 
-## Phase 2.5: Complete Integration Testing ✅ COMPLETE
+- Tested local SQLite (auto-detection working)
+- Tested Cloud SQL via proxy
+- Verified all API endpoints
+- Confirmed multi-tenancy working
 
-[Keep all Phase 2.5 content exactly as is from the previous README]
+### Phase 3: GitHub Actions CI/CD ✅ COMPLETE
+**Session 5 (Dec 3, 2025) - 2 hours**
 
----
+- Enabled required GCP APIs
+- Created Artifact Registry repositories (backend + frontend)
+- Configured Workload Identity Federation
+- Created service accounts with proper permissions
+- Stored 6 secrets in Secret Manager
+- Created backend deployment workflow
+- Created frontend deployment workflow
 
-## Phase 3: GitHub Actions CI/CD ✅ COMPLETE
+### Phase 4: Backend Deployment ✅ COMPLETE
+**Session 6 (Dec 4, 2025) - 4 hours**
 
-### Session 5 (December 3, 2025 - Evening)
-**Time:** ~2 hours
-**Focus:** GitHub Actions setup and Cloud Run deployment configuration
+**Issues Resolved:**
 
-### What We Accomplished ✅
+#### Issue 1: Secret Manager Permissions ❌ → ✅
+**Problem:** Cloud Run service account couldn't access secrets
 
-#### 1. GCP Infrastructure Setup
-**Enabled Required APIs:**
-- ✅ Artifact Registry API (`artifactregistry.googleapis.com`)
-- ✅ Cloud Run API (`run.googleapis.com`)
-- ✅ IAM Credentials API (`iamcredentials.googleapis.com`)
-- ✅ Secret Manager API (`secretmanager.googleapis.com`)
-
-**Created Artifact Registry Repository:**
-- Repository: `frontshiftai-backend`
-- Location: `us-central1`
-- Format: Docker
-- Purpose: Store backend Docker images for Cloud Run deployment
-
-#### 2. Workload Identity Federation Setup ✅
-**Created Workload Identity Pool:**
-- Pool: `github-actions-pool`
-- Location: `global`
-- Purpose: Secure authentication between GitHub Actions and GCP without service account keys
-
-**Created Workload Identity Provider:**
-- Provider: `github-provider`
-- Pool: `github-actions-pool`
-- Issuer: `https://token.actions.githubusercontent.com`
-- Attribute Mapping: Maps GitHub repository to GCP identity
-- Attribute Condition: `assertion.repository_owner=='MLOpsGroup9'`
-- Repository: `MLOpsGroup9/FrontShiftAI`
-
-**Benefits:**
-- ✅ No service account keys needed (more secure)
-- ✅ GitHub Actions authenticates via OIDC tokens
-- ✅ Automatic credential rotation
-- ✅ Fine-grained access control
-- ✅ Industry best practice for CI/CD
-
-#### 3. Service Account Configuration ✅
-**Created GitHub Actions Service Account:**
-- Account: `github-actions@frontshiftai.iam.gserviceaccount.com`
-- Purpose: Execute deployments from GitHub Actions workflows
-
-**Granted IAM Permissions:**
+**Solution:**
 ```bash
-roles/storage.admin              # Access GCS bucket for ChromaDB
-roles/artifactregistry.writer    # Push Docker images to registry
-roles/run.admin                  # Deploy and manage Cloud Run services
-roles/iam.serviceAccountUser     # Run services as service account
-roles/cloudsql.client            # Connect to Cloud SQL database
+gcloud projects add-iam-policy-binding frontshiftai \
+  --member="serviceAccount:558177025654-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
 ```
 
-**Linked to GitHub Repository:**
-- Repository: `MLOpsGroup9/FrontShiftAI`
-- Authentication Method: Workload Identity Federation
-- Scope: Repository-level access only
-- Security: No downloadable keys, OIDC-based authentication
+#### Issue 2: Port Mismatch ❌ → ✅
+**Problem:** Container listening on 8000, Cloud Run expects 8080
 
-#### 4. Secret Manager Setup ✅
-**Stored Production Secrets:**
-| Secret Name | Purpose | Version |
-|-------------|---------|---------|
-| `GROQ_API_KEY` | Groq API credentials | latest |
-| `BRAVE_API_KEY` | Brave Search API credentials | latest |
-| `JWT_SECRET_KEY` | Secure random key for JWT tokens | latest |
-| `INCEPTION_API_KEY` | Mercury Labs API credentials | latest |
-| `DATABASE_URL` | PostgreSQL connection with Unix socket | latest |
-
-**Secret Configuration:**
-- Replication: Automatic (multi-region)
-- Encryption: At rest and in transit
-- Access: Via `secretAccessor` role
-- Versioning: Enabled (can rollback)
-
-**Database URL Format (Cloud Run):**
-```bash
-postgresql://postgres:MLOpsgroup%409@/frontshiftai?host=/cloudsql/frontshiftai:us-central1:frontshiftai-db
+**Solution:** Updated Dockerfile:
+```dockerfile
+EXPOSE 8080
+CMD ["gunicorn", "main:app", "--bind", "0.0.0.0:8080"]
 ```
-Note: Uses Unix socket (`/cloudsql/...`) instead of IP for better security and performance
 
-#### 5. GitHub Repository Secrets ✅
-**Added Configuration Secrets:**
-| Secret Name | Value | Purpose |
-|-------------|-------|---------|
-| `GCP_PROJECT_ID` | `frontshiftai` | GCP project identifier |
-| `GCP_PROJECT_NUMBER` | `558177025654` | Numerical project ID |
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | `projects/558177025654/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider` | Workload Identity provider path |
-| `GCP_SERVICE_ACCOUNT` | `github-actions@frontshiftai.iam.gserviceaccount.com` | Service account email |
+**Note:** Local development uses 8000, Cloud Run requires 8080
 
-**Purpose:**
-- Configure GitHub Actions workflow
-- Enable Workload Identity authentication
-- Reference GCP resources securely
+#### Issue 3: ChromaDB Download ❌ → ✅
+**Problem:** ChromaDB not downloading from GCS
 
-#### 6. GitHub Actions Workflow ✅
-**Created `.github/workflows/deploy-cloudrun.yml`**
+**Solution:** Updated `data_loader.py` to download and extract tar.gz
 
-**Workflow Trigger:**
+#### Issue 4: GitHub Actions Disk Space ❌ → ✅
+**Problem:** Build failed with "no space left on device"
+
+**Solution:** Added cleanup step to workflow:
+```yaml
+- name: Free up disk space
+  run: |
+    sudo rm -rf /usr/share/dotnet
+    sudo rm -rf /opt/ghc
+    docker system prune -af
+```
+
+**Deployment Success:**
+- URL: https://frontshiftai-backend-vvukpmzsxa-uc.a.run.app
+- Memory: 2Gi
+- CPU: 2 cores
+- Auto-scaling: 0-10 instances
+- Status: ✅ LIVE
+
+### Phase 5: Frontend Deployment ✅ COMPLETE
+**Session 7 (Dec 5, 2025) - 4 hours**
+
+**Accomplishments:**
+
+#### 1. Frontend Build Configuration ✅
+- Created `.env` for local development
+- Created `.env.production` for Cloud Run
+- Configured production backend URL
+- Built optimized production bundle
+
+#### 2. Nginx Configuration ✅
+- Created `nginx.conf` with health check
+- Configured static file serving
+- Set up proper MIME types
+
+#### 3. Frontend Dockerfile ✅
+Created `Dockerfile.frontend`:
+- Multi-stage build (Node 18 + Nginx Alpine)
+- Production bundle optimization
+- Port 80 exposure
+- Health check endpoint
+
+#### 4. Artifact Registry ✅
+```bash
+gcloud artifacts repositories create frontshiftai-frontend \
+  --repository-format=docker \
+  --location=us-central1
+```
+
+#### 5. Deployment Workflow ✅
+Created `.github/workflows/deploy-frontend.yml`:
+- Triggers on push to krishna-branch
+- Builds and deploys automatically
+- Memory: 512Mi, CPU: 1
+- Auto-scaling: 0-10 instances
+
+**Deployment Success:**
+- URL: https://frontshiftai-frontend-558177025654.us-central1.run.app
+- Status: ✅ LIVE
+- Features: Login, Chat, PTO Requests, HR Tickets
+
+### Phase 6: ChromaDB & HuggingFace Integration ✅ COMPLETE
+**Session 7 (Dec 5, 2025) - Continued**
+
+**Issues Resolved:**
+
+#### Issue 5: ChromaDB tar.gz Missing ❌ → ✅
+**Problem:** ChromaDB stored as individual files, not tar.gz
+
+**Solution:**
+```bash
+cd data_pipeline/data
+tar -czf chroma_db.tar.gz vector_db/
+gsutil cp chroma_db.tar.gz gs://frontshiftai-data/
+```
+
+#### Issue 6: Missing CHROMA_REMOTE_URI ❌ → ✅
+**Problem:** Backend didn't know where to download ChromaDB
+
+**Solution:** Added to deployment workflow:
+```yaml
+--set-env-vars ENVIRONMENT=production,GENERATION_BACKEND=mercury,CHROMA_REMOTE_URI=gs://frontshiftai-data/chroma_db.tar.gz \
+```
+
+#### Issue 7: HuggingFace Rate Limiting ❌ → ✅
+**Problem:** 429 Too Many Requests from HuggingFace
+
+**Solution:**
+```bash
+# Created HF token and stored in Secret Manager
+echo -n "hf_..." | gcloud secrets create HF_TOKEN --data-file=-
+
+# Updated Cloud Run to mount HF_TOKEN
+gcloud run services update frontshiftai-backend \
+  --set-secrets=HF_TOKEN=HF_TOKEN:latest
+```
+
+#### Issue 8: Dockerfile Directory Structure ❌ → ✅
+**Problem:** Wrong directory created for ChromaDB
+
+**Solution:** Changed Dockerfile from:
+```dockerfile
+RUN mkdir -p /app/models /app/data/vector_db
+```
+To:
+```dockerfile
+RUN mkdir -p /app/models /app/data_pipeline/data
+```
+
+#### Issue 9: Embedding Model Download at Runtime ❌ → ✅
+**Problem:** Model download at runtime caused delays and rate limits
+
+**Solution:** Pre-download model during Docker build:
+```dockerfile
+# In builder stage
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
+
+# Copy cache to final image
+COPY --from=builder /root/.cache/huggingface /root/.cache/huggingface
+ENV HF_HOME=/root/.cache/huggingface
+```
+
+**Result:** Model cached in Docker image, no runtime download needed!
+
+---
+
+## Current Production Status
+
+### Live Services ✅
+
+| Service | URL | Status |
+|---------|-----|--------|
+| Backend API | https://frontshiftai-backend-vvukpmzsxa-uc.a.run.app | ✅ LIVE |
+| Frontend UI | https://frontshiftai-frontend-558177025654.us-central1.run.app | ✅ LIVE |
+| API Docs | https://frontshiftai-backend-vvukpmzsxa-uc.a.run.app/docs | ✅ LIVE |
+
+### Infrastructure ✅
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| Cloud SQL | ✅ Running | PostgreSQL 15, db-f1-micro |
+| Cloud Storage | ✅ Active | ChromaDB tar.gz uploaded |
+| Artifact Registry | ✅ Active | 2 repositories (backend + frontend) |
+| Secret Manager | ✅ Active | 6 secrets stored |
+| Cloud Run Backend | ✅ Live | Auto-scaling 0-10 instances |
+| Cloud Run Frontend | ✅ Live | Auto-scaling 0-10 instances |
+
+### Features Working ✅
+
+- ✅ User authentication (JWT)
+- ✅ Multi-tenant data isolation (19 companies)
+- ✅ AI chat with unified agent router
+- ✅ PTO request management
+- ✅ HR ticket system
+- ✅ RAG with ChromaDB vector store
+- ✅ Mercury Labs API integration
+- ✅ Website extraction fallback
+- ✅ Chat history persistence
+- ✅ Role-based access control
+
+---
+
+## Secret Manager Configuration
+
+### All Secrets (6 total)
+
+| Secret Name | Purpose | Status |
+|-------------|---------|--------|
+| `GROQ_API_KEY` | Groq API (fallback LLM) | ✅ Active |
+| `BRAVE_API_KEY` | Brave Search API | ✅ Active |
+| `JWT_SECRET_KEY` | JWT token signing | ✅ Active |
+| `INCEPTION_API_KEY` | Mercury Labs API | ✅ Active |
+| `DATABASE_URL` | PostgreSQL connection | ✅ Active |
+| `HF_TOKEN` | HuggingFace API token | ✅ Active |
+
+### Service Account Permissions
+
+**GitHub Actions Service Account:**
+- `github-actions@frontshiftai.iam.gserviceaccount.com`
+- Roles: storage.admin, artifactregistry.writer, run.admin, iam.serviceAccountUser, cloudsql.client
+
+**Cloud Run Runtime Service Account:**
+- `558177025654-compute@developer.gserviceaccount.com`
+- Roles: secretmanager.secretAccessor, cloudsql.client
+
+---
+
+## GitHub Actions Workflows
+
+### Backend Deployment (deploy-backend.yml)
+
+**Trigger:**
 ```yaml
 on:
   push:
     branches:
-      - main  # Only deploys when pushing to main
-    paths:    # Only when these files change
+      - krishna-branch
+    paths:
       - 'backend/**'
       - 'chat_pipeline/**'
       - 'data_pipeline/**'
       - 'Dockerfile.backend'
-      - '.github/workflows/deploy-cloudrun.yml'
+      - '.github/workflows/deploy-backend.yml'
 ```
 
-**Workflow Jobs:**
-1. **Checkout Code** - Gets latest code from repository
-2. **Authenticate to GCP** - Uses Workload Identity Federation (keyless!)
-3. **Setup Cloud SDK** - Installs gcloud CLI tools
-4. **Configure Docker** - Authenticates to Artifact Registry
-5. **Build Docker Image** - Builds for `linux/amd64` platform (Cloud Run compatible)
-6. **Push to Artifact Registry** - Pushes both SHA-tagged and latest-tagged images
-7. **Deploy to Cloud Run** - Deploys with full configuration
-8. **Show Deployment URL** - Outputs public backend URL in logs
+**Key Steps:**
+1. Free up disk space (cleanup)
+2. Authenticate via Workload Identity
+3. Build Docker image with pre-cached embedding model
+4. Push to Artifact Registry
+5. Deploy to Cloud Run with all secrets and env vars
 
-**Cloud Run Service Configuration:**
+**Environment Variables:**
 ```yaml
-Service Name: frontshiftai-backend
-Region: us-central1
-Memory: 2Gi
-CPU: 2
-Timeout: 300s (5 minutes)
-Min Instances: 0 (scales to zero when idle)
-Max Instances: 10 (auto-scales based on traffic)
-Authentication: allow-unauthenticated (public API)
-
-Environment Variables:
-  - ENVIRONMENT=production
-  - GENERATION_BACKEND=mercury
-
-Secrets (from Secret Manager):
-  - GROQ_API_KEY=GROQ_API_KEY:latest
-  - BRAVE_API_KEY=BRAVE_API_KEY:latest
-  - JWT_SECRET_KEY=JWT_SECRET_KEY:latest
-  - INCEPTION_API_KEY=INCEPTION_API_KEY:latest
-  - DATABASE_URL=DATABASE_URL:latest
-
-Cloud SQL Connection:
-  - Instance: frontshiftai:us-central1:frontshiftai-db
-  - Method: Unix socket (/cloudsql/...)
+ENVIRONMENT=production
+GENERATION_BACKEND=mercury
+CHROMA_REMOTE_URI=gs://frontshiftai-data/chroma_db.tar.gz
 ```
 
-**Multi-Platform Build:**
-- Platform: `linux/amd64` (Intel/AMD compatible)
-- Compatible with: Cloud Run servers
-- Solves: ARM64/M4 Mac compatibility issue
-- Build Time: ~3-5 minutes
+**Secrets Mounted:**
+- GROQ_API_KEY, BRAVE_API_KEY, JWT_SECRET_KEY
+- INCEPTION_API_KEY, DATABASE_URL, HF_TOKEN
 
-#### 7. Deployment Workflow ✅
+### Frontend Deployment (deploy-frontend.yml)
 
-**Full Deployment Flow:**
-```
-Developer merges PR to main branch
-    ↓
-GitHub Actions workflow triggered automatically
-    ↓
-Authenticate to GCP via Workload Identity
-    ↓
-Build Docker image (linux/amd64)
-    ↓
-Push image to Artifact Registry
-  - Tag 1: backend:{github.sha}
-  - Tag 2: backend:latest
-    ↓
-Deploy to Cloud Run
-  - Pull image from Artifact Registry
-  - Configure environment variables
-  - Mount secrets from Secret Manager
-  - Connect to Cloud SQL via Unix socket
-  - Set resource limits (2Gi RAM, 2 CPU)
-    ↓
-Cloud Run service starts
-  1. Container initialization
-  2. Sync ChromaDB from GCS (ensure_chroma_store)
-  3. Connect to Cloud SQL database
-  4. Read secrets from Secret Manager
-  5. Initialize database tables
-  6. Seed initial data (if needed)
-  7. Start Gunicorn with Uvicorn workers
-  8. Health check endpoint ready: /health
-    ↓
-Backend live at: https://frontshiftai-backend-*.run.app
+**Trigger:**
+```yaml
+on:
+  push:
+    branches:
+      - krishna-branch
 ```
 
-**Deployment Time Estimate:**
-- Build Docker image: ~3-5 minutes
-- Push to Artifact Registry: ~1-2 minutes
-- Deploy to Cloud Run: ~2-3 minutes
-- **Total: ~6-10 minutes** per deployment
+**Key Steps:**
+1. Authenticate via Workload Identity
+2. Build React production bundle
+3. Build Nginx container
+4. Push to Artifact Registry
+5. Deploy to Cloud Run
 
-### Architecture Decisions ✅
-
-**Why Workload Identity Federation?**
-- ✅ Eliminates need for service account keys
-- ✅ Automatic credential rotation (no manual key management)
-- ✅ More secure (no keys to leak or steal)
-- ✅ Industry best practice for CI/CD
-- ✅ Reduces attack surface significantly
-
-**Why Secret Manager?**
-- ✅ Centralized secret storage
-- ✅ Encrypted at rest and in transit
-- ✅ Automatic versioning and rollback capability
-- ✅ Fine-grained IAM access control
-- ✅ Audit logs for secret access
-- ✅ Better than environment variables in GitHub
-
-**Why Cloud Run?**
-- ✅ Serverless (no server management or patching)
-- ✅ Auto-scaling (0 to 1000+ instances automatically)
-- ✅ Pay per use (scales to zero when idle = $0)
-- ✅ Automatic HTTPS with managed certificates
-- ✅ Built-in load balancing and health checks
-- ✅ Fast deployments (~2-3 minutes)
-- ✅ Easy rollbacks to previous versions
-
-**Why Artifact Registry?**
-- ✅ Private Docker registry (secure)
-- ✅ Integrated with Cloud Run
-- ✅ Automatic vulnerability scanning
-- ✅ Image lifecycle management
-- ✅ Better than Docker Hub for GCP
-- ✅ Regional storage (faster pulls)
-
-**Why linux/amd64 Build?**
-- ✅ Cloud Run uses Intel/AMD servers
-- ✅ M4 Mac builds ARM64 by default (incompatible)
-- ✅ GitHub Actions runners are x86_64
-- ✅ Ensures production compatibility
-
-### Current Status ✅
-
-**Committed to `krishna-branch`:**
-- ✅ Workflow file created (`.github/workflows/deploy-cloudrun.yml`)
-- ✅ All GCP infrastructure configured
-- ✅ All secrets stored securely in Secret Manager
-- ✅ GitHub repository secrets added
-- ✅ Service account permissions granted
-- ✅ Workload Identity Federation configured
-- ✅ Artifact Registry repository created
-- ✅ Ready for deployment
-
-**Not Yet Deployed:**
-- ⏳ Waiting for Pull Request creation
-- ⏳ Waiting for PR review and merge to `main`
-- ⏳ GitHub Actions workflow will trigger on merge
-- ⏳ First production deployment pending
-
-**Next Steps to Deploy:**
-1. Create Pull Request: `krishna-branch` → `main`
-2. Review changes in PR
-3. Merge PR to `main` branch
-4. GitHub Actions automatically triggers
-5. Monitor deployment in Actions tab
-6. Verify backend at Cloud Run URL
-7. Test all API endpoints
+**Configuration:**
+- Memory: 512Mi
+- CPU: 1
+- Port: 80
+- Min instances: 0 (scales to zero)
+- Max instances: 10
 
 ---
 
-## Issues Resolved
+## Deployment Optimizations
 
-[Keep all issues 1-8 from previous README]
+### Backend Optimizations
 
-### Issue 9: Workload Identity Provider Creation ❌ → ✅
-**Problem:** `INVALID_ARGUMENT: The attribute condition must reference one of the provider's claims`
+**1. Pre-cached Embedding Model:**
+```dockerfile
+# Download model during build (not runtime!)
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
 
-**Root Cause:** Missing attribute condition in provider configuration
+# Copy cache to final image
+COPY --from=builder /root/.cache/huggingface /root/.cache/huggingface
+```
 
-**Solution:**
+**Benefits:**
+- No runtime download delays
+- No HuggingFace rate limit issues
+- Faster cold starts
+- Consistent performance
+
+**2. ChromaDB as Single Archive:**
+- Stored as `chroma_db.tar.gz` (~500MB compressed)
+- Single download instead of many small files
+- Faster startup, fewer GCS API calls
+
+**3. Disk Space Management:**
+- GitHub Actions cleanup before build
+- Frees ~14GB for large Docker builds
+
+### Frontend Optimizations
+
+**1. Multi-stage Build:**
+- Build stage: Node 18 Alpine
+- Production stage: Nginx Alpine
+- Final image: ~50MB
+
+**2. Production Environment:**
+- Separate `.env.production` with Cloud Run backend URL
+- Optimized Vite build with code splitting
+
+**3. Nginx Configuration:**
+- Static file serving optimized
+- Health check endpoint
+- Proper MIME type handling
+
+---
+
+## Cost Breakdown
+
+### Monthly Costs (After Free Credits)
+
+| Service | Configuration | Monthly Cost |
+|---------|---------------|--------------|
+| Cloud SQL | db-f1-micro (PostgreSQL 15) | ~$10 |
+| Cloud Storage | ChromaDB tar.gz + data (~600MB) | ~$0.02 |
+| Cloud Run Backend | 2Gi RAM, 2 CPU, scales to 0 | ~$0-2 |
+| Cloud Run Frontend | 512Mi RAM, 1 CPU, scales to 0 | ~$0-1 |
+| Artifact Registry | Docker images (~2GB total) | ~$0.20 |
+| Secret Manager | 6 secrets | ~$0.01 |
+| **Total** | | **~$10-13/month** |
+
+**With $300 Free Credits:** FREE for ~23-30 months! 🎉
+
+---
+
+## Testing & Validation
+
+### Production Testing Results ✅
+
+**Health Checks:**
 ```bash
-# Added attribute condition to restrict to specific GitHub org
---attribute-condition="assertion.repository_owner=='MLOpsGroup9'"
+curl https://frontshiftai-backend-vvukpmzsxa-uc.a.run.app/health
+# Response: {"status":"healthy","database":"connected","service":"backend"}
+
+curl https://frontshiftai-frontend-558177025654.us-central1.run.app/health
+# Response: healthy
 ```
 
-### Issue 10: Secret Manager API Not Enabled ❌ → ✅
-**Problem:** `Secret Manager API has not been used in project`
-
-**Solution:**
+**Authentication:**
 ```bash
-gcloud services enable secretmanager.googleapis.com
+curl -X POST .../api/auth/login -d '{"email":"user@crousemedical.com","password":"password123"}'
+# Response: {"access_token":"...","company":"Crouse Medical Practice"}
 ```
 
----
+**RAG System:**
+```bash
+curl -X POST .../api/chat/message -d '{"message":"What is the PTO policy?"}'
+# Response: Full PTO policy from handbook with sources
+```
 
-## Files Created/Modified (Complete List)
-
-### New Files Created
-
-**Root Level:**
-1. `Dockerfile.backend` - Multi-stage backend container
-2. `docker-compose.yml` - Local testing orchestration
-
-**Backend:**
-1. `backend/api/health.py` - Health check endpoint
-
-**GitHub Workflows:**
-1. `.github/workflows/deploy-cloudrun.yml` - Cloud Run deployment workflow
-
-### Files Modified
-
-[Keep all modifications from previous README]
+**All Tests Passed:** ✅
+- Frontend loads and displays correctly
+- Login authentication working
+- RAG queries returning handbook information
+- PTO agent creating requests
+- HR ticket agent working
+- Multi-tenancy confirmed
+- Database queries successful
+- Auto-scaling verified
 
 ---
 
-## Testing Progress
+## Session Summary
 
-### Phase 1: Infrastructure ✅
-- [x] Cloud SQL instance created
-- [x] Database initialized
-- [x] Tables created (9 tables)
-- [x] Initial data seeded (19 companies)
-- [x] Cloud SQL Proxy working
-- [x] ChromaDB confirmed in GCS
-
-### Phase 2: Docker ✅
-- [x] Dockerfile.backend created
-- [x] Multi-stage build working
-- [x] Image builds successfully (~680MB)
-- [x] docker-compose.yml created
-- [x] All services running
-- [x] Health checks passing
-- [x] Authentication tested
-
-### Phase 2.5: Integration Testing ✅
-- [x] Local SQLite tested (auto-detection)
-- [x] Local PostgreSQL tested (Cloud SQL Proxy)
-- [x] Docker PostgreSQL tested (docker-compose)
-- [x] Database seeding verified
-- [x] Multi-tenancy confirmed
-- [x] All API endpoints verified
-- [x] Database auto-detection verified
-- [x] Mercury API integration tested
-
-### Phase 3: GitHub Actions ✅
-- [x] Artifact Registry repository created
-- [x] Workload Identity Federation configured
-- [x] Service account created and permissions granted
-- [x] Secrets stored in Secret Manager
-- [x] GitHub repository secrets configured
-- [x] Workflow file created and pushed to branch
-- [ ] Pull Request created (pending)
-- [ ] Merged to main (pending)
-- [ ] Backend deployed to Cloud Run (pending)
-- [ ] Live backend tested (pending)
-
-### Phase 4: Monitoring 🔄
-- [ ] Cloud Monitoring integration
-- [ ] Custom metrics configured
-- [ ] Alert policies created
-- [ ] Performance dashboards
+| Session | Date | Focus | Time | Status |
+|---------|------|-------|------|--------|
+| 1 | Dec 2 (AM) | Cloud SQL setup | 2h | ✅ |
+| 2 | Dec 2 (PM) | Docker containerization | 3h | ✅ |
+| 3 | Dec 3 (AM) | Integration testing | 1h | ✅ |
+| 4 | Dec 3 (PM) | Mercury API integration | 2h | ✅ |
+| 5 | Dec 3 (Eve) | GitHub Actions setup | 2h | ✅ |
+| 6 | Dec 4 (PM) | Backend deployment | 4h | ✅ |
+| 7 | Dec 5 (AM) | Frontend deployment & fixes | 4h | ✅ |
+| **Total** | | | **18h** | ✅ |
 
 ---
 
 ## Commands Reference
 
-[Keep all commands from previous README sections, then add:]
-
-### GitHub Actions Commands
-
-**View Workflow Runs:**
-```bash
-# In GitHub UI: Actions tab
-# Or via GitHub CLI
-gh run list --workflow=deploy-cloudrun.yml
-```
-
-**View Workflow Logs:**
-```bash
-# Get latest run
-gh run view --log
-```
-
-**Manually Trigger Workflow:**
-```bash
-# Only if workflow_dispatch is enabled
-gh workflow run deploy-cloudrun.yml
-```
-
-### Cloud Run Commands
-
-**List Services:**
-```bash
-gcloud run services list --region=us-central1
-```
-
-**Describe Service:**
-```bash
-gcloud run services describe frontshiftai-backend --region=us-central1
-```
+### Backend Commands
 
 **View Logs:**
 ```bash
-gcloud run services logs read frontshiftai-backend --region=us-central1
+gcloud run services logs read frontshiftai-backend --region=us-central1 --limit=100
 ```
 
 **Update Service:**
 ```bash
 gcloud run services update frontshiftai-backend \
   --region=us-central1 \
-  --memory=4Gi  # Example: increase memory
+  --memory=4Gi
 ```
 
-**Rollback to Previous Revision:**
+**Redeploy:**
 ```bash
-# List revisions
-gcloud run revisions list --service=frontshiftai-backend --region=us-central1
-
-# Rollback
-gcloud run services update-traffic frontshiftai-backend \
-  --to-revisions=REVISION_NAME=100 \
+gcloud run deploy frontshiftai-backend \
+  --image=us-central1-docker.pkg.dev/frontshiftai/frontshiftai-backend/backend:latest \
   --region=us-central1
 ```
 
-### Secret Manager Commands
+### Frontend Commands
 
-**List Secrets:**
+**View Logs:**
 ```bash
-gcloud secrets list
+gcloud run services logs read frontshiftai-frontend --region=us-central1 --limit=100
 ```
 
-**View Secret Versions:**
+**Redeploy:**
 ```bash
-gcloud secrets versions list GROQ_API_KEY
+gcloud run deploy frontshiftai-frontend \
+  --image=us-central1-docker.pkg.dev/frontshiftai/frontshiftai-frontend/frontend:latest \
+  --region=us-central1
 ```
 
-**Access Secret Value:**
+### ChromaDB Management
+
+**Update ChromaDB:**
 ```bash
-gcloud secrets versions access latest --secret=GROQ_API_KEY
+# After running data pipeline locally
+cd data_pipeline/data
+tar -czf chroma_db.tar.gz vector_db/
+gsutil cp chroma_db.tar.gz gs://frontshiftai-data/
+
+# Restart backend to download new version
+gcloud run services update frontshiftai-backend --region=us-central1
 ```
 
-**Update Secret:**
-```bash
-echo -n "new_secret_value" | gcloud secrets versions add GROQ_API_KEY --data-file=-
-```
+---
+
+## What We Built
+
+### Infrastructure
+- Cloud SQL PostgreSQL database
+- Cloud Storage for ChromaDB
+- Artifact Registry (2 repositories)
+- Secret Manager (6 secrets)
+- Workload Identity Federation
+
+### Application
+- FastAPI backend with 3 AI agents
+- React frontend with Tailwind CSS
+- Multi-tenant architecture (19 companies)
+- JWT authentication
+- PTO request management
+- HR ticket system
+- RAG-powered chat
+
+### DevOps
+- Dual GitHub Actions workflows
+- Automated deployments
+- Docker containerization
+- Cloud Run serverless hosting
+- Auto-scaling infrastructure
+- Pre-cached models for performance
 
 ---
 
-## Environment Variables Summary
+## What's Next (Optional)
 
-[Keep all environment sections from previous README]
+### Phase 7: Model Validation & Bias Detection
+**Time:** 4-6 hours | **Priority:** HIGH (coursework)
 
----
+- Implement model evaluation metrics
+- Compare Mercury vs Groq performance
+- Data slicing by company
+- Bias detection reports
+- Visualizations
 
-## GitHub Actions Workflow Details
+### Phase 8: Monitoring Dashboard
+**Time:** 3-4 hours | **Priority:** HIGH (coursework requirement)
 
-### Workflow File Location
-`.github/workflows/deploy-cloudrun.yml`
+- Admin monitoring page at `/admin/monitoring`
+- Request counts, response times, error rates
+- Agent usage breakdown
+- Real-time metrics
 
-### Environment Variables
-```yaml
-PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-REGION: us-central1
-SERVICE_NAME: frontshiftai-backend
-REPOSITORY: frontshiftai-backend
-```
+### Phase 9: Data Drift Detection
+**Time:** 3-4 hours | **Priority:** HIGH (coursework)
 
-### Key Features
-- ✅ Only runs on `main` branch
-- ✅ Only runs when backend/pipeline code changes
-- ✅ Uses Workload Identity (no service account keys!)
-- ✅ Builds for linux/amd64 platform
-- ✅ Tags images with both commit SHA and 'latest'
-- ✅ Deploys with full Cloud Run configuration
-- ✅ Mounts secrets from Secret Manager
-- ✅ Connects to Cloud SQL via Unix socket
-- ✅ Shows deployment URL in logs
-
-### Workflow Permissions
-```yaml
-permissions:
-  contents: read      # Read repository code
-  id-token: write     # Generate OIDC token for Workload Identity
-```
-
-### Estimated Costs per Deployment
-- GitHub Actions: FREE (2000 minutes/month free tier)
-- Artifact Registry Storage: ~$0.10/GB/month
-- Cloud Run Build: No charge (runs on GitHub)
-- Data Egress: Minimal (GCP → GCP transfer)
+- Evidently AI integration
+- Data drift monitoring
+- Automated reports
 
 ---
 
-## Cost Breakdown (Updated)
+## Resources
 
-### Current Monthly Costs (After Free Credits)
+### Live URLs
+- **Frontend:** https://frontshiftai-frontend-558177025654.us-central1.run.app
+- **Backend:** https://frontshiftai-backend-vvukpmzsxa-uc.a.run.app
+- **API Docs:** https://frontshiftai-backend-vvukpmzsxa-uc.a.run.app/docs
 
-**Cloud SQL:**
-- Instance: db-f1-micro
-- Cost: ~$10/month
-- Storage: 10GB (auto-increase enabled)
-- Backups: Automated daily at 3:00 AM
+### GitHub
+- **Repository:** https://github.com/MLOpsGroup9/FrontShiftAI
+- **Actions:** https://github.com/MLOpsGroup9/FrontShiftAI/actions
 
-**Cloud Storage:**
-- Model storage: 2GB
-- Vector DB: ~500MB
-- Documents: ~100MB
-- Cost: ~$1/month
-
-**Cloud Run:**
-- First 2M requests/month: FREE
-- First 360K GB-seconds: FREE
-- Estimated: ~$5-10/month (backend, low-medium traffic)
-
-**Artifact Registry:**
-- First 0.5GB storage: FREE
-- Estimated: ~$0.50/month per additional GB
-
-**Secret Manager:**
-- First 10,000 operations: FREE
-- Estimated: ~$0.10/month per 10K operations
-
-**Total New Monthly Costs:**
-- Cloud SQL: ~$10/month
-- Cloud Storage: ~$1/month
-- Cloud Run: ~$5-10/month
-- Artifact Registry: ~$0.50/month
-- Secret Manager: ~$0.10/month
-- **Grand Total: ~$17-22/month**
-
-**With $300 Credits:** Still FREE for 13-17 months! 🎉
-
-### Cost Optimization Tips
-- ✅ Cloud Run scales to zero (pay only for requests)
-- ✅ Use free tier limits (2M requests, 360K GB-seconds/month)
-- ✅ Artifact Registry lifecycle policies (delete old images)
-- ✅ Cloud SQL automatic storage increase (pay only for used)
-- ✅ Secret Manager caching (reduce access operations)
+### GCP Console
+- **Cloud Run:** https://console.cloud.google.com/run?project=frontshiftai
+- **Cloud SQL:** https://console.cloud.google.com/sql/instances?project=frontshiftai
+- **Artifact Registry:** https://console.cloud.google.com/artifacts?project=frontshiftai
+- **Secret Manager:** https://console.cloud.google.com/security/secret-manager?project=frontshiftai
 
 ---
 
-## Session Summary
-
-### Session 1 (Dec 2, 2025 - Morning)
-**Time:** ~2 hours | **Focus:** Infrastructure setup
-- Created Cloud SQL PostgreSQL instance
-- Set up database and tables
-- Installed Cloud SQL Proxy
-
-### Session 2 (Dec 2, 2025 - Afternoon)
-**Time:** ~3 hours | **Focus:** Docker containerization
-- Created Dockerfile.backend
-- Created docker-compose.yml
-- Resolved module import issues
-- Successfully tested full stack
-
-### Session 3 (Dec 3, 2025 - Morning)
-**Time:** ~1 hour | **Focus:** Integration testing
-- Tested local and Docker PostgreSQL
-- Verified database seeding
-- Confirmed API endpoints working
-
-### Session 4 (Dec 3, 2025 - Afternoon)
-**Time:** ~2 hours | **Focus:** Mercury API integration
-- Removed local LLaMA model dependencies
-- Implemented database auto-detection
-- Fixed ChromaDB integration
-- Tested 3 scenarios successfully
-- Optimized for production deployment
-
-### Session 5 (Dec 3, 2025 - Evening)
-**Time:** ~2 hours | **Focus:** GitHub Actions & Cloud Run
-**Accomplished:**
-- Enabled GCP APIs (Artifact Registry, Cloud Run, Secret Manager)
-- Created Artifact Registry repository
-- Configured Workload Identity Federation (keyless authentication)
-- Created and configured GitHub Actions service account
-- Stored all secrets in Secret Manager
-- Added GitHub repository secrets
-- Created GitHub Actions deployment workflow
-- Pushed workflow to krishna-branch
-- Ready for production deployment
-
-**Total Time Investment:** ~10 hours (across 5 sessions)
-**Status:** Phase 3 Complete ✅ | Ready for Production Deployment 🚀
-
----
-
-## What Happens on First Deployment
-
-When you merge to `main`, here's what will happen:
-
-1. **GitHub Actions Triggers** (~1 second)
-   - Workflow detects push to main with backend changes
-   - Job starts on Ubuntu runner
-
-2. **Authentication** (~5 seconds)
-   - Exchanges GitHub OIDC token for GCP credentials
-   - No keys involved - completely keyless!
-
-3. **Build Phase** (~3-5 minutes)
-   - Checks out code
-   - Builds Docker image for linux/amd64
-   - Multi-stage build optimizes image size
-
-4. **Registry Push** (~1-2 minutes)
-   - Authenticates to Artifact Registry
-   - Pushes image with SHA and latest tags
-
-5. **Deployment** (~2-3 minutes)
-   - Cloud Run pulls image from Artifact Registry
-   - Mounts secrets from Secret Manager
-   - Connects to Cloud SQL via Unix socket
-   - Sets environment variables
-   - Starts container
-
-6. **Container Startup** (~30-60 seconds)
-   - Downloads ChromaDB from GCS
-   - Connects to Cloud SQL database
-   - Initializes database tables
-   - Seeds initial data (if needed)
-   - Starts Gunicorn server
-   - Health check passes
-
-7. **Live!** 🎉
-   - Backend accessible at: `https://frontshiftai-backend-*.run.app`
-   - All API endpoints ready
-   - Auto-scales based on traffic
-   - Logs available in Cloud Run console
-
-**First deployment Total Time: ~6-10 minutes**
-**Subsequent deployments: ~5-8 minutes** (cached layers)
-
----
-
-## Resources & Documentation
-
-### Official Documentation
-- [Cloud Run](https://cloud.google.com/run/docs)
-- [Cloud SQL for PostgreSQL](https://cloud.google.com/sql/docs/postgres)
-- [Artifact Registry](https://cloud.google.com/artifact-registry/docs)
-- [Secret Manager](https://cloud.google.com/secret-manager/docs)
-- [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation)
-- [GitHub Actions](https://docs.github.com/en/actions)
-- [Docker Multi-stage Builds](https://docs.docker.com/build/building/multi-stage/)
-
-### FrontShiftAI Documentation
-- Backend README: `backend/README.md`
-- Agents README: `backend/agents/README.md`
-- Data Pipeline: `data_pipeline/README.md`
-- Chat Pipeline: `chat_pipeline/README.md`
-
-### GCP Console Links
-- [Cloud Run Services](https://console.cloud.google.com/run)
-- [Artifact Registry](https://console.cloud.google.com/artifacts)
-- [Secret Manager](https://console.cloud.google.com/security/secret-manager)
-- [Cloud SQL Instances](https://console.cloud.google.com/sql/instances)
-- [Cloud Storage](https://console.cloud.google.com/storage/browser/frontshiftai-data)
-- [IAM & Admin](https://console.cloud.google.com/iam-admin)
-
-### GitHub Links
-- [Repository](https://github.com/MLOpsGroup9/FrontShiftAI)
-- [Actions](https://github.com/MLOpsGroup9/FrontShiftAI/actions)
-- [Secrets](https://github.com/MLOpsGroup9/FrontShiftAI/settings/secrets/actions)
-
----
-
-**Last Updated:** December 3, 2025 (7:30 PM EST)  
-**Status:** Phase 3 Complete ✅ | Ready for Production Deployment 🚀  
-**Next Milestone:** Merge to main and deploy backend to Cloud Run  
-**Deployment Status:** Pending PR merge to `main` branch
+**Last Updated:** December 5, 2025  
+**Status:** 🎉 FULL-STACK APPLICATION LIVE IN PRODUCTION 🎉  
+**Progress:** Infrastructure & Deployment Complete (~50% of total coursework)  
+**Remaining:** MLOps features (model validation, monitoring, drift detection)

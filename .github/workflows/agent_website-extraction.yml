@@ -11,6 +11,9 @@ jobs:
   test-website-extraction-agent:
     name: Test Website Extraction Agent
     runs-on: ubuntu-latest
+    env:
+      JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+
 
     steps:
       - name: Checkout code

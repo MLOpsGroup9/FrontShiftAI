@@ -644,6 +644,13 @@ npm run build
 VITE_API_URL=https://api.yourcompany.com
 ```
 
+**Docker Build Arguments:**
+The `VITE_API_URL` must be passed as a build argument during the Docker build process to be baked into the static files.
+
+```bash
+docker build --build-arg VITE_API_URL=https://api.yourcompany.com -t frontend .
+```
+
 ### Hosting Options
 
 **Static Hosting:**

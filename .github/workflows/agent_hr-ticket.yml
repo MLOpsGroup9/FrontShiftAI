@@ -10,6 +10,9 @@ jobs:
   test-hr-ticket-agent:
     name: Test HR Ticket Agent
     runs-on: ubuntu-latest
+    env:
+      JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+
     
     steps:
       - name: Checkout code

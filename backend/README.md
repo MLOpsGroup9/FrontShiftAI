@@ -66,6 +66,10 @@ backend/
 │   ├── models.py           # ORM models [UPDATED]
 │   └── seed.py             # Initial data
 │
+├── jobs/                    # Background Jobs [NEW]
+│   ├── tasks.py            # Celery tasks
+│   └── worker.py           # Celery worker app
+│
 ├── schemas/                 # Data Validation
 │   ├── auth.py             # Auth schemas
 │   ├── rag.py              # RAG schemas

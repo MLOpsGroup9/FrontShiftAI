@@ -4,6 +4,21 @@ Authentication and user management service
 from db import SessionLocal, User, Company, UserRole
 from typing import Tuple, List, Dict, Optional
 from sqlalchemy.orm import Session
+import bcrypt
+
+def verify_password(plain_password, hashed_password):
+    # bcrypt.checkpw expects bytes
+    if isinstance(hashed_password, str):
+        hashed_password = hashed_password.encode('utf-8')
+    if isinstance(plain_password, str):
+        plain_password = plain_password.encode('utf-8')
+    return bcrypt.checkpw(plain_password, hashed_password)
+
+def get_password_hash(password):
+    if isinstance(password, str):
+        password = password.encode('utf-8')
+    # hashpw returns bytes, decode to store as string
+    return bcrypt.hashpw(password, bcrypt.gensalt()).decode('utf-8')
 
 def validate_credentials(email: str, password: str, db: Optional[Session] = None) -> Tuple[bool, Optional[str], Optional[str]]:
     """
@@ -21,9 +36,14 @@ def validate_credentials(email: str, password: str, db: Optional[Session] = None
         if not user:
             return False, None, None
         
-        # In production, use proper password hashing (bcrypt, argon2, etc.)
-        if user.password != password:
-            return False, None, None
+        # Check if password matches (handles both plaintext and hashed for migration)
+        if user.password.startswith("$2b$") or user.password.startswith("$2a$"):
+            if not verify_password(password, user.password):
+                return False, None, None
+        else:
+            # Fallback for legacy plaintext passwords (should be migrated!)
+            if user.password != password:
+                return False, None, None
         
         return True, user.company, user.role.value
     
@@ -133,7 +153,7 @@ def add_user(email: str, password: str, company: Optional[str], name: str, role:
         # Create user
         new_user = User(
             email=email,
-            password=password,  # In production, hash this!
+            password=get_password_hash(password),  # Hashed!
             name=name,
             company=company,
             role=UserRole(role)
@@ -195,7 +215,7 @@ def update_user_password(email: str, new_password: str, db: Optional[Session] = 
         if not user:
             return False, "User not found"
         
-        user.password = new_password  # In production, hash this!
+        user.password = get_password_hash(new_password)  # Hashed!
         db.commit()
         
         return True, f"Password updated for {email}"
