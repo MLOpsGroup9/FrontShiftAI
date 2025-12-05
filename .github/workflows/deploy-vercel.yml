@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - krishna-branch
-    paths:
-      - 'frontend/**'
 
 jobs:
   deploy:

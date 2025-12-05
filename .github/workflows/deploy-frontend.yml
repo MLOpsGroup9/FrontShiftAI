@@ -4,10 +4,6 @@ on:
   push:
     branches:
       - krishna-branch
-    paths:
-      - 'frontend/**'
-      - 'Dockerfile.frontend'
-      - '.github/workflows/deploy-frontend.yml'
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
