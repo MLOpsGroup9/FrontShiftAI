@@ -3,7 +3,7 @@ name: Deployment Pipeline - Deploy Frontend to Vercel
 on:
   push:
     branches:
-      - krishna-branch
+      - main
 
 jobs:
   deploy:

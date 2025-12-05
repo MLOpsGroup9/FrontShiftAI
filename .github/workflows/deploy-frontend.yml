@@ -3,7 +3,7 @@ name: Deployment Pipeline - Deploy Frontend to Cloud Run
 on:
   push:
     branches:
-      - krishna-branch
+      - main
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
