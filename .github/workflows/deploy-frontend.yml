@@ -43,6 +43,7 @@ jobs:
             -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/frontend:${{ github.sha }} \
             -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/frontend:latest \
             -f Dockerfile.frontend \
+            --build-arg VITE_API_URL=https://frontshiftai-backend-vvukpmzsxa-uc.a.run.app \
             .
 
       - name: Push to Artifact Registry
