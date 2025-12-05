@@ -1,4 +1,4 @@
-name: Agent Pipeline - Agent Tests - LLM Backend Configuration Check 
+name: Agent Pipeline - Agent Tests LLM Backend Configuration Check 
 on:
   push:
     branches: [ '**' ]
@@ -9,6 +9,8 @@ on:
 jobs:
   validate-config:
     runs-on: ubuntu-latest
+    env:
+      JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
     
     steps:
       - name: Checkout code
