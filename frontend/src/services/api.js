@@ -517,4 +517,23 @@ export const getHRTicketStats = async () => {
   }
 };
 
+// Admin: Get monitoring dashboard stats
+export const getMonitoringStats = async (timeRange = '7d') => {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+    const response = await api.get(`/api/admin/monitoring/stats?time_range=${timeRange}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Get Monitoring Stats Error:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
 export default api;

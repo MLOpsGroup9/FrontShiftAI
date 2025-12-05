@@ -792,6 +792,30 @@ GET /api/company/task-status/{task_id}
   }
 ```
 
+### Admin & Monitoring (NEW)
+```
+GET /api/admin/monitoring/stats
+  Query Params: ?time_range=24h|7d|30d
+  Headers: Authorization: Bearer <token>
+  Response: {
+    "overview": {
+      "total_requests": 1250,
+      "active_users": 45,
+      "error_rate": 0.8,
+      "avg_response_time": "1.2s"
+    },
+    "charts": {
+      "requests_over_time": [...],
+      "agent_usage": [...],        # Super Admin only
+      "company_activity": [...]    # Super Admin only
+    },
+    "operational_stats": {         # Company Admin only
+      "pending_pto": 3,
+      "open_tickets": 5
+    }
+  }
+```
+
 ### RAG Queries
 ```
 POST /api/rag/query

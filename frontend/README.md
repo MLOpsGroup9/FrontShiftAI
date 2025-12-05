@@ -32,7 +32,8 @@ frontend/
 │   │   ├── Login.jsx                # Authentication interface
 │   │   ├── ConnectionStatus.jsx     # Backend connection indicator
 │   │   ├── CompanyAdminDashboard.jsx  # Company admin interface
-│   │   └── SuperAdminDashboard.jsx    # Super admin interface
+│   │   ├── SuperAdminDashboard.jsx    # Super admin interface
+│   │   └── MonitoringDashboard.jsx    # Real-time analytics [NEW]
 │   │
 │   ├── services/            # API Integration
 │   │   └── api.js          # API client and endpoints
@@ -173,6 +174,16 @@ System: [HR Ticket Agent] Support ticket created...
 - Status tracking (pending, in_progress, scheduled, resolved, closed)
 - Meeting information display
 - Category icons for quick identification
+
+### Monitoring Dashboard (NEW)
+
+**Real-Time Analytics:**
+- **Role-Based Views**:
+  - **Super Admins**: Global system stats, agent usage distribution, company activity leaderboard.
+  - **Company Admins**: Company-specific stats, top active users, operational bottlenecks (PTO/Tickets).
+- **Visualizations**: Interactive charts using Recharts (Line, Bar, Pie).
+- **Dark Theme**: Dedicated dark mode UI for high-contrast monitoring.
+- **Metrics**: Request volume, response times, error rates, and active user counts.
 
 ### HR Ticket Notes System
 

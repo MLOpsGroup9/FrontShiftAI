@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { 
-  getAllPTOBalances, 
-  getAllPTORequests, 
-  approvePTORequest, 
+import {
+  getAllPTOBalances,
+  getAllPTORequests,
+  approvePTORequest,
   updatePTOBalance,
   resetPTOBalance,
   resetAllPTOBalances,
@@ -15,6 +15,7 @@ import {
   addHRTicketNote,
   getHRTicketStats
 } from '../services/api';
+import MonitoringDashboard from './MonitoringDashboard';
 
 const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
   const [activeTab, setActiveTab] = useState('users'); // users, leaves, requests, hr_tickets
@@ -27,13 +28,13 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [editingBalance, setEditingBalance] = useState(null);
-  
+
   // HR Ticket filters
   const [hrStatusFilter, setHrStatusFilter] = useState(null);
   const [hrCategoryFilter, setHrCategoryFilter] = useState(null);
   const [hrUrgencyFilter, setHrUrgencyFilter] = useState(null);
   const [hrSortBy, setHrSortBy] = useState('created_at');
-  
+
   // Selected ticket for modal
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -43,7 +44,7 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
     location: '',
     notes: ''
   });
-  
+
   // Form state
   const [newUser, setNewUser] = useState({
     email: '',
@@ -328,43 +329,48 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
         <div className="flex space-x-2 bg-white/5 p-1 rounded-lg border border-white/10">
           <button
             onClick={() => setActiveTab('users')}
-            className={`flex-1 px-4 py-2 rounded-lg transition-all ${
-              activeTab === 'users'
-                ? 'bg-white/10 text-white'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
-            }`}
+            className={`flex-1 px-4 py-2 rounded-lg transition-all ${activeTab === 'users'
+              ? 'bg-white/10 text-white'
+              : 'text-white/60 hover:text-white hover:bg-white/5'
+              }`}
           >
             👥 Users
           </button>
           <button
             onClick={() => setActiveTab('leaves')}
-            className={`flex-1 px-4 py-2 rounded-lg transition-all ${
-              activeTab === 'leaves'
-                ? 'bg-white/10 text-white'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
-            }`}
+            className={`flex-1 px-4 py-2 rounded-lg transition-all ${activeTab === 'leaves'
+              ? 'bg-white/10 text-white'
+              : 'text-white/60 hover:text-white hover:bg-white/5'
+              }`}
           >
             📊 Leave Balances
           </button>
           <button
             onClick={() => setActiveTab('requests')}
-            className={`flex-1 px-4 py-2 rounded-lg transition-all ${
-              activeTab === 'requests'
-                ? 'bg-white/10 text-white'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
-            }`}
+            className={`flex-1 px-4 py-2 rounded-lg transition-all ${activeTab === 'requests'
+              ? 'bg-white/10 text-white'
+              : 'text-white/60 hover:text-white hover:bg-white/5'
+              }`}
           >
             📝 Leave Requests
           </button>
           <button
             onClick={() => setActiveTab('hr_tickets')}
-            className={`flex-1 px-4 py-2 rounded-lg transition-all ${
-              activeTab === 'hr_tickets'
-                ? 'bg-white/10 text-white'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
-            }`}
+            className={`flex-1 px-4 py-2 rounded-lg transition-all ${activeTab === 'hr_tickets'
+              ? 'bg-white/10 text-white'
+              : 'text-white/60 hover:text-white hover:bg-white/5'
+              }`}
           >
             🎫 HR Tickets
+          </button>
+          <button
+            onClick={() => setActiveTab('monitoring')}
+            className={`flex-1 px-4 py-2 rounded-lg transition-all ${activeTab === 'monitoring'
+              ? 'bg-white/10 text-white'
+              : 'text-white/60 hover:text-white hover:bg-white/5'
+              }`}
+          >
+            📈 Monitoring
           </button>
         </div>
       </div>
@@ -392,7 +398,7 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
                       type="email"
                       placeholder={`user@${getEmailDomain()}`}
                       value={newUser.email}
-                      onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                      onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                       required
                       className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
                     />
@@ -403,7 +409,7 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
                       type="password"
                       placeholder="Password"
                       value={newUser.password}
-                      onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                      onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                       required
                       className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
                     />
@@ -414,7 +420,7 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
                       type="text"
                       placeholder="John Doe"
                       value={newUser.name}
-                      onChange={(e) => setNewUser({...newUser, name: e.target.value})}
+                      onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
                       required
                       className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
                     />
@@ -564,11 +570,10 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
                   <button
                     key={filter}
                     onClick={() => setStatusFilter(filter)}
-                    className={`px-3 py-1 rounded-lg text-sm transition-all ${
-                      statusFilter === filter
-                        ? 'bg-white/20 text-white'
-                        : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10'
-                    }`}
+                    className={`px-3 py-1 rounded-lg text-sm transition-all ${statusFilter === filter
+                      ? 'bg-white/20 text-white'
+                      : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10'
+                      }`}
                   >
                     {filter.charAt(0).toUpperCase() + filter.slice(1)}
                   </button>
@@ -670,8 +675,8 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
               <div className="glass-card bg-white/10 p-4">
                 <p className="text-white/60 text-sm mb-1">Avg Resolution</p>
                 <p className="text-2xl font-bold text-white/90">
-                  {hrTicketStats.average_resolution_time_hours ? 
-                    `${hrTicketStats.average_resolution_time_hours.toFixed(1)}h` : 
+                  {hrTicketStats.average_resolution_time_hours ?
+                    `${hrTicketStats.average_resolution_time_hours.toFixed(1)}h` :
                     'N/A'
                   }
                 </p>
@@ -696,7 +701,7 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
                   <option value="resolved">Resolved</option>
                   <option value="closed">Closed</option>
                 </select>
-                
+
                 {/* Category Filter */}
                 <select
                   value={hrCategoryFilter || ''}
@@ -892,7 +897,7 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
                 <input
                   type="datetime-local"
                   value={scheduleMeetingData.datetime}
-                  onChange={(e) => setScheduleMeetingData({...scheduleMeetingData, datetime: e.target.value})}
+                  onChange={(e) => setScheduleMeetingData({ ...scheduleMeetingData, datetime: e.target.value })}
                   required
                   className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white"
                 />
@@ -903,7 +908,7 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
                   type="url"
                   placeholder="https://meet.google.com/..."
                   value={scheduleMeetingData.link}
-                  onChange={(e) => setScheduleMeetingData({...scheduleMeetingData, link: e.target.value})}
+                  onChange={(e) => setScheduleMeetingData({ ...scheduleMeetingData, link: e.target.value })}
                   className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
                 />
               </div>
@@ -913,7 +918,7 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
                   type="text"
                   placeholder="HR Office, Room 203"
                   value={scheduleMeetingData.location}
-                  onChange={(e) => setScheduleMeetingData({...scheduleMeetingData, location: e.target.value})}
+                  onChange={(e) => setScheduleMeetingData({ ...scheduleMeetingData, location: e.target.value })}
                   className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
                 />
               </div>
@@ -922,7 +927,7 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
                 <textarea
                   placeholder="Looking forward to our meeting..."
                   value={scheduleMeetingData.notes}
-                  onChange={(e) => setScheduleMeetingData({...scheduleMeetingData, notes: e.target.value})}
+                  onChange={(e) => setScheduleMeetingData({ ...scheduleMeetingData, notes: e.target.value })}
                   rows="3"
                   className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
                 />
@@ -946,6 +951,14 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Monitoring Tab */}
+      {activeTab === 'monitoring' && (
+        <div className="max-w-7xl mx-auto">
+          <div className="glass-card bg-white/10 overflow-hidden rounded-xl">
+            <MonitoringDashboard userRole="company_admin" />
           </div>
         </div>
       )}

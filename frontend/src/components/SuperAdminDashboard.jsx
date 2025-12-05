@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import MonitoringDashboard from './MonitoringDashboard';
 
 const SuperAdminDashboard = ({ onLogout, userInfo }) => {
   const [activeTab, setActiveTab] = useState('companies'); // 'companies' or 'admins'
@@ -8,7 +9,7 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [showAddAdminForm, setShowAddAdminForm] = useState(false);
   const [showAddCompanyForm, setShowAddCompanyForm] = useState(false);
-  
+
   // Admin form state
   const [newAdmin, setNewAdmin] = useState({
     email: '',
@@ -44,9 +45,9 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
             `${API_BASE_URL}/api/admin/company-task-status/${processingTask}`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
-          
+
           setTaskStatus(response.data);
-          
+
           // Stop polling if completed or failed
           if (response.data.status === 'completed' || response.data.status === 'failed') {
             clearInterval(interval);
@@ -73,7 +74,7 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('access_token');
-      
+
       const [adminsRes, companiesRes] = await Promise.all([
         axios.get(`${API_BASE_URL}/api/admin/company-admins`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -82,7 +83,7 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);
-      
+
       setCompanyAdmins(adminsRes.data.admins);
       setCompanies(companiesRes.data.companies);
     } catch (error) {
@@ -94,7 +95,7 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
 
   const handleAddAdmin = async (e) => {
     e.preventDefault();
-    
+
     try {
       const token = localStorage.getItem('access_token');
       await axios.post(
@@ -102,7 +103,7 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
         newAdmin,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       setShowAddAdminForm(false);
       setNewAdmin({ email: '', password: '', name: '', company: '' });
       fetchData();
@@ -113,7 +114,7 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
 
   const handleAddCompany = async (e) => {
     e.preventDefault();
-    
+
     try {
       const token = localStorage.getItem('access_token');
       const response = await axios.post(
@@ -121,14 +122,14 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
         newCompany,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       // Start tracking the task
       setProcessingTask(response.data.task_id);
       setTaskStatus({
         status: 'pending',
         message: 'Task queued for processing'
       });
-      
+
       setShowAddCompanyForm(false);
       setNewCompany({ company_name: '', domain: '', url: '' });
     } catch (error) {
@@ -138,14 +139,14 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
 
   const handleDeleteAdmin = async (email) => {
     if (!confirm(`Delete admin: ${email}?`)) return;
-    
+
     try {
       const token = localStorage.getItem('access_token');
       await axios.delete(`${API_BASE_URL}/api/admin/delete-company-admin`, {
         headers: { Authorization: `Bearer ${token}` },
         data: { email }
       });
-      
+
       fetchData();
     } catch (error) {
       alert(error.response?.data?.detail || 'Failed to delete admin');
@@ -183,12 +184,11 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
       {/* Processing Status Banner */}
       {taskStatus && (
         <div className="max-w-7xl mx-auto mb-6">
-          <div className={`glass-card bg-white/10 p-4 border-l-4 ${
-            taskStatus.status === 'completed' ? 'border-green-500' :
+          <div className={`glass-card bg-white/10 p-4 border-l-4 ${taskStatus.status === 'completed' ? 'border-green-500' :
             taskStatus.status === 'failed' ? 'border-red-500' :
-            taskStatus.status === 'running' ? 'border-blue-500' :
-            'border-yellow-500'
-          }`}>
+              taskStatus.status === 'running' ? 'border-blue-500' :
+                'border-yellow-500'
+            }`}>
             <div className="flex items-center justify-between">
               <div>
                 <p className={`font-semibold ${getStatusColor(taskStatus.status)}`}>
@@ -233,23 +233,30 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
         <div className="glass-card bg-white/10 p-2 inline-flex rounded-lg">
           <button
             onClick={() => setActiveTab('companies')}
-            className={`px-6 py-2 rounded-lg transition-all ${
-              activeTab === 'companies'
-                ? 'bg-white text-black font-semibold'
-                : 'text-white/70 hover:text-white hover:bg-white/10'
-            }`}
+            className={`px-6 py-2 rounded-lg transition-all ${activeTab === 'companies'
+              ? 'bg-white text-black font-semibold'
+              : 'text-white/70 hover:text-white hover:bg-white/10'
+              }`}
           >
             Companies
           </button>
           <button
             onClick={() => setActiveTab('admins')}
-            className={`px-6 py-2 rounded-lg transition-all ${
-              activeTab === 'admins'
-                ? 'bg-white text-black font-semibold'
-                : 'text-white/70 hover:text-white hover:bg-white/10'
-            }`}
+            className={`px-6 py-2 rounded-lg transition-all ${activeTab === 'admins'
+              ? 'bg-white text-black font-semibold'
+              : 'text-white/70 hover:text-white hover:bg-white/10'
+              }`}
           >
             Company Administrators
+          </button>
+          <button
+            onClick={() => setActiveTab('monitoring')}
+            className={`px-6 py-2 rounded-lg transition-all ${activeTab === 'monitoring'
+              ? 'bg-white text-black font-semibold'
+              : 'text-white/70 hover:text-white hover:bg-white/10'
+              }`}
+          >
+            Monitoring
           </button>
         </div>
       </div>
@@ -276,13 +283,13 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
                     type="text"
                     placeholder="Company Name"
                     value={newCompany.company_name}
-                    onChange={(e) => setNewCompany({...newCompany, company_name: e.target.value})}
+                    onChange={(e) => setNewCompany({ ...newCompany, company_name: e.target.value })}
                     required
                     className="px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
                   />
                   <select
                     value={newCompany.domain}
-                    onChange={(e) => setNewCompany({...newCompany, domain: e.target.value})}
+                    onChange={(e) => setNewCompany({ ...newCompany, domain: e.target.value })}
                     required
                     className="px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white"
                   >
@@ -301,7 +308,7 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
                     type="url"
                     placeholder="PDF URL (e.g., https://example.com/handbook.pdf)"
                     value={newCompany.url}
-                    onChange={(e) => setNewCompany({...newCompany, url: e.target.value})}
+                    onChange={(e) => setNewCompany({ ...newCompany, url: e.target.value })}
                     required
                     className="px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
                   />
@@ -339,9 +346,9 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
                         <td className="py-3 px-4 text-white/70">{company.domain}</td>
                         <td className="py-3 px-4 text-white/70">{company.email_domain}</td>
                         <td className="py-3 px-4 text-white/50 text-sm">
-                          <a 
-                            href={company.url} 
-                            target="_blank" 
+                          <a
+                            href={company.url}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-400 hover:text-blue-300"
                           >
@@ -380,7 +387,7 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
                     type="email"
                     placeholder="Email"
                     value={newAdmin.email}
-                    onChange={(e) => setNewAdmin({...newAdmin, email: e.target.value})}
+                    onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
                     required
                     className="px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
                   />
@@ -388,7 +395,7 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
                     type="password"
                     placeholder="Password"
                     value={newAdmin.password}
-                    onChange={(e) => setNewAdmin({...newAdmin, password: e.target.value})}
+                    onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })}
                     required
                     className="px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
                   />
@@ -396,13 +403,13 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
                     type="text"
                     placeholder="Name"
                     value={newAdmin.name}
-                    onChange={(e) => setNewAdmin({...newAdmin, name: e.target.value})}
+                    onChange={(e) => setNewAdmin({ ...newAdmin, name: e.target.value })}
                     required
                     className="px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
                   />
                   <select
                     value={newAdmin.company}
-                    onChange={(e) => setNewAdmin({...newAdmin, company: e.target.value})}
+                    onChange={(e) => setNewAdmin({ ...newAdmin, company: e.target.value })}
                     required
                     className="px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white"
                   >
@@ -459,6 +466,15 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
                 </table>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Monitoring Tab */}
+      {activeTab === 'monitoring' && (
+        <div className="max-w-7xl mx-auto">
+          <div className="glass-card bg-white/10 overflow-hidden rounded-xl">
+            <MonitoringDashboard userRole="super_admin" />
           </div>
         </div>
       )}
