@@ -42,7 +42,7 @@ WORKDIR /app/backend
 ENV PYTHONPATH=/app:/app/backend:$PYTHONPATH
 
 # Create directories for models and data
-RUN mkdir -p /app/models /app/data/vector_db
+RUN mkdir -p /app/models /app/data_pipeline/data
 
 # Expose port 8080 (Cloud Run standard)
 EXPOSE 8080
