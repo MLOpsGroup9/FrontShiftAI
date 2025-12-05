@@ -12,6 +12,10 @@ RUN apt-get update && apt-get install -y \
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
+# Download embedding model to cache
+COPY backend/download_model.py .
+RUN python download_model.py
+
 # Final stage
 FROM python:3.12-slim
 WORKDIR /app
@@ -29,6 +33,11 @@ RUN apt-get update && apt-get install -y \
 # Copy Python packages from builder
 COPY --from=builder /root/.local /root/.local
 ENV PATH=/root/.local/bin:$PATH
+
+# Copy Hugging Face cache from builder
+COPY --from=builder /root/.cache/huggingface /root/.cache/huggingface
+# Set environment variables for model cache
+ENV HF_HOME=/root/.cache/huggingface
 
 # Copy application code - BOTH backend and chat_pipeline
 COPY backend/ /app/backend/
