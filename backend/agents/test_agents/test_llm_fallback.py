@@ -9,7 +9,7 @@ from pathlib import Path
 backend_dir = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(backend_dir))
 
-from agents.utils.llm_client import AgentLLMClient
+from agents.utils.llm_client import AgentLLMClient, llm_cache
 from agents.pto.nodes import parse_intent_node
 from agents.pto.state import PTOAgentState
 from agents.hr_ticket.nodes import parse_intent_node as hr_parse_intent_node
@@ -61,6 +61,7 @@ class TestLLMFallbackMechanism:
     def test_retry_logic(self, monkeypatch):
         """Test retry logic with exponential backoff"""
         
+        llm_cache.clear()
         call_count = {'attempts': 0}
         
         def mock_fails_twice(*args, **kwargs):
