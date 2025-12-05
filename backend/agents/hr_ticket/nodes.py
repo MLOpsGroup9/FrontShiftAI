@@ -44,6 +44,7 @@ IMPORTANT: Always create a ticket. Extract a subject and category from the messa
 Examples:
 - "I need to discuss my health insurance" -> category: benefits, subject: "Health Insurance Discussion", meeting_type: online
 - "There's a problem with my paycheck" -> category: payroll, subject: "Paycheck Issue", urgency: urgent
+- "Question about tax withholding" -> category: payroll, subject: "Tax Withholding Question", meeting_type: online
 - "I have a workplace concern" -> category: workplace_issue, subject: "Workplace Concern", meeting_type: in_person
 - "What's the policy on remote work?" -> category: policy_question, subject: "Remote Work Policy Question", meeting_type: no_meeting_needed
 - "Schedule meeting please" -> category: general_inquiry, subject: "HR Meeting Request", meeting_type: online"""

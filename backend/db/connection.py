@@ -1,13 +1,33 @@
 """
 Database connection and session management
 """
-from sqlalchemy import create_engine
+import os
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import NullPool
-import os
+from dotenv import load_dotenv
 
-# Support both SQLite (local dev) and PostgreSQL (production)
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./users.db")
+load_dotenv()
+
+def get_database_url():
+    """Auto-detect which database to use based on availability"""
+    postgres_url = "postgresql://postgres:MLOpsgroup%409@127.0.0.1:5432/frontshiftai"
+    sqlite_url = "sqlite:///./frontshiftai.db"
+    
+    # Try PostgreSQL first
+    try:
+        test_engine = create_engine(postgres_url, poolclass=NullPool)
+        with test_engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        test_engine.dispose()
+        print("✅ Using PostgreSQL (Cloud SQL)")
+        return postgres_url
+    except Exception as e:
+        print(f"⚠️  PostgreSQL unavailable, falling back to SQLite")
+        return sqlite_url
+
+# Allow override via environment variable, otherwise auto-detect
+DATABASE_URL = os.getenv("DATABASE_URL") or get_database_url()
 
 # Configure engine based on database type
 if DATABASE_URL.startswith("postgresql"):

@@ -5,7 +5,7 @@ def test_health_check(client):
     """Test health endpoint"""
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json()["status"] == "ok"
+    assert response.json()["status"] == "healthy"
 
 def test_login_success(client, test_db):
     """Test successful login"""

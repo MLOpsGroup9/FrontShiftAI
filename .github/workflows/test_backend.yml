@@ -1,0 +1,97 @@
+name: Deployment Pipeline - Backend CI Tests
+on:
+  push:
+    branches: [ '**' ]
+  pull_request:
+    branches: [ '**' ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov
+      
+      - name: Initialize database
+        run: |
+          cd backend
+          python -c "from db.connection import init_db; init_db()"
+      
+      - name: Test database layer
+        run: |
+          cd backend
+          pytest tests/test_db/ -v --cov=db --cov-report=term
+        continue-on-error: true
+      
+      - name: Test API endpoints
+        run: |
+          cd backend
+          pytest tests/test_api/ -v --cov=api --cov-report=term
+        continue-on-error: true
+      
+      - name: Test services
+        run: |
+          cd backend
+          pytest tests/test_services/ -v --cov=services --cov-report=term
+        continue-on-error: true
+      
+      - name: Test schemas
+        run: |
+          cd backend
+          pytest tests/test_schemas/ -v --cov=schemas --cov-report=term
+        continue-on-error: true
+      
+      - name: Run all backend tests with coverage
+        run: |
+          cd backend
+          pytest tests/ -v --cov=. --cov-report=term --cov-report=xml --cov-report=html
+        continue-on-error: false
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./backend/coverage.xml
+          flags: backend
+          name: backend-coverage
+        continue-on-error: true
+      
+      - name: Upload HTML coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage-html-${{ github.run_id }}
+          path: backend/htmlcov/
+          retention-days: 7
+      
+      - name: Test summary
+        if: success()
+        run: |
+          echo "✅ Backend tests passed on branch ${{ github.run_id }}"
+          echo "📊 Coverage reports generated"
+      
+      - name: Test failure
+        if: failure()
+        run: |
+          echo "❌ Backend tests failed on branch ${{ github.run_id }}"
+          echo "Check the logs above for details"
