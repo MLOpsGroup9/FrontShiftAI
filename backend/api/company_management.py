@@ -12,7 +12,7 @@ from typing import Optional
 from db.connection import get_db
 from db.models import Company, Task
 from api.auth import get_current_user
-from tasks import process_company_pipeline_task
+from jobs.tasks import process_company_pipeline_task
 
 router = APIRouter(prefix="/api/company", tags=["company_management"])
 

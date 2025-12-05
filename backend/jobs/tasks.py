@@ -5,14 +5,14 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from sqlalchemy.orm import Session
-from worker import celery_app
+from .worker import celery_app
 from db import SessionLocal
 from db.models import Task, Company
 
 logger = logging.getLogger(__name__)
 
 # Paths - using pathlib for project-relative paths
-BACKEND_DIR = Path(__file__).resolve().parent
+BACKEND_DIR = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = BACKEND_DIR.parent
 DATA_PIPELINE_DIR = PROJECT_ROOT / "data_pipeline"
 URL_JSON_PATH = DATA_PIPELINE_DIR / "data" / "url.json"

@@ -32,6 +32,52 @@ An optional Airflow DAG (`dvc_repro_manual_dag.py`) in `data_pipeline/dags/` can
 
 ---
 
+## 2. System Architecture & Data Flow
+
+### 2.1 High-Level Overview
+
+The system follows a microservices-based architecture deployed on Google Cloud Platform (Cloud Run), consisting of three main pillars:
+1.  **Frontend (React)**: User interface for employees and admins.
+2.  **Backend (FastAPI)**: Central API gateway, agent orchestration, and business logic.
+3.  **Data Pipeline (Python/Airflow)**: Asynchronous processing of handbook PDFs into vector embeddings.
+
+### 2.2 Request Flow
+
+1.  **User Interaction**: A user sends a message via the Frontend (e.g., "What is the PTO policy?").
+2.  **API Gateway**: The request hits the Backend API (`/api/chat/message`).
+3.  **Unified Agent Router**: The system analyzes the intent using an LLM to route the request:
+    *   **RAG Agent**: For policy questions (uses ChromaDB).
+    *   **PTO Agent**: For time-off requests (uses SQL Database).
+    *   **HR Ticket Agent**: For support tickets (uses SQL Database).
+4.  **Response Generation**: The selected agent processes the request and generates a response, which is sent back to the Frontend.
+
+### 2.3 RAG & Fallback Mechanism
+
+When a user asks a question that requires external knowledge:
+1.  **Vector Search**: The RAG Agent searches the **ChromaDB** vector store for relevant handbook chunks.
+2.  **Context Construction**: Retrieved chunks are combined with the user's query.
+3.  **LLM Generation**: The LLM generates an answer based *only* on the provided context.
+4.  **Automatic Fallback**: If the RAG Agent finds no relevant information:
+    *   The system automatically triggers the **Website Extraction Agent**.
+    *   It searches the company's public website (via Brave Search API) for operational details (e.g., office hours, phone numbers).
+    *   This ensures users get an answer even if it's not in the handbook.
+
+### 2.4 Background Processing (Company Ingestion)
+
+When a new company is added via the Admin Dashboard:
+1.  **API Request**: Admin submits company details and handbook URL.
+2.  **Task Queue**: The Backend pushes a task to **Redis**.
+3.  **Celery Worker**: A background worker picks up the task.
+4.  **Data Pipeline Execution**:
+    *   Downloads the PDF.
+    *   Extracts text and tables.
+    *   Chunks and validates data.
+    *   Generates embeddings.
+    *   Updates the ChromaDB vector store.
+5.  **Completion**: The company is now live, and its employees can start using the RAG system immediately.
+
+---
+
 ## 2. Automated Data Pipeline Overview
 
 The data pipeline is fully modular, test-driven, and reproducible. Each stage is independently testable using `pytest`. The pipeline supports ingestion, preprocessing, validation, and embedding of HR policy documents.
@@ -163,12 +209,25 @@ FrontShiftAI/
 │   ├── requirements.txt                          # Python dependencies
 │   └── README.md                                 # Detailed Data Pipeline documentation (this file)
 │
-├── src/                                          # Future core source modules (e.g., API, agents, RAG)
-│   ├── agents/
-│   ├── api/
-│   ├── rag/
-│   ├── utils/
-│   └── voice/
+├── backend/                                      # FastAPI Backend Application
+│   ├── agents/                                   # AI Agents (PTO, HR Ticket, Website Extraction)
+│   ├── api/                                      # API Routes
+│   ├── db/                                       # Database Models & Connection
+│   ├── jobs/                                     # Background Workers (Celery)
+│   ├── services/                                 # Business Logic
+│   └── main.py                                   # App Entry Point
+│
+├── frontend/                                     # React Frontend Application
+│   ├── src/
+│   │   ├── components/                           # UI Components
+│   │   ├── services/                             # API Client
+│   │   └── App.jsx                               # Main Component
+│   └── vite.config.js                            # Build Config
+│
+├── deployment/                                   # Deployment Documentation & Scripts
+│   ├── README.md                                 # Deployment Guide
+│   └── todo.md                                   # Project Status & Todo
+│
 │
 ├── docs/                                         # Documentation and design assets
 │   ├── architecture_diagram.png

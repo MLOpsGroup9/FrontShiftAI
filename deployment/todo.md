@@ -434,8 +434,8 @@
 **Documentation:**
 - [x] Setup instructions (README) - ✅ DONE
 - [x] API documentation - ✅ DONE
-- [ ] User guide - ❌
-- [ ] Admin guide - ❌
+- [x] User guide - ✅ DONE (in READMEs)
+- [x] Admin guide - ✅ DONE (in READMEs)
 - [ ] All visualizations - ❌
 
 **Presentation:**

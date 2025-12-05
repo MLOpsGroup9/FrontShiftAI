@@ -390,10 +390,6 @@ on:
   push:
     branches:
       - krishna-branch
-    paths:
-      - 'frontend/**'
-      - 'Dockerfile.frontend'
-      - '.github/workflows/deploy-frontend.yml'
 ```
 
 **Key Steps:**

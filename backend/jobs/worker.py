@@ -8,7 +8,7 @@ celery_app = Celery(
     "frontshiftai",
     broker=REDIS_URL,
     backend=REDIS_URL,
-    include=["tasks"]
+    include=["jobs.tasks"]
 )
 
 celery_app.conf.update(
