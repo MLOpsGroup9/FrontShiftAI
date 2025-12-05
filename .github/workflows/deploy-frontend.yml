@@ -1,4 +1,4 @@
-name: Deploy Frontend to Cloud Run
+name: Deployment Pipeline - Deploy Frontend to Cloud Run
 
 on:
   push:

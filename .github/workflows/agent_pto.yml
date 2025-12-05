@@ -1,4 +1,4 @@
-name: Agent Tests PTO - Agent
+name: Agent Pipeline - Agent Tests PTO - Agent
 on:
   push:
     branches: [ '**' ]

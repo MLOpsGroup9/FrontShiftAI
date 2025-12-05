@@ -1,4 +1,4 @@
-name: Agent Tests - HR Ticket 
+name: Agent Pipeline - Agent Tests HR Ticket 
 on:
   push:
     branches: [ '**' ]

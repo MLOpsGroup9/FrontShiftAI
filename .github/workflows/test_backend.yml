@@ -1,4 +1,4 @@
-name: Backend CI Tests
+name: Deployment Pipeline - Backend CI Tests
 on:
   push:
     branches: [ '**' ]

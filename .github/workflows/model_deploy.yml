@@ -2,7 +2,7 @@
 # Can be called from other workflows or triggered manually
 # Useful for deploying specific model versions or testing deployment process
 
-name: Model Deploy - Registry
+name: Deployment Pipeline - Model Deploy - Registry
 
 on:
   workflow_call:

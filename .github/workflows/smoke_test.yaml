@@ -1,4 +1,4 @@
-name: Chat Pipeline Smoke Test
+name: Chat Pipeline - Smoke Test
 
 on:
   # push:

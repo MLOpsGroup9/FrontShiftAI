@@ -1,4 +1,4 @@
-name: Agent Tests - website_extraction
+name: Agent Pipeline -Agent Tests - website_extraction
 
 on:
   push:
