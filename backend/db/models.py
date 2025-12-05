@@ -221,3 +221,21 @@ class Message(Base):
     message_metadata = Column(String, nullable=True)
     
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+class Task(Base):
+    """Background task tracking"""
+    __tablename__ = "tasks"
+    
+    id = Column(String, primary_key=True)  # UUID
+    status = Column(String, default="pending")  # pending, running, completed, failed
+    message = Column(String, nullable=True)
+    error = Column(String, nullable=True)
+    
+    # Task metadata
+    task_type = Column(String, nullable=True)  # e.g., 'company_ingestion'
+    payload = Column(String, nullable=True)  # JSON string of input args
+    
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

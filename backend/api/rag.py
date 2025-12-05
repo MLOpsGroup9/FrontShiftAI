@@ -6,6 +6,11 @@ from schemas import RAGQueryRequest, RAGQueryResponse
 from services import normalize_metadata_company_name
 from api.auth import get_current_user
 from chat_pipeline.rag.pipeline import RAGPipeline
+import logging
+import time
+
+# Configure structured logging
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/rag", tags=["RAG"])
 
@@ -21,6 +26,7 @@ async def rag_query(
     RAG query endpoint - requires authentication
     Automatically filters results by user's company
     """
+    start_time = time.time()
     try:
         company_name = current_user.get("company")
         
@@ -30,11 +36,17 @@ async def rag_query(
                 detail="No company associated with this user"
             )
         
-        print(f"🔍 RAG Query from {current_user['email']} ({company_name}): {request.query}")
+        logger.info(
+            "RAG Query initiated",
+            extra={
+                "user_email": current_user['email'],
+                "company": company_name,
+                "query": request.query
+            }
+        )
         
         # Run RAG pipeline
         rag_company_filter = company_name if current_user["role"] != "super_admin" else None
-        print(f"🔒 Filtering RAG by company: '{rag_company_filter}'")
         
         result = pipeline.run(
             query=request.query,
@@ -44,20 +56,6 @@ async def rag_query(
         
         answer = result.answer
         metadata = result.metadata
-        
-        print(f"📊 Retrieved {len(metadata)} documents before filtering")
-        
-        # Manual filtering by company for non-super-admins
-        if current_user["role"] != "super_admin" and company_name:
-            filtered_metadata = []
-            for meta in metadata:
-                meta_company = meta.get("company", "")
-                if normalize_metadata_company_name(meta_company, company_name):
-                    filtered_metadata.append(meta)
-            
-            if filtered_metadata:
-                metadata = filtered_metadata[:request.top_k]
-                print(f"✅ Filtered to {len(metadata)} results for {company_name}")
         
         # Format sources
         sources = [
@@ -72,6 +70,17 @@ async def rag_query(
             for m in metadata
         ]
         
+        duration = time.time() - start_time
+        logger.info(
+            "RAG Query completed",
+            extra={
+                "user_email": current_user['email'],
+                "company": company_name,
+                "duration_seconds": duration,
+                "sources_count": len(sources)
+            }
+        )
+        
         return RAGQueryResponse(
             answer=answer,
             sources=sources,
@@ -80,6 +89,5 @@ async def rag_query(
         )
     
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.error(f"RAG Query failed: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

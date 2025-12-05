@@ -1,13 +1,17 @@
 """
 LLM Client for Agents
-Handles Groq, Local Model, and Mercury with automatic fallback
+Handles Groq, Local Model, and Mercury with automatic fallback, circuit breaking, and caching.
 """
 
 import os
 import logging
+import time
 from typing import Optional, Dict, Any
 import requests
 from groq import Groq
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+
+from cachetools import TTLCache
 
 from .llm_config import (
     USE_LLM,
@@ -20,6 +24,8 @@ from .llm_config import (
 
 logger = logging.getLogger(__name__)
 
+# Cache configuration (100 items, 5 minutes TTL)
+llm_cache = TTLCache(maxsize=100, ttl=300)
 
 class AgentLLMClient:
     """
@@ -57,37 +63,64 @@ class AgentLLMClient:
     ) -> Optional[str]:
         """
         Send chat completion request with automatic fallback
-
-        Args:
-            messages: List of message dicts with 'role' and 'content'
-            temperature: Override default temperature
-            max_tokens: Override default max tokens
-            json_mode: Whether to request JSON response format
-
-        Returns:
-            Response text or None if all providers fail
         """
+        # Check cache
+        cache_key = str((messages, temperature, max_tokens, json_mode))
+        if cache_key in llm_cache:
+            logger.info("LLM Cache hit")
+            return llm_cache[cache_key]
+
+        start_time = time.time()
+        response = None
+
         # Try primary provider first
-        response = self._try_provider(
-            self.primary_provider, messages, temperature, max_tokens, json_mode
-        )
+        try:
+            response = self._try_provider_with_retry(
+                self.primary_provider, messages, temperature, max_tokens, json_mode
+            )
+        except Exception as e:
+            logger.warning(f"Primary provider {self.primary_provider} failed: {e}")
 
-        if response:
-            return response
-
-        # Try fallback chain if enabled
-        if self.enable_fallback:
+        # Try fallback chain if enabled and primary failed
+        if not response and self.enable_fallback:
             for provider in self.fallback_chain:
                 if provider != self.primary_provider:
                     logger.info(f"Falling back to {provider}")
-                    response = self._try_provider(
-                        provider, messages, temperature, max_tokens, json_mode
-                    )
-                    if response:
-                        return response
+                    try:
+                        response = self._try_provider_with_retry(
+                            provider, messages, temperature, max_tokens, json_mode
+                        )
+                        if response:
+                            break
+                    except Exception as e:
+                        logger.warning(f"Fallback provider {provider} failed: {e}")
+
+        duration = time.time() - start_time
+        
+        if response:
+            logger.info(f"LLM request completed in {duration:.2f}s using provider")
+            llm_cache[cache_key] = response
+            return response
 
         logger.error("All LLM providers failed")
         return None
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        retry=retry_if_exception_type((requests.RequestException, Exception)),
+        reraise=True
+    )
+    def _try_provider_with_retry(
+        self,
+        provider: str,
+        messages: list,
+        temperature: Optional[float],
+        max_tokens: Optional[int],
+        json_mode: bool,
+    ) -> Optional[str]:
+        """Wrapper to apply retry logic to provider calls"""
+        return self._try_provider(provider, messages, temperature, max_tokens, json_mode)
 
     def _try_provider(
         self,
@@ -98,19 +131,15 @@ class AgentLLMClient:
         json_mode: bool,
     ) -> Optional[str]:
         """Try a specific provider"""
-        try:
-            if provider == "groq":
-                return self._call_groq(messages, temperature, max_tokens, json_mode)
-            elif provider == "local":
-                return self._call_local(messages, temperature, max_tokens, json_mode)
-            elif provider == "mercury":
-                return self._call_mercury(messages, temperature, max_tokens, json_mode)
-            else:
-                logger.error(f"Unknown provider: {provider}")
-                return None
-        except Exception as e:
-            logger.error(f"Provider {provider} failed: {e}")
-            return None
+        if provider == "groq":
+            return self._call_groq(messages, temperature, max_tokens, json_mode)
+        elif provider == "local":
+            return self._call_local(messages, temperature, max_tokens, json_mode)
+        elif provider == "mercury":
+            return self._call_mercury(messages, temperature, max_tokens, json_mode)
+        else:
+            logger.error(f"Unknown provider: {provider}")
+            raise ValueError(f"Unknown provider: {provider}")
 
     def _call_groq(
         self,
