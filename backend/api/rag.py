@@ -90,4 +90,7 @@ async def rag_query(
     
     except Exception as e:
         logger.error(f"RAG Query failed: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500, 
+            detail="An internal error occurred while processing your query."
+        )
