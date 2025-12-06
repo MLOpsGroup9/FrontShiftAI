@@ -11,6 +11,7 @@ from agents.website_extraction.tools import (
     extract_domain_from_url,
     CONFIDENCE_THRESHOLD
 )
+from agents.website_extraction.state import WebsiteExtractionState  # Import state for coverage
 from db.models import Company
 
 
