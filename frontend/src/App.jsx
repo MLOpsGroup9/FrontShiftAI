@@ -14,7 +14,7 @@ function App() {
   const [userInfo, setUserInfo] = useState(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
-  
+
   const [activeView, setActiveView] = useState('home');
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,7 +33,7 @@ function App() {
     const checkAuth = async () => {
       const token = localStorage.getItem('access_token');
       const email = localStorage.getItem('user_email');
-      
+
       if (token && email) {
         try {
           const userData = await getUserInfo();
@@ -47,7 +47,7 @@ function App() {
       } else {
         setIsAuthenticated(false);
       }
-      
+
       setIsCheckingAuth(false);
     };
 
@@ -68,7 +68,7 @@ function App() {
         `${API_BASE_URL}/api/chat/conversations`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       setChatHistory(response.data);
     } catch (error) {
       console.error('Error loading chat history:', error);
@@ -109,7 +109,7 @@ function App() {
         `${API_BASE_URL}/api/chat/conversations/${chatId}/messages`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       // Convert database format to frontend format
       const loadedMessages = response.data.map(msg => ({
         role: msg.role,
@@ -117,7 +117,7 @@ function App() {
         agentType: msg.agent_type,
         timestamp: new Date(msg.created_at).getTime()
       }));
-      
+
       setCurrentChatId(chatId);
       setMessages(loadedMessages);
     } catch (error) {
@@ -132,10 +132,10 @@ function App() {
         `${API_BASE_URL}/api/chat/conversations/${chatId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       // Remove from local state
       setChatHistory(prev => prev.filter(chat => chat.id !== chatId));
-      
+
       if (currentChatId === chatId) {
         setCurrentChatId(null);
         setMessages([]);
@@ -225,29 +225,29 @@ function App() {
 
     try {
       console.log('📤 Sending message to smart router:', message);
-      
+
       const token = localStorage.getItem('access_token');
       const response = await axios.post(
         `${API_BASE_URL}/api/chat/message`,
-        { 
+        {
           message,
-          conversation_id: currentChatId 
+          conversation_id: currentChatId
         },
-        { 
-          headers: { 
+        {
+          headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         }
       );
-      
+
       console.log('📥 Received response from', response.data.agent_used, 'agent');
-      
+
       // Update conversation ID if new
       if (!currentChatId) {
         setCurrentChatId(response.data.conversation_id);
       }
-      
+
       const assistantMessage = {
         role: 'assistant',
         content: response.data.response,
@@ -273,10 +273,10 @@ function App() {
 
       // Reload chat history to get updated list
       await loadChatHistory();
-      
+
     } catch (error) {
       console.error('❌ Error sending message:', error);
-      
+
       let errorMsg = 'Sorry, I encountered an error.';
       if (error.response?.status === 401 || error.message === 'Not authenticated') {
         errorMsg = '🔒 Session expired. Please log in again.';
@@ -286,7 +286,7 @@ function App() {
       } else if (error.response?.data?.detail) {
         errorMsg = `Backend error: ${error.response.data.detail}`;
       }
-      
+
       const errorMessage = {
         role: 'assistant',
         content: errorMsg,
@@ -294,7 +294,7 @@ function App() {
       };
       const finalMessages = [...updatedMessages, errorMessage];
       setMessages(finalMessages);
-      
+
     } finally {
       setIsLoading(false);
     }
@@ -310,7 +310,7 @@ function App() {
 
   if (!isAuthenticated) {
     if (showLogin) {
-      return <Login onLoginSuccess={handleLoginSuccess} />;
+      return <Login onLoginSuccess={handleLoginSuccess} onBack={() => setShowLogin(false)} />;
     }
     return <LandingPage onGetStarted={() => setShowLogin(true)} />;
   }
@@ -329,8 +329,8 @@ function App() {
       <div className="fixed top-1/4 right-1/4 w-96 h-96 bg-gradient-to-r from-white/10 to-gray-500/10 rounded-full blur-3xl opacity-20 animate-float-orb pointer-events-none z-0"></div>
 
       <div className="relative z-10 flex min-h-screen">
-        <Sidebar 
-          activeView={activeView} 
+        <Sidebar
+          activeView={activeView}
           setActiveView={setActiveView}
           width={sidebarWidth}
           chatHistory={formattedChatHistory}
@@ -341,11 +341,10 @@ function App() {
           userInfo={userInfo}
           onLogout={handleLogout}
         />
-        
+
         <div
-          className={`fixed top-0 h-screen w-3 cursor-col-resize z-20 transition-all ${
-            isResizing ? 'bg-white/10' : ''
-          }`}
+          className={`fixed top-0 h-screen w-3 cursor-col-resize z-20 transition-all ${isResizing ? 'bg-white/10' : ''
+            }`}
           style={{ left: `${sidebarWidth - 1}px` }}
           onMouseDown={(e) => {
             e.preventDefault();
@@ -353,16 +352,15 @@ function App() {
             setIsResizing(true);
           }}
         >
-          <div className={`absolute inset-y-0 left-1/2 transform -translate-x-1/2 w-0.5 transition-colors ${
-            isResizing ? 'bg-white/40' : 'bg-white/10 hover:bg-white/30'
-          }`}></div>
+          <div className={`absolute inset-y-0 left-1/2 transform -translate-x-1/2 w-0.5 transition-colors ${isResizing ? 'bg-white/40' : 'bg-white/10 hover:bg-white/30'
+            }`}></div>
         </div>
-        
+
         {isResizing && (
           <div className="fixed inset-0 bg-black/0 z-[15] cursor-col-resize" />
         )}
-        
-        <div 
+
+        <div
           className="flex-1 flex flex-col min-h-screen"
           style={{ marginLeft: `${sidebarWidth}px` }}
         >
