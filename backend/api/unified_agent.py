@@ -395,22 +395,22 @@ async def unified_chat(
         import traceback
         traceback.print_exc()
         
-        # Save error message
+        # Save error message (graceful)
         error_message = Message(
             id=str(uuid.uuid4()),
             conversation_id=conversation_id,
             role='assistant',
-            content=f"Sorry, I encountered an error processing your request: {str(e)}",
+            content="I apologize, but I encountered an internal error while processing your request. Our team has been notified.",
             agent_type='error'
         )
         db.add(error_message)
         db.commit()
         
         return ChatResponse(
-            response=f"Sorry, I encountered an error processing your request: {str(e)}",
+            response="I apologize, but I encountered an internal error while processing your request. Our team has been notified.",
             agent_used="error",
             conversation_id=conversation_id,
-            metadata={"error": str(e)}
+            metadata={"error_type": "internal_server_error"}
         )
 
 

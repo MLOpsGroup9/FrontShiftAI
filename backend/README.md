@@ -983,40 +983,6 @@ WORKERS=4
 LOG_LEVEL=info
 ```
 
-### Production Checklist
-
-**Security:**
-- Change default passwords
-- Implement password hashing
-- Configure HTTPS/TLS
-- Set secure JWT secret
-- Enable CORS for trusted origins only
-- Implement rate limiting
-- Secure API keys (Brave, Groq) [NEW]
-
-**Database:**
-- Migrate to PostgreSQL
-- Configure connection pooling
-- Set up automated backups
-- Implement migration tool (Alembic)
-- Add database indexes
-- Chat history retention policies [NEW]
-
-**Monitoring:**
-- Configure application logging
-- Set up error tracking
-- Implement health check monitoring
-- Configure performance metrics
-- Set up alerting
-- Monitor external API usage (Brave Search) [NEW]
-
-**Infrastructure:**
-- Configure reverse proxy
-- Set up load balancing
-- Implement container orchestration
-- Configure auto-scaling
-- Set up deployment pipeline
-- GCS sync for data pipeline [NEW]
 
 ## Troubleshooting
 
@@ -1057,36 +1023,6 @@ pip install -r requirements.txt --force-reinstall
 - Ensure company has URL in database
 - Review search timeout settings
 
-## Future Agents
-
-The architecture supports multiple agents:
-```
-agents/
-├── pto/              # ✓ Implemented: PTO Request Agent
-├── hr_ticket/        # ✓ Implemented: HR Ticket Agent
-├── website_extraction/ # ✓ Implemented: Website Search Agent [NEW]
-├── expense/          # Planned: Expense Report Agent
-├── scheduling/       # Planned: Scheduling Agent
-└── utils/            # Shared utilities
-```
-
-Each agent follows the same pattern:
-1. Define state structure
-2. Implement processing nodes
-3. Create utility functions
-4. Build LangGraph workflow
-5. Add API endpoints
-6. Write comprehensive tests
-
-**Implemented Agents:**
-- **PTO Request Agent**: Automated vacation request processing with balance tracking
-- **HR Ticket Agent**: Employee support ticketing with queue management and meeting coordination
-- **Website Extraction Agent**: Automatic web search fallback for information not in handbooks [NEW]
-
-**Planned Agents:**
-- **Expense Report Agent**: Automated expense submission and approval workflow
-- **Scheduling Agent**: Shift scheduling and swap management
-- **Equipment Request Agent**: Company equipment and resource requests
 
 ## Resources
 

@@ -582,46 +582,6 @@ export default ComponentName;
 
 ## Testing
 
-### Manual Testing Checklist
-
-**Authentication:**
-- [ ] Login with valid credentials
-- [ ] Login with invalid credentials
-- [ ] Session persistence across page refresh
-- [ ] Automatic logout on token expiration
-- [ ] Role-based routing (user, company_admin, super_admin)
-
-**Chat Interface:**
-- [ ] Send RAG query (handbook question)
-- [ ] Send PTO request
-- [ ] Send HR ticket request
-- [ ] View agent type in responses
-- [ ] Message persistence in chat history
-- [ ] New chat creation
-- [ ] Chat deletion
-- [ ] Search functionality
-
-**PTO Requests Tab:**
-- [ ] View balance information
-- [ ] View request history
-- [ ] Expand request details
-- [ ] Status badge display
-- [ ] Admin notes display
-
-**HR Tickets Tab:**
-- [ ] View ticket list
-- [ ] Expand ticket details
-- [ ] View admin notes
-- [ ] View meeting information
-- [ ] Status indicators
-- [ ] Refresh functionality
-
-**Sidebar:**
-- [ ] Clean design without auto-populated sections
-- [ ] User information display
-- [ ] Chat history display
-- [ ] Search functionality
-- [ ] Logout functionality
 
 ### Testing Tools
 
