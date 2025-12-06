@@ -68,6 +68,14 @@ jobs:
         with:
           lfs: true
 
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -77,8 +85,8 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y libasound2-dev
-          python -m pip install --upgrade pip
-          pip install -r chat_pipeline/requirements.txt
+          python -m pip install --upgrade pip --no-cache-dir
+          pip install -r chat_pipeline/requirements.txt --no-cache-dir
 
       - name: Set Environment Variables
         run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
@@ -124,6 +132,14 @@ jobs:
         with:
           lfs: true
 
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -133,8 +149,8 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y libasound2-dev
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          python -m pip install --upgrade pip --no-cache-dir
+          pip install -r requirements.txt --no-cache-dir
 
       - name: Set Environment Variables
         run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
@@ -188,6 +204,14 @@ jobs:
         with:
           lfs: true
 
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -197,8 +221,8 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y libasound2-dev
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          python -m pip install --upgrade pip --no-cache-dir
+          pip install -r requirements.txt --no-cache-dir
 
       - name: Set Environment Variables
         run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
@@ -269,6 +293,14 @@ jobs:
         with:
           lfs: true
 
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -278,8 +310,8 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y libasound2-dev
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          python -m pip install --upgrade pip --no-cache-dir
+          pip install -r requirements.txt --no-cache-dir
 
       - name: Set Environment Variables
         run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
