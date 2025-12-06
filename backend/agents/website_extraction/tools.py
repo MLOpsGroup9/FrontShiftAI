@@ -1,9 +1,8 @@
 """Website Extraction Agent Tools - Brave Search API Client"""
 import os
-import re
 import logging
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 from urllib.parse import urlparse
 import requests
 from sqlalchemy.orm import Session
@@ -129,12 +128,4 @@ def rank_results(results: List[dict], keywords: List[str], topic: str) -> List[d
     return sorted(scored, key=lambda x: x["relevance_score"], reverse=True)
 
 
-def extract_domain_from_url(url: str) -> str:
-    """Extract clean domain from URL"""
-    try:
-        parsed = urlparse(url)
-        domain = parsed.netloc or parsed.path.split('/')[0]
-        return domain.replace("www.", "")
-    except Exception:
-        return url
 

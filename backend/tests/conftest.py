@@ -16,6 +16,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from db.connection import Base, get_db
 from main import app
 
+# Import agent modules for coverage tracking
+try:
+    from agents.website_extraction import WebsiteExtractionAgent
+except ImportError:
+    pass
+
 # Test database URL (use in-memory SQLite for tests)
 TEST_DATABASE_URL = "sqlite://"
 

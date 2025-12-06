@@ -1,6 +1,7 @@
 """Website Extraction Agent LangGraph Nodes"""
 import json
 import logging
+import time
 from sqlalchemy.orm import Session
 from agents.website_extraction.state import WebsiteExtractionState
 from agents.website_extraction.tools import (
@@ -67,7 +68,6 @@ def resolve_domain_node(state: WebsiteExtractionState, db: Session) -> WebsiteEx
 
 def brave_search_node(state: WebsiteExtractionState, db: Session) -> WebsiteExtractionState:
     """Execute Brave Search API"""
-    import time
     start_time = time.time()
     
     results, error = brave_search(
@@ -102,12 +102,12 @@ def analyze_results_node(state: WebsiteExtractionState, db: Session) -> WebsiteE
     ranked = rank_results(
         results=state["brave_results"],
         keywords=state["search_keywords"],
-        topic=state["search_topic"]
+        topic=state["search_topic"] or ""
     )
     
     state["ranked_results"] = ranked
     state["best_match"] = ranked[0] if ranked else None
-    state["confidence_score"] = ranked[0]["relevance_score"] if ranked else 0.0
+    state["confidence_score"] = ranked[0]["relevance_score"] if ranked and len(ranked) > 0 else 0.0
     state["found_answer"] = state["confidence_score"] >= CONFIDENCE_THRESHOLD
     
     return state
@@ -115,7 +115,7 @@ def analyze_results_node(state: WebsiteExtractionState, db: Session) -> WebsiteE
 
 def generate_answer_node(state: WebsiteExtractionState, db: Session) -> WebsiteExtractionState:
     """Generate answer from search results using LLM"""
-    if not state["best_match"]:
+    if not state.get("best_match"):
         state["answer"] = None
         state["source_urls"] = []
         return state
@@ -124,11 +124,19 @@ def generate_answer_node(state: WebsiteExtractionState, db: Session) -> WebsiteE
     
     context_parts = []
     sources = []
-    for r in state["ranked_results"][:3]:
-        context_parts.append(f"Title: {r['title']}\nContent: {r['description']}")
+    for r in state.get("ranked_results", [])[:3]:
+        if not r:
+            continue
+        context_parts.append(f"Title: {r.get('title', '')}\nContent: {r.get('description', '')}")
         if r.get("extra_snippets"):
             context_parts.append("Additional: " + " | ".join(r["extra_snippets"]))
-        sources.append(r["url"])
+        if r.get("url"):
+            sources.append(r["url"])
+    
+    if not context_parts:
+        state["answer"] = None
+        state["source_urls"] = []
+        return state
     
     context = "\n\n".join(context_parts)
     
@@ -150,11 +158,11 @@ Provide a helpful answer based on these results."""
     
     try:
         answer = llm_client.chat(messages, temperature=0.5)
-        state["answer"] = answer
+        state["answer"] = answer or ""
     except Exception as e:
         logger.error(f"Answer generation failed: {e}")
-        best = state["best_match"]
-        state["answer"] = f"{best['title']}\n\n{best['description']}"
+        best = state.get("best_match", {})
+        state["answer"] = f"{best.get('title', '')}\n\n{best.get('description', '')}"
     
     state["source_urls"] = sources[:3]
     return state
@@ -162,10 +170,10 @@ Provide a helpful answer based on these results."""
 
 def suggest_hr_ticket_node(state: WebsiteExtractionState, db: Session) -> WebsiteExtractionState:
     """Generate HR ticket suggestion when search fails"""
-    topic = state["search_topic"] or state["user_message"][:50]
-    company = state["company"]
+    topic = state.get("search_topic") or state.get("user_message", "")[:50]
+    company = state.get("company", "the company")
     
-    if state["search_error"]:
+    if state.get("search_error"):
         suggestion = f"""I'm having trouble searching {company}'s website right now.
 
 Would you like me to create an HR ticket instead? Someone from the HR team can get back to you with this information.
@@ -188,25 +196,25 @@ Reply **"yes"** or **"create ticket"** and I'll set that up for you."""
 
 def format_response_node(state: WebsiteExtractionState, db: Session) -> WebsiteExtractionState:
     """Format final response"""
-    if state["found_answer"] and state["answer"]:
-        source_display = state["source_urls"][0] if state["source_urls"] else state["company_domain"]
+    if state.get("found_answer") and state.get("answer"):
+        source_display = state.get("source_urls", [])[0] if state.get("source_urls") else state.get("company_domain", "")
         
-        if state["confidence_score"] >= 0.7:
-            response = f"""🔍 Found on {state['company']}'s website:
+        if state.get("confidence_score", 0.0) >= 0.7:
+            response = f"""🔍 Found on {state.get('company', 'the company')}'s website:
 
-{state['answer']}
+{state.get('answer', '')}
 
 📎 Source: {source_display}"""
         else:
-            response = f"""🔍 I found some related information on {state['company']}'s website:
+            response = f"""🔍 I found some related information on {state.get('company', 'the company')}'s website:
 
-{state['answer']}
+{state.get('answer', '')}
 
 📎 Source: {source_display}
 
 ⚠️ For the most accurate information, you may want to verify directly or create an HR ticket."""
     else:
-        response = state["hr_ticket_suggestion"] or "I couldn't find that information. Would you like to create an HR ticket?"
+        response = state.get("hr_ticket_suggestion") or "I couldn't find that information. Would you like to create an HR ticket?"
     
     state["agent_response"] = response
     return state

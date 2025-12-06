@@ -125,6 +125,8 @@ class WebsiteExtractionAgent:
                 "confidence": 0.0,
                 "suggest_hr_ticket": True,
                 "hr_ticket_suggestion": None,
+                "search_time_ms": None,
+                "triggered_by": triggered_by,
                 "error": str(e)
             }
 

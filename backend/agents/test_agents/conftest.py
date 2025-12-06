@@ -35,6 +35,12 @@ from db.models import (
 )
 from db.connection import get_db
 
+# Import agent modules for coverage tracking
+try:
+    from agents.website_extraction import WebsiteExtractionAgent, WebsiteExtractionState
+except ImportError:
+    pass
+
 # Test database
 TEST_DATABASE_URL = "sqlite:///./test_agents.db"
 
