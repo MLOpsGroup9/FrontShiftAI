@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar';
 import UserChatPage from './components/UserChatPage';
 import ConnectionStatus from './components/ConnectionStatus';
 import Login from './components/Login';
+import LandingPage from './components/LandingPage';
 import SuperAdminDashboard from './components/SuperAdminDashboard';
 import CompanyAdminDashboard from './components/CompanyAdminDashboard';
 import { logout, getUserInfo } from './services/api';
@@ -12,6 +13,7 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [showLogin, setShowLogin] = useState(false);
   
   const [activeView, setActiveView] = useState('home');
   const [messages, setMessages] = useState([]);
@@ -307,7 +309,10 @@ function App() {
   }
 
   if (!isAuthenticated) {
-    return <Login onLoginSuccess={handleLoginSuccess} />;
+    if (showLogin) {
+      return <Login onLoginSuccess={handleLoginSuccess} />;
+    }
+    return <LandingPage onGetStarted={() => setShowLogin(true)} />;
   }
 
   if (userInfo?.role === 'super_admin') {
