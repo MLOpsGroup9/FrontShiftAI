@@ -97,7 +97,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.evaluation_artifact_name }}
-          path: .
+          path: chat_pipeline/results
         continue-on-error: true
 
       - name: Verify Model File Integrity
@@ -161,7 +161,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.evaluation_artifact_name }}
-          path: .
+          path: chat_pipeline/results
         continue-on-error: true
 
       - name: Compute Quality Gate
@@ -169,6 +169,9 @@ jobs:
         if: ${{ inputs.quality_gate_status == 'AUTO' }}
         run: |
           python -m chat_pipeline.tracking.compute_quality_gate
+          if [ -f chat_pipeline/results/quality_gate.txt ]; then
+            cat chat_pipeline/results/quality_gate.txt # Debug output
+          fi
           STATUS=$(cat chat_pipeline/results/quality_gate.txt)
           echo "status=$STATUS" >> $GITHUB_OUTPUT
 
@@ -233,7 +236,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.evaluation_artifact_name }}
-          path: .
+          path: chat_pipeline/results
         continue-on-error: true
 
       - name: Deploy Model to Registry
