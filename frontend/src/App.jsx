@@ -26,6 +26,10 @@ function App() {
   const [currentChatId, setCurrentChatId] = useState(null);
   const [chatHistory, setChatHistory] = useState([]);
 
+  // Sidebar state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
   // Check authentication on mount
@@ -53,6 +57,24 @@ function App() {
 
     checkAuth();
   }, []);
+
+  // Handle window resize for responsive layout
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile && isSidebarOpen) {
+        setIsSidebarOpen(false); // Auto-close on switch to mobile
+      } else if (!mobile && !isSidebarOpen && window.innerWidth >= 1024) {
+        // Optional: Auto-open on very large screens if preferred, 
+        // but let's respect user choice mostly.
+        // For now, let's just update isMobile.
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isSidebarOpen]);
 
   // Load chat history from database when authenticated
   useEffect(() => {
@@ -86,6 +108,8 @@ function App() {
       role: loginData.role
     });
     setIsAuthenticated(true);
+    // Open sidebar by default on desktop login
+    if (window.innerWidth >= 768) setIsSidebarOpen(true);
   };
 
   const handleLogout = () => {
@@ -100,6 +124,9 @@ function App() {
   const handleNewChat = () => {
     setCurrentChatId(null);
     setMessages([]);
+    if (isMobile) {
+      setIsSidebarOpen(false);
+    }
   };
 
   const handleLoadChat = async (chatId) => {
@@ -120,6 +147,9 @@ function App() {
 
       setCurrentChatId(chatId);
       setMessages(loadedMessages);
+      if (isMobile) {
+        setIsSidebarOpen(false);
+      }
     } catch (error) {
       console.error('Error loading chat:', error);
     }
@@ -340,29 +370,38 @@ function App() {
           currentChatId={currentChatId}
           userInfo={userInfo}
           onLogout={handleLogout}
+          isOpen={isSidebarOpen}
+          onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+          isMobile={isMobile}
         />
 
-        <div
-          className={`fixed top-0 h-screen w-3 cursor-col-resize z-20 transition-all ${isResizing ? 'bg-white/10' : ''
-            }`}
-          style={{ left: `${sidebarWidth - 1}px` }}
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsResizing(true);
-          }}
-        >
-          <div className={`absolute inset-y-0 left-1/2 transform -translate-x-1/2 w-0.5 transition-colors ${isResizing ? 'bg-white/40' : 'bg-white/10 hover:bg-white/30'
-            }`}></div>
-        </div>
+        {/* Resizer - only visible on desktop when sidebar is open */}
+        {!isMobile && isSidebarOpen && (
+          <div
+            className={`fixed top-0 h-screen w-3 cursor-col-resize z-20 transition-all ${isResizing ? 'bg-white/10' : ''
+              }`}
+            style={{ left: `${sidebarWidth - 1}px` }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsResizing(true);
+            }}
+          >
+            <div className={`absolute inset-y-0 left-1/2 transform -translate-x-1/2 w-0.5 transition-colors ${isResizing ? 'bg-white/40' : 'bg-white/10 hover:bg-white/30'
+              }`}></div>
+          </div>
+        )}
 
         {isResizing && (
           <div className="fixed inset-0 bg-black/0 z-[15] cursor-col-resize" />
         )}
 
         <div
-          className="flex-1 flex flex-col min-h-screen"
-          style={{ marginLeft: `${sidebarWidth}px` }}
+          className="flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out"
+          style={{
+            marginLeft: isMobile || !isSidebarOpen ? '0px' : `${sidebarWidth}px`,
+            width: isMobile || !isSidebarOpen ? '100%' : `calc(100% - ${sidebarWidth}px)`
+          }}
         >
           <UserChatPage
             messages={messages}
