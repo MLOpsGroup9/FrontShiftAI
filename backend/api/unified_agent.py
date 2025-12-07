@@ -16,7 +16,7 @@ from api.rag import rag_query
 from agents.pto.agent import PTOAgent
 from agents.hr_ticket.agent import HRTicketAgent
 from agents.website_extraction.agent import WebsiteExtractionAgent
-from agents.utils.llm_client import AgentLLMClient
+from agents.utils.llm_client import AgentLLMClient, get_llm_client
 from pydantic import BaseModel
 from schemas.rag import RAGQueryRequest
 from monitoring.production_logger import production_monitor
