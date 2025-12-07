@@ -66,6 +66,8 @@ DEFAULT_STREAMING_ARGS: Dict[str, Any] = {
 INCEPTION_API_BASE = os.getenv("INCEPTION_API_BASE", "https://api.inceptionlabs.ai/v1")
 INCEPTION_API_KEY = os.getenv("INCEPTION_API_KEY")
 MERCURY_MODEL = os.getenv("MERCURY_MODEL", "mercury")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
 
 GENERATION_BACKEND = os.getenv("GENERATION_BACKEND")
 HF_MODEL_NAME = os.getenv("HF_MODEL_NAME")
@@ -292,6 +294,82 @@ def _call_mercury_api(prompt: str, params: Dict[str, Any]) -> str:
     raise RuntimeError("Mercury API failed after multiple attempts.") from last_exc
 
 
+def _call_groq_api(prompt: str, params: Dict[str, Any]) -> str:
+    """Call the Groq API (OpenAI-compatible) as a backend."""
+
+    if not GROQ_API_KEY:
+        raise RuntimeError("GROQ_API_KEY is not set. Set the environment variable to use the Groq backend.")
+    if requests is None:
+        raise RuntimeError("The `requests` package is required for the Groq backend.")
+
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    system_msg = params.get("system_message")
+    user_msg = params.get("user_message")
+
+    messages = []
+    if system_msg and user_msg:
+        messages.append({"role": "system", "content": system_msg})
+        messages.append({"role": "user", "content": user_msg})
+    else:
+        messages.append({"role": "user", "content": prompt})
+
+    payload = {
+        "model": GROQ_MODEL,
+        "messages": messages,
+        "max_tokens": params.get("max_tokens"),
+        "temperature": params.get("temperature"),
+        "top_p": params.get("top_p"),
+    }
+    
+    attempts = REMOTE_MAX_ATTEMPTS
+    delay = REMOTE_BACKOFF_START
+    last_exc: Exception | None = None
+
+    for attempt in range(1, attempts + 1):
+        try:
+            if REMOTE_MIN_DELAY > 0 and attempt > 1:
+                time.sleep(REMOTE_MIN_DELAY)
+            
+            # Groq uses standard OpenAI-compatible endpoint structure
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                json=payload,
+                headers=headers,
+                timeout=REMOTE_TIMEOUT,
+            )
+            response.raise_for_status()
+            data = response.json()
+            if "choices" in data and data["choices"]:
+                message = data["choices"][0].get("message", {})
+                return (message.get("content") or "").strip()
+            raise RuntimeError(f"Unexpected response format from Groq API: {data}")
+            
+        except Exception as exc:
+            last_exc = exc
+            
+            # Basic 429 handling for Groq as well
+            is_rate_limit = False
+            if isinstance(exc, requests.exceptions.HTTPError):
+                if getattr(exc.response, "status_code", None) == 429:
+                    is_rate_limit = True
+            
+            if is_rate_limit:
+                 logger.warning("Groq API rate limit (429) hit on attempt %s/%s. Pausing 10s...", attempt, attempts)
+                 time.sleep(10.0)
+            else:
+                logger.warning("Groq API attempt %s/%s failed: %s", attempt, attempts, exc)
+                time.sleep(delay)
+                delay *= REMOTE_BACKOFF
+                
+            if attempt == attempts:
+                break
+
+    raise RuntimeError("Groq API failed after multiple attempts.") from last_exc
+
+
 def _record_backend(name: Optional[str]) -> None:
     global _LAST_BACKEND_USED
     _LAST_BACKEND_USED = name
@@ -341,6 +419,12 @@ def stream_response(
     #             raise
     # elif backend in ("hf", "qwen", "llama") and not allow_heavy_fallbacks():
     #     logger.warning("Heavy HF fallback disabled; skipping backend '%s'.", backend)
+
+    # Force Groq
+    if backend == "groq":
+        _record_backend("groq")
+        yield _call_groq_api(prompt, params)
+        return
 
     # Force Mercury
     if backend in ("mercury", "auto", "local"): # Added local/auto to force mercury even if config is wrong
@@ -588,7 +672,9 @@ __all__ = [
     "get_last_backend_used",
     "DEFAULT_MODEL_PATH",
     "HF_MODEL_NAME",
+    "HF_MODEL_NAME",
     "INCEPTION_API_KEY",
+    "GROQ_API_KEY",
 ]
 def _close_llm() -> None:
     """Ensure the cached LLaMA instance is cleanly closed at shutdown."""

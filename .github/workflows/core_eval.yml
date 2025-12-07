@@ -40,10 +40,10 @@ jobs:
           echo "TOKENIZERS_PARALLELISM=false" >> $GITHUB_ENV
           echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> $GITHUB_ENV
           echo "INCEPTION_API_KEY=${{ secrets.INCEPTION_API_KEY }}" >> $GITHUB_ENV
-          echo "CHAT_PIPELINE_REMOTE_REQUEST_DELAY=30" >> $GITHUB_ENV
-          echo "CHAT_PIPELINE_REMOTE_MAX_ATTEMPTS=10" >> $GITHUB_ENV
-          echo "CHAT_PIPELINE_REMOTE_RETRY_BACKOFF=4.0" >> $GITHUB_ENV
-          echo "CHAT_PIPELINE_REMOTE_RETRY_INITIAL_DELAY=5.0" >> $GITHUB_ENV
+          echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" >> $GITHUB_ENV
+          echo "GENERATION_BACKEND=groq" >> $GITHUB_ENV
+          echo "CHAT_PIPELINE_REMOTE_REQUEST_DELAY=5" >> $GITHUB_ENV
+          echo "CHAT_PIPELINE_REMOTE_MAX_ATTEMPTS=5" >> $GITHUB_ENV
         shell: bash
 
       - name: Auth to GCP

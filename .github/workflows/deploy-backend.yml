@@ -1,4 +1,4 @@
-name: Deployment Pipeline -Deploy Backend to Cloud Run
+name: Deployment Pipeline - Deploy Backend to Cloud Run
 
 on:
   push:
