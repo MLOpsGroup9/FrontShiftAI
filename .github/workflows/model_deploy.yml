@@ -97,7 +97,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.evaluation_artifact_name }}
-          path: chat_pipeline/results
+          path: .
         continue-on-error: true
 
       - name: Verify Model File Integrity
@@ -161,7 +161,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.evaluation_artifact_name }}
-          path: chat_pipeline/results
+          path: .
         continue-on-error: true
 
       - name: Compute Quality Gate
@@ -236,7 +236,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.evaluation_artifact_name }}
-          path: chat_pipeline/results
+          path: .
         continue-on-error: true
 
       - name: Deploy Model to Registry

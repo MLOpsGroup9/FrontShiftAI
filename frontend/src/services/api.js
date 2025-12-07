@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { toast } from 'sonner';
 
 // Read from .env or fallback to 8000 (matching your backend)
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -24,7 +25,7 @@ api.interceptors.request.use(
   }
 );
 
-// Add response interceptor for debugging
+// Add response interceptor for debugging and global error handling
 api.interceptors.response.use(
   (response) => {
     console.log(`✅ API Response: ${response.config.url}`, response.data);
@@ -33,13 +34,34 @@ api.interceptors.response.use(
   (error) => {
     if (error.response) {
       // Server responded with error status
-      console.error(`❌ API Error [${error.response.status}]:`, error.response.data);
+      const status = error.response.status;
+      const detail = error.response.data?.detail || "An unexpected error occurred.";
+
+      console.error(`❌ API Error [${status}]:`, error.response.data);
+
+      if (status === 401) {
+        toast.error("Session expired. Please log in again.");
+        // Optional: trigger logout logic if not handled by components
+        localStorage.removeItem('access_token');
+        // Let component handle redirect via state check if possible, or reload
+        // window.location.reload(); // Can be aggressive, let's just toast for now.
+      } else if (status === 403) {
+        toast.error("You don't have permission to perform this action.");
+      } else if (status === 422) {
+        toast.error("Invalid input. Please check your data.");
+      } else if (status >= 500) {
+        toast.error("Server error. We're working on fixing it.");
+      } else {
+        toast.error(detail);
+      }
     } else if (error.request) {
       // Request made but no response
-      console.error('❌ No response from server. Is the backend running?');
+      console.error('❌ No response from server.');
+      toast.error("Unable to connect to the server. Please check your connection.");
     } else {
       // Something else happened
       console.error('❌ Request setup error:', error.message);
+      toast.error("Error setting up request.");
     }
     return Promise.reject(error);
   }

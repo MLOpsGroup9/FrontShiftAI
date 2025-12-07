@@ -23,21 +23,14 @@ const ConnectionStatus = () => {
     return (
       <div className="fixed bottom-4 right-4 px-4 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-300 backdrop-blur-xl z-50">
         <div className="flex items-center space-x-2">
-          <div className="w-2 h-2 bg-red-400 rounded-full"></div>
+          <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
           <span>Backend Offline</span>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="fixed bottom-4 right-4 px-4 py-2 bg-green-500/10 border border-green-500/30 rounded-lg text-xs text-green-300 backdrop-blur-xl z-50">
-      <div className="flex items-center space-x-2">
-        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-        <span>Connected to Backend</span>
-      </div>
-    </div>
-  );
+  return null;
 };
 
 export default ConnectionStatus;

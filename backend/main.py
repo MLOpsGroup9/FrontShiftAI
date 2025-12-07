@@ -7,7 +7,9 @@ import sys
 import logging
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import uvicorn
@@ -73,6 +75,39 @@ app = FastAPI(
     description="Multi-company RAG system with unified AI agents",
     lifespan=lifespan
 )
+
+# ----------------------------
+# ERROR HANDLING
+# ----------------------------
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    Global exception handler to catch all unhandled errors.
+    Logs the full error and returns a generic user-friendly message.
+    """
+    # Log the detailed error
+    logger.error(f"Unhandled exception at {request.url}: {exc}", exc_info=True)
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "We're experiencing technical difficulties. Please try again later.",
+            "error_code": "INTERNAL_SERVER_ERROR"
+        }
+    )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    Handle validation errors clearly
+    """
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": "Invalid request data. Please check your input.",
+            "errors": exc.errors()
+        }
+    )
 
 # ----------------------------
 # CORS SETTINGS

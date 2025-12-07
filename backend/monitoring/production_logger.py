@@ -91,6 +91,10 @@ class ProductionMonitor:
         self.request_count += 1
         if status_code >= 400:
             self.error_count += 1
+            # Log error to Cloud Logging (standard logger)
+            log_level = logging.ERROR if status_code >= 500 else logging.WARNING
+            logger.log(log_level, f"API Error [{status_code}] {method} {endpoint}: {error or 'Unknown Error'}")
+
         
         # Check latency alert
         self._check_alert("request_latency_ms", latency_ms, self.thresholds['max_latency_ms'])
@@ -139,6 +143,8 @@ class ProductionMonitor:
         self.agent_attempts[agent_name] += 1
         if not success:
             self.agent_failures[agent_name] += 1
+            # Log agent failure to standard logger
+            logger.warning(f"Agent Failure [{agent_name}]: Execution failed after {execution_time_ms}ms")
         
         # Check execution time
         self._check_alert(f"agent_{agent_name}_execution_ms", execution_time_ms, self.thresholds['max_agent_execution_ms'])

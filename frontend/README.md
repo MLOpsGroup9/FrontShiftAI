@@ -68,6 +68,7 @@ The application supports three distinct user roles with role-based routing:
 - Employee PTO balance administration
 - HR ticket queue management
 - Meeting scheduling and note communication
+- Bulk user import via CSV
 
 **Super Admins:**
 - Multi-company user management
