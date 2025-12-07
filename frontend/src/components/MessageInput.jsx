@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import VoiceChat from './VoiceChat';
 
 const MessageInput = ({ onSendMessage, isLoading, messages = [], placeholder }) => {
   const [message, setMessage] = useState('');
+  const [isVoiceChatOpen, setIsVoiceChatOpen] = useState(false);
   const hasMessages = messages.length > 0;
 
   const handleSubmit = (e) => {
@@ -40,8 +42,11 @@ const MessageInput = ({ onSendMessage, isLoading, messages = [], placeholder }) 
     : 'flex items-center gap-2 h-11 px-5 rounded-2xl border border-white/10 text-white/80 text-sm bg-transparent hover:bg-white/10 hover:text-white hover:border-white/20 transition-all active:scale-95';
 
   return (
-    <div className={`${containerClasses} transition-all duration-500`}>
-      <form onSubmit={handleSubmit} className={`${formClasses} transition-all duration-500`}>
+    <>
+      <VoiceChat isOpen={isVoiceChatOpen} onClose={() => setIsVoiceChatOpen(false)} />
+
+      <div className={`${containerClasses} transition-all duration-500`}>
+        <form onSubmit={handleSubmit} className={`${formClasses} transition-all duration-500`}>
         <div className={`${composerClasses} transition-all duration-500`}>
           <textarea
             rows={3}
@@ -62,6 +67,7 @@ const MessageInput = ({ onSendMessage, isLoading, messages = [], placeholder }) 
             </button>
             <button
               type="button"
+              onClick={() => setIsVoiceChatOpen(true)}
               className="w-11 h-11 flex items-center justify-center rounded-2xl border border-white/10 text-white/60 bg-white/5 hover:text-white hover:border-white/25 hover:bg-white/10 transition-all active:scale-95"
               title="Voice input"
             >
@@ -83,6 +89,7 @@ const MessageInput = ({ onSendMessage, isLoading, messages = [], placeholder }) 
         </div>
       </form>
     </div>
+    </>
   );
 };
 
