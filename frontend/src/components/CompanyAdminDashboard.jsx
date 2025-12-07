@@ -13,7 +13,8 @@ import {
   scheduleHRMeeting,
   resolveHRTicket,
   addHRTicketNote,
-  getHRTicketStats
+  getHRTicketStats,
+  bulkAddUsers
 } from '../services/api';
 import MonitoringDashboard from './MonitoringDashboard';
 
@@ -387,6 +388,12 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
               >
                 {showAddForm ? 'Cancel' : '+ Add User'}
               </button>
+              <button
+                onClick={() => document.getElementById('csvUpload').click()}
+                className="ml-2 px-4 py-2 bg-blue-500/80 hover:bg-blue-500 text-white rounded-lg transition-all"
+              >
+                Upload CSV
+              </button>
             </div>
 
             {showAddForm && (
@@ -476,6 +483,80 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
                 </table>
               </div>
             )}
+
+            {/* Hidden File Input */}
+            <input
+              type="file"
+              id="csvUpload"
+              accept=".csv"
+              style={{ display: 'none' }}
+              onChange={async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = async (event) => {
+                  try {
+                    const text = event.target.result;
+                    const lines = text.split(/\r\n|\n/).filter(line => line.trim());
+
+                    if (lines.length < 2) {
+                      alert('CSV file is empty or missing headers');
+                      return;
+                    }
+
+                    // Validate headers
+                    const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
+                    if (!headers.includes('name') || !headers.includes('email') || !headers.includes('password')) {
+                      alert('Invalid CSV format. Headers must be: Name, Email, Password');
+                      return;
+                    }
+
+                    const emailIdx = headers.indexOf('email');
+                    const nameIdx = headers.indexOf('name');
+                    const passwordIdx = headers.indexOf('password');
+
+                    const usersToAdd = [];
+                    for (let i = 1; i < lines.length; i++) {
+                      const values = lines[i].split(',').map(v => v.trim());
+                      if (values.length >= 3) {
+                        // Simple parsing assuming no commas in fields for now
+                        usersToAdd.push({
+                          email: values[emailIdx],
+                          name: values[nameIdx],
+                          password: values[passwordIdx],
+                          company: userInfo?.company || '', // will be enforced by backend mostly
+                          role: 'user'
+                        });
+                      }
+                    }
+
+                    if (usersToAdd.length === 0) {
+                      alert('No valid users found in CSV');
+                      return;
+                    }
+
+                    if (confirm(`Attempting to add ${usersToAdd.length} users. Continue?`)) {
+                      setIsLoading(true);
+                      try {
+                        const result = await bulkAddUsers(usersToAdd);
+                        alert(`Bulk add complete!\nAdded: ${result.added}\nFailed: ${result.failed}`);
+                        fetchUsers();
+                      } catch (err) {
+                        alert('Bulk add failed: ' + (err.response?.data?.detail || err.message));
+                      } finally {
+                        setIsLoading(false);
+                        e.target.value = ''; // Reset input
+                      }
+                    }
+                  } catch (parseError) {
+                    console.error(parseError);
+                    alert('Error parsing CSV file');
+                  }
+                };
+                reader.readAsText(file);
+              }}
+            />
           </div>
         </div>
       )}

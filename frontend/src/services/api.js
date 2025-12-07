@@ -116,6 +116,26 @@ export const logout = () => {
   localStorage.removeItem('user_company');
 };
 
+export const bulkAddUsers = async (users) => {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+    const response = await api.post('/api/admin/bulk-add-users', {
+      users: users
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Bulk Add Users Error:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
 // -------------- PTO Agent APIs --------------
 
 // Chat with PTO Agent
@@ -203,10 +223,10 @@ export const getAllPTORequests = async (statusFilter = null) => {
     if (!token) {
       throw new Error('Not authenticated');
     }
-    const url = statusFilter 
+    const url = statusFilter
       ? `/api/pto/admin/requests?status_filter=${statusFilter}`
       : '/api/pto/admin/requests';
-    
+
     const response = await api.get(url, {
       headers: {
         Authorization: `Bearer ${token}`
@@ -386,15 +406,15 @@ export const getHRTicketQueue = async (filters = {}) => {
     if (!token) {
       throw new Error('Not authenticated');
     }
-    
+
     const params = new URLSearchParams();
     if (filters.status) params.append('status_filter', filters.status);
     if (filters.category) params.append('category_filter', filters.category);
     if (filters.urgency) params.append('urgency_filter', filters.urgency);
     if (filters.sortBy) params.append('sort_by', filters.sortBy);
-    
+
     const url = `/api/hr-tickets/admin/queue${params.toString() ? '?' + params.toString() : ''}`;
-    
+
     const response = await api.get(url, {
       headers: {
         Authorization: `Bearer ${token}`
