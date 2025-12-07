@@ -338,7 +338,11 @@ jobs:
           if latest_path.exists():
               if latest_path.is_symlink():
                   version_dir = latest_path.resolve()
+              elif latest_path.is_dir():
+                   # Artifact download often dereferences symlinks into directories
+                  version_dir = latest_path
               else:
+                  # It's a pointer file (fallback)
                   with open(latest_path, 'r') as f:
                       version_dir = Path(f.read().strip())
 
@@ -351,9 +355,9 @@ jobs:
                   print(f"   Model: {metadata.get('model_name')}")
                   print(f"   Metrics: {metadata.get('evaluation', {})}")
               else:
-                  print("⚠️ Metadata not found")
+                  print("⚠️ Metadata not found in version dir")
           else:
-              print("⚠️ Latest symlink not found")
+              print("⚠️ Latest symlink/directory not found")
           EOF
 
       - name: Run Sample Queries (if RAG available)
