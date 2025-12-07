@@ -42,6 +42,12 @@ try:  # Requests is only required when hitting the remote Mercury API.
 except ImportError:  # pragma: no cover - optional dependency
     requests = None  # type: ignore
 
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None
+
+
 try:  # Optional token-aware context truncation support.
     import tiktoken  # type: ignore
 except ImportError:  # pragma: no cover - optional dependency
@@ -370,6 +376,47 @@ def _call_groq_api(prompt: str, params: Dict[str, Any]) -> str:
     raise RuntimeError("Groq API failed after multiple attempts.") from last_exc
 
 
+def _call_openai_api(prompt: str, params: Dict[str, Any]) -> str:
+    """Call the OpenAI API as a backend."""
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY is not set.")
+    if OpenAI is None:
+        raise RuntimeError("The `openai` package is required for the OpenAI backend.")
+
+    client = OpenAI(api_key=api_key)
+    
+    system_msg = params.get("system_message")
+    user_msg = params.get("user_message")
+
+    messages = []
+    if system_msg and user_msg:
+        messages.append({"role": "system", "content": system_msg})
+        messages.append({"role": "user", "content": user_msg})
+    else:
+        messages.append({"role": "user", "content": prompt})
+
+    model = "gpt-4o-mini" # Default to 4o-mini if not specified, though typically we want this configurable
+    # You might want to respect a config variable for the model name if it exists.
+    # For now, hardcoding as per typical usage or respecting an env var would be better.
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            max_tokens=params.get("max_tokens"),
+            temperature=params.get("temperature"),
+            top_p=params.get("top_p"),
+            timeout=REMOTE_TIMEOUT,
+        )
+        return (response.choices[0].message.content or "").strip()
+    except Exception as exc:
+        logger.error("OpenAI API call failed: %s", exc)
+        raise
+
+
 def _record_backend(name: Optional[str]) -> None:
     global _LAST_BACKEND_USED
     _LAST_BACKEND_USED = name
@@ -424,6 +471,12 @@ def stream_response(
     if backend == "groq":
         _record_backend("groq")
         yield _call_groq_api(prompt, params)
+        return
+
+    # Force OpenAI
+    if backend == "openai":
+        _record_backend("openai")
+        yield _call_openai_api(prompt, params)
         return
 
     # Force Mercury
