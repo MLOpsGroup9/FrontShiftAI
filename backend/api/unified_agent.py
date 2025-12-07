@@ -2,22 +2,25 @@
 Unified Agent - Handles RAG, PTO, HR Tickets, and Website Extraction
 WITH PERSISTENT CHAT STORAGE AND MONITORING
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from sqlalchemy.orm import Session
+from typing import Dict, Any, Optional, List
+import uuid
+import logging
+from datetime import datetime
+
 from db.connection import get_db
-from api.auth import get_current_user
-from pydantic import BaseModel
-from agents.utils.llm_client import get_llm_client
+from db.models import Conversation, Message, User
+from services.auth_service import get_current_user
+from services.rag_service import query_rag_langchain
 from agents.pto.agent import PTOAgent
 from agents.hr_ticket.agent import HRTicketAgent
 from agents.website_extraction.agent import WebsiteExtractionAgent
+from utils.llm_client import AgentLLMClient
+from pydantic import BaseModel
 from schemas.rag import RAGQueryRequest
-from api.rag import rag_query
-from db.models import Conversation, Message
-from monitoring.production_logger import production_monitor  # ADD THIS
+from monitoring.production_logger import production_monitor
 import json
-import uuid
-import time  # ADD THIS
 from typing import List, Optional
 
 router = APIRouter(prefix="/api/chat", tags=["Unified Agent"])
