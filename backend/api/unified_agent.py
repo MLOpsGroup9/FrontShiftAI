@@ -11,12 +11,12 @@ from datetime import datetime
 
 from db.connection import get_db
 from db.models import Conversation, Message, User
-from services.auth_service import get_current_user
-from services.rag_service import query_rag_langchain
+from api.auth import get_current_user
+from api.rag import rag_query
 from agents.pto.agent import PTOAgent
 from agents.hr_ticket.agent import HRTicketAgent
 from agents.website_extraction.agent import WebsiteExtractionAgent
-from utils.llm_client import AgentLLMClient
+from agents.utils.llm_client import AgentLLMClient
 from pydantic import BaseModel
 from schemas.rag import RAGQueryRequest
 from monitoring.production_logger import production_monitor
