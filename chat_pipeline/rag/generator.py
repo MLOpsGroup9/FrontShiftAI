@@ -288,6 +288,7 @@ def _call_mercury_api(prompt: str, params: Dict[str, Any]) -> str:
                 break
             time.sleep(delay)
             delay *= REMOTE_BACKOFF
+                
     raise RuntimeError("Mercury API failed after multiple attempts.") from last_exc
 
 
