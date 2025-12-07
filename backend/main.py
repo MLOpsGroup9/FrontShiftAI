@@ -32,7 +32,8 @@ from api.hr_ticket_agent import router as hr_ticket_router
 from api.company_management import router as company_management_router
 
 # Import ChromaDB setup from chat_pipeline
-from chat_pipeline.rag.data_loader import ensure_chroma_store
+from chat_pipeline.rag.data_loader import ensure_chroma_store, get_collection, _embedding_function
+import time
 
 # ----------------------------
 # Lifespan Events
@@ -40,7 +41,7 @@ from chat_pipeline.rag.data_loader import ensure_chroma_store
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("🚀 FrontShiftAI API starting up...")
-    
+
     # Ensure ChromaDB is available in production
     try:
         if os.getenv("ENVIRONMENT") == "production":
@@ -50,15 +51,56 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"ChromaDB setup failed: {e}")
         # Don't fail startup - allow service to start for debugging
-    
+
     # Initialize database
     from db import init_db
     from db.seed import seed_initial_data
     init_db()
     seed_initial_data()
-    
+
+    # ----------------------------
+    # WARMUP: Preload RAG Models
+    # ----------------------------
+    print("🔥 Warming up RAG models...")
+    try:
+        warmup_start = time.time()
+
+        # 1. Preload embedding model (5-15s on cold start)
+        print("⏳ Loading embedding model...")
+        embedding_fn = _embedding_function()
+        print("✅ Embedding model loaded")
+
+        # 2. Preload ChromaDB collection (2-5s on cold start)
+        print("⏳ Loading ChromaDB collection...")
+        collection = get_collection()
+        doc_count = collection.count()
+        print(f"✅ ChromaDB collection loaded ({doc_count} documents)")
+
+        # 3. Preload reranker model if enabled (3-10s on cold start)
+        try:
+            from chat_pipeline.rag.config_manager import load_rag_config
+            rag_config = load_rag_config()
+            if rag_config.get("pipeline", {}).get("reranker", {}).get("enabled", False):
+                print("⏳ Loading reranker model...")
+                from chat_pipeline.rag.reranker import _get_cross_encoder
+                reranker = _get_cross_encoder()
+                print("✅ Reranker model loaded")
+            else:
+                print("ℹ️  Reranker disabled - skipping")
+        except Exception as e:
+            print(f"⚠️  Reranker preload skipped: {e}")
+
+        warmup_duration = time.time() - warmup_start
+        print(f"🔥 Warmup complete in {warmup_duration:.2f}s - Ready for requests!")
+
+    except Exception as e:
+        print(f"⚠️  Warmup failed: {e}")
+        import traceback
+        traceback.print_exc()
+        print("⚠️  Service will continue but first request may be slow")
+
     yield
-    
+
     print("👋 FrontShiftAI API shutting down...")
 
 # ----------------------------

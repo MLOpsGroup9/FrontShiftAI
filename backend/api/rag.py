@@ -29,34 +29,39 @@ async def rag_query(
     start_time = time.time()
     try:
         company_name = current_user.get("company")
-        
+
         if current_user["role"] != "super_admin" and not company_name:
             raise HTTPException(
                 status_code=403,
                 detail="No company associated with this user"
             )
-        
+
         logger.info(
             "RAG Query initiated",
             extra={
                 "user_email": current_user['email'],
                 "company": company_name,
-                "query": request.query
+                "query": request.query,
+                "top_k": request.top_k,
+                "metric_type": "rag_query_start"
             }
         )
-        
-        # Run RAG pipeline
+
+        # Run RAG pipeline with timing
         rag_company_filter = company_name if current_user["role"] != "super_admin" else None
-        
+
+        pipeline_start = time.time()
         result = pipeline.run(
             query=request.query,
             top_k=request.top_k,
             company_name=rag_company_filter,
         )
-        
+        pipeline_duration = time.time() - pipeline_start
+
         answer = result.answer
         metadata = result.metadata
-        
+        timings = result.timings or {}
+
         # Format sources
         sources = [
             {
@@ -69,25 +74,56 @@ async def rag_query(
             }
             for m in metadata
         ]
-        
-        duration = time.time() - start_time
+
+        total_duration = time.time() - start_time
+
+        # Calculate detailed breakdown
+        retrieval_time = timings.get("retrieval", 0.0)
+        generation_time = timings.get("generation", 0.0)
+        cache_hit = timings.get("cache_hit", 0.0) == 1.0
+        overhead_time = total_duration - pipeline_duration
+
         logger.info(
             "RAG Query completed",
             extra={
                 "user_email": current_user['email'],
                 "company": company_name,
-                "duration_seconds": duration,
-                "sources_count": len(sources)
+                "query": request.query,
+                "total_duration_seconds": total_duration,
+                "pipeline_duration_seconds": pipeline_duration,
+                "retrieval_duration_seconds": retrieval_time,
+                "generation_duration_seconds": generation_time,
+                "overhead_duration_seconds": overhead_time,
+                "cache_hit": cache_hit,
+                "sources_count": len(sources),
+                "top_k": request.top_k,
+                "metric_type": "rag_query_complete"
             }
         )
-        
+
         return RAGQueryResponse(
             answer=answer,
             sources=sources,
             query=request.query,
             company=company_name or "All Companies",
+            duration_seconds=total_duration,
+            retrieval_duration_seconds=retrieval_time,
+            generation_duration_seconds=generation_time,
+            cache_hit=cache_hit
         )
-    
+
     except Exception as e:
-        logger.error(f"RAG Query failed: {str(e)}", exc_info=True)
+        duration = time.time() - start_time
+        logger.error(
+            "RAG Query failed",
+            extra={
+                "user_email": current_user.get('email'),
+                "company": current_user.get("company"),
+                "query": request.query,
+                "duration_seconds": duration,
+                "error": str(e),
+                "metric_type": "rag_query_error"
+            },
+            exc_info=True
+        )
         raise HTTPException(status_code=500, detail=str(e))
