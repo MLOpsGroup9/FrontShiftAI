@@ -798,6 +798,24 @@ GET /api/admin/monitoring/stats
   Query Params: ?time_range=24h|7d|30d
   Headers: Authorization: Bearer <token>
   Response: {
+    "requests": 1500,
+    "avg_latency": 250,
+    "error_rate": 0.02
+  }
+```
+
+### Monitoring Infrastructure (NEW)
+
+**Weights & Biases Integration:**
+- **Request Tracking**: Latency, status codes, company ID
+- **Agent Metrics**: Execution time, success rates, tool usage
+- **Business KPIs**: PTO approvals, HR ticket resolutions
+- **Database Performance**: Query latency profiling
+
+**Alerting System**:
+- **Real-time Checks**: Latency > 3s, Error Rate > 5%
+- **Notifications**: Email alerts for critical thresholds
+- **Dashboard**: Centralized view of system health
     "overview": {
       "total_requests": 1250,
       "active_users": 45,

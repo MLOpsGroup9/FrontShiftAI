@@ -184,6 +184,7 @@ System: [HR Ticket Agent] Support ticket created...
 - **Visualizations**: Interactive charts using Recharts (Line, Bar, Pie).
 - **Dark Theme**: Dedicated dark mode UI for high-contrast monitoring.
 - **Metrics**: Request volume, response times, error rates, and active user counts.
+- **Real-time Alerts**: UI notifications for critical system events (high latency, error spikes).
 
 ### HR Ticket Notes System
 

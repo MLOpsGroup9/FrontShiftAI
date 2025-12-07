@@ -343,31 +343,28 @@ GitHub Actions → Request OIDC token → Exchange for GCP credentials → No ke
 ## 7. Cloud Monitoring (Observability)
 
 ### What It Is
-Monitoring, logging, and alerting for GCP resources.
+Monitoring, logging, and alerting for GCP resources, integrated with Weights & Biases for application-level metrics.
 
-### How We Use It (Partial)
+### Active Monitoring Infrastructure
 
-**Currently Active:**
-- Cloud Run automatic metrics (requests, latency, errors)
-- Cloud SQL metrics (connections, queries)
-- Automatic logging for all services
+**1. GCP Infrastructure Metrics:**
+- **Cloud Run:** Request count, Latency (p95), Error rates (5xx), CPU/Memory utilization, Instance count
+- **Cloud SQL:** Connections, IOPS, Storage usage
 
-**Planned:**
-- Custom dashboards
-- Alert policies
-- Uptime checks
-- Log-based metrics
+**2. Alert Policies (Email Notifications):**
+- **High Error Rate:** > 10 errors/min for 5 min
+- **High Latency:** > 3000ms for 5 min
+- **High Resource Usage:** > 80% CPU for 5 min
 
-**Available Metrics:**
-- Request count per service
-- Response time (p50, p95, p99)
-- Error rates
-- Memory usage
-- CPU usage
-- Database connections
-- Container instance count
+**3. Application & Business Monitoring (W&B):**
+- **Request Tracking:** Every API call logged with latency, status, and tenant ID
+- **Agent Performance:** Execution time and success rates for PTO, HR, and RAG agents
+- **Business KPIs:** Tracking PTO requests (created/approved) and HR Tickets (created/resolved)
+- **Database Performance:** Query execution time tracking
 
-**Cost:** FREE (within generous free tier)
+**Cost:** 
+- GCP Monitoring: Free tier covers basic metrics
+- Weights & Biases: Free tier for academic/personal use
 
 ---
 

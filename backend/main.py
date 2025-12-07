@@ -31,6 +31,9 @@ from api.pto_agent import router as pto_router
 from api.hr_ticket_agent import router as hr_ticket_router
 from api.company_management import router as company_management_router
 
+# Import monitoring middleware
+from monitoring.middleware import MonitoringMiddleware
+
 # Import ChromaDB setup from chat_pipeline
 from chat_pipeline.rag.data_loader import ensure_chroma_store
 
@@ -83,6 +86,11 @@ app.add_middleware(
 )
 
 # ----------------------------
+# MONITORING MIDDLEWARE
+# ----------------------------
+app.add_middleware(MonitoringMiddleware)
+
+# ----------------------------
 # Register Routers
 # ----------------------------
 app.include_router(auth.router)
@@ -119,4 +127,4 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", 8000)),
         reload=True
-    )# Trigger rebuild
+    )

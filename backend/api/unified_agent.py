@@ -1,6 +1,6 @@
 """
 Unified Agent - Handles RAG, PTO, HR Tickets, and Website Extraction
-WITH PERSISTENT CHAT STORAGE
+WITH PERSISTENT CHAT STORAGE AND MONITORING
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -14,8 +14,10 @@ from agents.website_extraction.agent import WebsiteExtractionAgent
 from schemas.rag import RAGQueryRequest
 from api.rag import rag_query
 from db.models import Conversation, Message
+from monitoring.production_logger import production_monitor  # ADD THIS
 import json
 import uuid
+import time  # ADD THIS
 from typing import List, Optional
 
 router = APIRouter(prefix="/api/chat", tags=["Unified Agent"])
@@ -163,10 +165,14 @@ async def unified_chat(
 ):
     """
     Unified chat endpoint - intelligently routes to RAG, PTO, or HR Ticket agents
-    AND saves to database
+    AND saves to database WITH MONITORING
     """
     message = request.message
     conversation_id = request.conversation_id
+    company = current_user["company"]
+    
+    # Start timing
+    start_time = time.time()
     
     # Create or get conversation
     if not conversation_id:
@@ -176,7 +182,7 @@ async def unified_chat(
         new_conversation = Conversation(
             id=conversation_id,
             email=current_user["email"],
-            company=current_user["company"],
+            company=company,
             title=title
         )
         db.add(new_conversation)
@@ -199,14 +205,29 @@ async def unified_chat(
     
     print(f"🤖 Routing to {agent_type} agent (confidence: {intent['confidence']})")
     
+    # Track agent selection
+    agent_start_time = time.time()
+    success = False
+    
     try:
         if agent_type == 'pto':
             # Use PTO Agent
             pto_agent = PTOAgent(db)
             result = await pto_agent.execute(
                 user_email=current_user["email"],
-                company=current_user["company"],
+                company=company,
                 message=message
+            )
+            
+            success = True
+            
+            # Log agent execution
+            execution_time_ms = (time.time() - agent_start_time) * 1000
+            production_monitor.log_agent_execution(
+                agent_name="pto",
+                execution_time_ms=execution_time_ms,
+                success=True,
+                company_id=company
             )
             
             # Save assistant message
@@ -241,9 +262,20 @@ async def unified_chat(
             hr_agent = HRTicketAgent()
             result = await hr_agent.process_message(
                 user_email=current_user["email"],
-                company=current_user["company"],
+                company=company,
                 message=message,
                 db=db
+            )
+            
+            success = True
+            
+            # Log agent execution
+            execution_time_ms = (time.time() - agent_start_time) * 1000
+            production_monitor.log_agent_execution(
+                agent_name="hr_ticket",
+                execution_time_ms=execution_time_ms,
+                success=True,
+                company_id=company
             )
             
             # Save assistant message
@@ -277,9 +309,20 @@ async def unified_chat(
             website_agent = WebsiteExtractionAgent(db)
             result = await website_agent.execute(
                 user_email=current_user["email"],
-                company=current_user["company"],
+                company=company,
                 message=message,
                 triggered_by="direct"
+            )
+            
+            success = True
+            
+            # Log agent execution
+            execution_time_ms = (time.time() - agent_start_time) * 1000
+            production_monitor.log_agent_execution(
+                agent_name="website_extraction",
+                execution_time_ms=execution_time_ms,
+                success=True,
+                company_id=company
             )
             
             assistant_message = Message(
@@ -333,9 +376,20 @@ async def unified_chat(
                 website_agent = WebsiteExtractionAgent(db)
                 website_result = await website_agent.execute(
                     user_email=current_user["email"],
-                    company=current_user["company"],
+                    company=company,
                     message=message,
                     triggered_by="rag_fallback"
+                )
+                
+                success = True
+                
+                # Log website extraction (fallback)
+                execution_time_ms = (time.time() - agent_start_time) * 1000
+                production_monitor.log_agent_execution(
+                    agent_name="website_extraction_fallback",
+                    execution_time_ms=execution_time_ms,
+                    success=True,
+                    company_id=company
                 )
                 
                 assistant_message = Message(
@@ -366,6 +420,17 @@ async def unified_chat(
                     }
                 )
             
+            success = True
+            
+            # Log RAG execution
+            execution_time_ms = (time.time() - agent_start_time) * 1000
+            production_monitor.log_agent_execution(
+                agent_name="rag",
+                execution_time_ms=execution_time_ms,
+                success=True,
+                company_id=company
+            )
+            
             assistant_message = Message(
                 id=str(uuid.uuid4()),
                 conversation_id=conversation_id,
@@ -394,6 +459,15 @@ async def unified_chat(
         print(f"❌ Error in unified agent: {e}")
         import traceback
         traceback.print_exc()
+        
+        # Log failure
+        execution_time_ms = (time.time() - agent_start_time) * 1000
+        production_monitor.log_agent_execution(
+            agent_name=agent_type,
+            execution_time_ms=execution_time_ms,
+            success=False,
+            company_id=company
+        )
         
         # Save error message (graceful)
         error_message = Message(

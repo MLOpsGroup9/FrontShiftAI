@@ -1,10 +1,11 @@
 """
-HR Ticket API endpoints
+HR Ticket API endpoints with Monitoring
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import datetime
+import time  # ADD THIS
 
 from db.connection import get_db
 from db.models import HRTicket, TicketStatus, TicketCategory, Urgency, User, UserRole
@@ -28,6 +29,7 @@ from agents.hr_ticket.tools import (
     get_ticket_stats
 )
 from api.auth import get_current_user
+from monitoring.production_logger import production_monitor  # ADD THIS
 
 router = APIRouter(prefix="/api/hr-tickets", tags=["HR Tickets"])
 
@@ -46,29 +48,63 @@ async def create_ticket_via_chat(
     Create an HR ticket via chat interface.
     User sends a natural language message, agent parses and creates ticket.
     """
-    agent = get_hr_ticket_agent()
+    start_time = time.time()  # ADD THIS
+    success = False  # ADD THIS
     
-    result = await agent.process_message(
-        user_email=current_user["email"],
-        company=current_user["company"],
-        message=request.message,
-        db=db
-    )
+    try:
+        agent = get_hr_ticket_agent()
+        
+        result = await agent.process_message(
+            user_email=current_user["email"],
+            company=current_user["company"],
+            message=request.message,
+            db=db
+        )
+        
+        success = True  # ADD THIS
+        
+        # Log agent execution
+        execution_time_ms = (time.time() - start_time) * 1000
+        production_monitor.log_agent_execution(
+            agent_name="hr_ticket",
+            execution_time_ms=execution_time_ms,
+            success=True,
+            company_id=current_user["company"]
+        )
+        
+        # Log ticket creation metric
+        if result["ticket_created"]:
+            production_monitor.run.log({
+                "business/hr_ticket_created": 1,
+                "business/company": current_user["company"],
+                "timestamp": time.time()
+            })
+        
+        # Get ticket details if created
+        ticket_details = None
+        if result["ticket_created"] and result["ticket_id"]:
+            ticket = get_ticket_by_id(db, result["ticket_id"], current_user["company"])
+            if ticket:
+                ticket_details = HRTicketResponse.model_validate(ticket)
+        
+        return HRTicketChatResponse(
+            response=result["response"],
+            ticket_created=result["ticket_created"],
+            ticket_id=result.get("ticket_id"),
+            queue_position=result.get("queue_position"),
+            ticket_details=ticket_details
+        )
     
-    # Get ticket details if created
-    ticket_details = None
-    if result["ticket_created"] and result["ticket_id"]:
-        ticket = get_ticket_by_id(db, result["ticket_id"], current_user["company"])
-        if ticket:
-            ticket_details = HRTicketResponse.model_validate(ticket)
-    
-    return HRTicketChatResponse(
-        response=result["response"],
-        ticket_created=result["ticket_created"],
-        ticket_id=result.get("ticket_id"),
-        queue_position=result.get("queue_position"),
-        ticket_details=ticket_details
-    )
+    except Exception as e:
+        # Log failure
+        execution_time_ms = (time.time() - start_time) * 1000
+        production_monitor.log_agent_execution(
+            agent_name="hr_ticket",
+            execution_time_ms=execution_time_ms,
+            success=False,
+            company_id=current_user["company"]
+        )
+        raise
 
 
 @router.get("/my-tickets", response_model=HRTicketListResponse)
@@ -77,7 +113,17 @@ def get_my_tickets(
     db: Session = Depends(get_db)
 ):
     """Get all tickets for the current user"""
+    start_time = time.time()  # ADD THIS
+    
     tickets = get_user_tickets(db, current_user["email"], current_user["company"])
+    
+    # Log query performance
+    query_time_ms = (time.time() - start_time) * 1000
+    production_monitor.log_database_query(
+        query_type="hr_tickets_user_list",
+        execution_time_ms=query_time_ms,
+        rows_affected=len(tickets)
+    )
     
     return HRTicketListResponse(
         tickets=[HRTicketResponse.model_validate(ticket) for ticket in tickets],
@@ -92,6 +138,8 @@ def get_ticket_details(
     db: Session = Depends(get_db)
 ):
     """Get details of a specific ticket"""
+    start_time = time.time()  # ADD THIS
+    
     ticket = get_ticket_by_id(db, ticket_id, current_user["company"])
     
     if not ticket:
@@ -100,6 +148,13 @@ def get_ticket_details(
     # Users can only see their own tickets
     if current_user["role"] == "user" and ticket.email != current_user["email"]:
         raise HTTPException(status_code=403, detail="Not authorized to view this ticket")
+    
+    # Log query performance
+    query_time_ms = (time.time() - start_time) * 1000
+    production_monitor.log_database_query(
+        query_type="hr_ticket_detail",
+        execution_time_ms=query_time_ms
+    )
     
     return HRTicketResponse.model_validate(ticket)
 
@@ -111,6 +166,8 @@ def cancel_ticket(
     db: Session = Depends(get_db)
 ):
     """Cancel a ticket (only if pending or scheduled)"""
+    start_time = time.time()  # ADD THIS
+    
     ticket = get_ticket_by_id(db, ticket_id, current_user["company"])
     
     if not ticket:
@@ -133,6 +190,15 @@ def cancel_ticket(
     ticket.resolution_notes = "Cancelled by user"
     
     db.commit()
+    
+    # Log cancellation metric
+    execution_time_ms = (time.time() - start_time) * 1000
+    production_monitor.run.log({
+        "business/hr_ticket_cancelled": 1,
+        "business/company": current_user["company"],
+        "business/cancellation_time_ms": execution_time_ms,
+        "timestamp": time.time()
+    })
     
     return SimpleResponse(
         message="Ticket cancelled successfully",
@@ -161,6 +227,8 @@ def get_ticket_queue(
     if current_user["role"] != "company_admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
+    start_time = time.time()  # ADD THIS
+    
     # Build query
     query = db.query(HRTicket).filter(HRTicket.company == current_user["company"])
     
@@ -185,6 +253,14 @@ def get_ticket_queue(
     
     tickets = query.all()
     
+    # Log admin queue query
+    query_time_ms = (time.time() - start_time) * 1000
+    production_monitor.log_database_query(
+        query_type="admin_hr_ticket_queue",
+        execution_time_ms=query_time_ms,
+        rows_affected=len(tickets)
+    )
+    
     return HRTicketListResponse(
         tickets=[HRTicketResponse.model_validate(ticket) for ticket in tickets],
         total_count=len(tickets)
@@ -200,6 +276,8 @@ def pick_ticket(
     """Admin picks up a ticket (assigns to themselves)"""
     if current_user["role"] != "company_admin":
         raise HTTPException(status_code=403, detail="Admin access required")
+    
+    start_time = time.time()  # ADD THIS
     
     ticket = get_ticket_by_id(db, request.ticket_id, current_user["company"])
     
@@ -219,6 +297,15 @@ def pick_ticket(
     
     db.commit()
     
+    # Log ticket pickup
+    execution_time_ms = (time.time() - start_time) * 1000
+    production_monitor.run.log({
+        "business/hr_ticket_picked_up": 1,
+        "business/company": current_user["company"],
+        "business/pickup_time_ms": execution_time_ms,
+        "timestamp": time.time()
+    })
+    
     return SimpleResponse(
         message="Ticket assigned to you",
         ticket_id=request.ticket_id
@@ -234,6 +321,8 @@ def schedule_meeting(
     """Admin schedules a meeting for a ticket"""
     if current_user["role"] != "company_admin":
         raise HTTPException(status_code=403, detail="Admin access required")
+    
+    start_time = time.time()  # ADD THIS
     
     ticket = get_ticket_by_id(db, request.ticket_id, current_user["company"])
     
@@ -258,6 +347,15 @@ def schedule_meeting(
     
     db.commit()
     
+    # Log meeting scheduled
+    execution_time_ms = (time.time() - start_time) * 1000
+    production_monitor.run.log({
+        "business/hr_meeting_scheduled": 1,
+        "business/company": current_user["company"],
+        "business/schedule_time_ms": execution_time_ms,
+        "timestamp": time.time()
+    })
+    
     return SimpleResponse(
         message="Meeting scheduled successfully",
         ticket_id=request.ticket_id
@@ -274,10 +372,17 @@ def resolve_ticket(
     if current_user["role"] != "company_admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
+    start_time = time.time()  # ADD THIS
+    
     ticket = get_ticket_by_id(db, request.ticket_id, current_user["company"])
     
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    # Calculate resolution time if ticket was created
+    resolution_time_hours = None
+    if ticket.created_at:
+        resolution_time_hours = (datetime.utcnow() - ticket.created_at).total_seconds() / 3600
     
     # Update ticket
     ticket.status = request.status
@@ -289,6 +394,20 @@ def resolve_ticket(
         ticket.assigned_to = current_user["email"]
     
     db.commit()
+    
+    # Log ticket resolution
+    execution_time_ms = (time.time() - start_time) * 1000
+    metrics = {
+        "business/hr_ticket_resolved": 1,
+        "business/company": current_user["company"],
+        "business/resolution_action_time_ms": execution_time_ms,
+        "timestamp": time.time()
+    }
+    
+    if resolution_time_hours:
+        metrics["business/hr_ticket_resolution_time_hours"] = resolution_time_hours
+    
+    production_monitor.run.log(metrics)
     
     return SimpleResponse(
         message=f"Ticket {request.status.value} successfully",
@@ -337,6 +456,15 @@ def get_admin_stats(
     if current_user["role"] != "company_admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
+    start_time = time.time()  # ADD THIS
+    
     stats = get_ticket_stats(db, current_user["company"])
+    
+    # Log stats query
+    query_time_ms = (time.time() - start_time) * 1000
+    production_monitor.log_database_query(
+        query_type="hr_ticket_stats",
+        execution_time_ms=query_time_ms
+    )
     
     return TicketStatsResponse(**stats)

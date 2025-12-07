@@ -27,6 +27,7 @@ Key components include:
 - Retrieval-Augmented Generation (RAG) core for document-grounded answers  
 - An agentic orchestration layer for HR workflow automation (in development)  
 - Voice-based interaction features for hands-free accessibility (in development)  
+- **Comprehensive Monitoring**: Full-stack observability with W&B and GCP Alerts  
 
 An optional Airflow DAG (`dvc_repro_manual_dag.py`) in `data_pipeline/dags/` can automatically trigger the pipeline when new URLs are added to `data_pipeline/data/url.json`, or it can be triggered manually via the Airflow UI.
 
@@ -78,7 +79,19 @@ When a new company is added via the Admin Dashboard:
 
 ---
 
-## 2. Automated Data Pipeline Overview
+## 3. Monitoring & Observability
+
+The system includes a robust monitoring layer using **Google Cloud Monitoring** and **Weights & Biases (W&B)** to track system health and business metrics.
+
+### Key Metrics Tracked:
+*   **Infrastructure**: Cloud Run CPU/Memory, Request counts, Latency.
+*   **Application**: API endpoint performance, specific Agent execution times.
+*   **Business**: PTO requests created/approved, HR tickets resolved.
+*   **Alerts**: Automated emails for high error rates (>10/min) or latency spikes (>3s).
+
+---
+
+## 4. Automated Data Pipeline Overview
 
 The data pipeline is fully modular, test-driven, and reproducible. Each stage is independently testable using `pytest`. The pipeline supports ingestion, preprocessing, validation, and embedding of HR policy documents.
 
@@ -100,9 +113,9 @@ pytest -v --disable-warnings
 
 ---
 
-## 3. Dataset Information
+## 5. Dataset Information
 
-### 3.1 Dataset Card
+### 5.1 Dataset Card
 
 | Attribute | Description |
 |------------|-------------|
@@ -112,19 +125,19 @@ pytest -v --disable-warnings
 | **Formats** | PDF, JSONL, CSV |
 | **Data Types** | Policy text, metadata, extracted tables |
 
-### 3.2 Example Sources
+### 5.2 Example Sources
 - Healthcare: [Crouse Medical Handbook (2019)](https://crousemed.com/media/1449/cmp-employee-handbook.pdf)  
 - Retail: [Lunds & Byerlys Handbook (2019)](https://corporate.lundsandbyerlys.com/wp-content/uploads/2024/05/EmployeeHandbook_20190926.pdf)  
 - Manufacturing: [BG Foods Handbook (2022)](https://bgfood.com/wp-content/uploads/2022/01/BG-Employee-Handbook-2022.pdf)  
 - Construction: [TNT Construction Handbook (2018)](https://www.tntconstructionmn.com/wp-content/uploads/2018/05/TNT-Construction-Inc-Handbook_Final-2018.pdf)  
 - Finance: [Old National Bank Handbook](https://www.oldnational.com/globalassets/onb-site/onb-documents/onb-about-us/onb-team-member-handbook/team-member-handbook.pdf)  
 
-### 3.3 Rights and Privacy
+### 5.3 Rights and Privacy
 All handbooks are publicly available and used solely for educational and research purposes. No personal or sensitive data is included.
 
 ---
 
-## 4. Repository Structure
+## 6. Repository Structure
 
 ```bash
 FrontShiftAI/
@@ -251,7 +264,7 @@ FrontShiftAI/
 
 ---
 
-## 5. Running the Pipeline
+## 7. Running the Pipeline
 
 ```bash
 # Clone the repository
@@ -283,7 +296,7 @@ All logs and reports are stored under `data_pipeline/logs/`, and validation metr
 
 ---
 
-## 6. Testing and Continuous Integration
+## 8. Testing and Continuous Integration
 
 All pipeline stages are validated through automated tests.  
 Run the full test suite:
@@ -317,13 +330,13 @@ jobs:
 
 ---
 
-## 7. License
+## 9. License
 
 This project is released under the MIT License.  
 See `License.md` for details.
 
 ---
 
-## 8. Repository
+## 10. Repository
 
 https://github.com/MLOpsGroup9/FrontShiftAI
