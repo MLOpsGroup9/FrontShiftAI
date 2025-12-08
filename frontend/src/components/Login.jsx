@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { login } from '../services/api';
+import { ArrowLeft } from 'lucide-react';
 
-const Login = ({ onLoginSuccess }) => {
+const Login = ({ onLoginSuccess, onBack }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -14,15 +15,15 @@ const Login = ({ onLoginSuccess }) => {
 
     try {
       const response = await login(email, password);
-      
+
       console.log('🔐 Login response:', response);  // DEBUG
-      
+
       // Store auth data in localStorage
       localStorage.setItem('access_token', response.access_token);
       localStorage.setItem('user_email', response.email);
       localStorage.setItem('user_company', response.company);
       localStorage.setItem('user_role', response.role);  // ← ADDED THIS LINE
-      
+
       // Notify parent component
       onLoginSuccess(response);
     } catch (err) {
@@ -59,7 +60,7 @@ const Login = ({ onLoginSuccess }) => {
         {/* Login Card */}
         <div className="glass-card bg-white/10 backdrop-blur-xl p-8">
           <h2 className="text-xl font-semibold text-white mb-6">Welcome Back</h2>
-          
+
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email Input */}
             <div>
@@ -133,6 +134,14 @@ const Login = ({ onLoginSuccess }) => {
           Secure access to company handbooks and policies
         </p>
       </div>
+
+      {/* Back Button */}
+      <button
+        onClick={onBack}
+        className="absolute top-6 left-6 p-2 rounded-full bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all z-50 group"
+      >
+        <ArrowLeft size={20} className="group-hover:-translate-x-0.5 transition-transform" />
+      </button>
     </div>
   );
 };

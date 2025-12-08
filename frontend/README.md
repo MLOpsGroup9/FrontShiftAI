@@ -32,7 +32,8 @@ frontend/
 │   │   ├── Login.jsx                # Authentication interface
 │   │   ├── ConnectionStatus.jsx     # Backend connection indicator
 │   │   ├── CompanyAdminDashboard.jsx  # Company admin interface
-│   │   └── SuperAdminDashboard.jsx    # Super admin interface
+│   │   ├── SuperAdminDashboard.jsx    # Super admin interface
+│   │   └── MonitoringDashboard.jsx    # Real-time analytics [NEW]
 │   │
 │   ├── services/            # API Integration
 │   │   └── api.js          # API client and endpoints
@@ -173,6 +174,17 @@ System: [HR Ticket Agent] Support ticket created...
 - Status tracking (pending, in_progress, scheduled, resolved, closed)
 - Meeting information display
 - Category icons for quick identification
+
+### Monitoring Dashboard (NEW)
+
+**Real-Time Analytics:**
+- **Role-Based Views**:
+  - **Super Admins**: Global system stats, agent usage distribution, company activity leaderboard.
+  - **Company Admins**: Company-specific stats, top active users, operational bottlenecks (PTO/Tickets).
+- **Visualizations**: Interactive charts using Recharts (Line, Bar, Pie).
+- **Dark Theme**: Dedicated dark mode UI for high-contrast monitoring.
+- **Metrics**: Request volume, response times, error rates, and active user counts.
+- **Real-time Alerts**: UI notifications for critical system events (high latency, error spikes).
 
 ### HR Ticket Notes System
 
@@ -571,46 +583,6 @@ export default ComponentName;
 
 ## Testing
 
-### Manual Testing Checklist
-
-**Authentication:**
-- [ ] Login with valid credentials
-- [ ] Login with invalid credentials
-- [ ] Session persistence across page refresh
-- [ ] Automatic logout on token expiration
-- [ ] Role-based routing (user, company_admin, super_admin)
-
-**Chat Interface:**
-- [ ] Send RAG query (handbook question)
-- [ ] Send PTO request
-- [ ] Send HR ticket request
-- [ ] View agent type in responses
-- [ ] Message persistence in chat history
-- [ ] New chat creation
-- [ ] Chat deletion
-- [ ] Search functionality
-
-**PTO Requests Tab:**
-- [ ] View balance information
-- [ ] View request history
-- [ ] Expand request details
-- [ ] Status badge display
-- [ ] Admin notes display
-
-**HR Tickets Tab:**
-- [ ] View ticket list
-- [ ] Expand ticket details
-- [ ] View admin notes
-- [ ] View meeting information
-- [ ] Status indicators
-- [ ] Refresh functionality
-
-**Sidebar:**
-- [ ] Clean design without auto-populated sections
-- [ ] User information display
-- [ ] Chat history display
-- [ ] Search functionality
-- [ ] Logout functionality
 
 ### Testing Tools
 
