@@ -39,21 +39,18 @@ jobs:
           echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
           echo "TOKENIZERS_PARALLELISM=false" >> $GITHUB_ENV
           
-          # API Keys
+          # Hybrid Configuration:
+          # Generator = OpenAI
           echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> $GITHUB_ENV
-          # echo "INCEPTION_API_KEY=${{ secrets.INCEPTION_API_KEY }}" >> $GITHUB_ENV
-          # echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" >> $GITHUB_ENV  # Commented out - not using Groq
-          
-          # Use Mercury backend (InceptionLabs API)
           echo "GENERATION_BACKEND=openai" >> $GITHUB_ENV
           
-          # Conservative rate limiting for Mercury/Inception
-          # Wait 60 seconds between requests to avoid 429 errors
-          # echo "CHAT_PIPELINE_REMOTE_REQUEST_DELAY=60" >> $GITHUB_ENV
+          # Judge = Mercury (Inception)
+          echo "JUDGE_BACKEND=mercury" >> $GITHUB_ENV
+          echo "INCEPTION_API_KEY=${{ secrets.INCEPTION_API_KEY }}" >> $GITHUB_ENV
           
-          # Reduce max attempts to avoid long waits on persistent failures
-          # echo "CHAT_PIPELINE_REMOTE_MAX_ATTEMPTS=3" >> $GITHUB_ENV
-          
+          # Rate limits for Mercury
+          echo "CHAT_PIPELINE_REMOTE_REQUEST_DELAY=1.0" >> $GITHUB_ENV
+          echo "CHAT_PIPELINE_REMOTE_MAX_ATTEMPTS=3" >> $GITHUB_ENV
           # Gentle exponential backoff for retries
           # echo "CHAT_PIPELINE_REMOTE_RETRY_BACKOFF=2.0" >> $GITHUB_ENV
           
