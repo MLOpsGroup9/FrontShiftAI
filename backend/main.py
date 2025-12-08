@@ -7,7 +7,9 @@ import sys
 import logging
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import uvicorn
@@ -30,6 +32,9 @@ from api.unified_agent import router as unified_agent_router
 from api.pto_agent import router as pto_router
 from api.hr_ticket_agent import router as hr_ticket_router
 from api.company_management import router as company_management_router
+
+# Import monitoring middleware
+from monitoring.middleware import MonitoringMiddleware
 
 # Import ChromaDB setup from chat_pipeline
 from chat_pipeline.rag.data_loader import ensure_chroma_store
@@ -72,6 +77,39 @@ app = FastAPI(
 )
 
 # ----------------------------
+# ERROR HANDLING
+# ----------------------------
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    Global exception handler to catch all unhandled errors.
+    Logs the full error and returns a generic user-friendly message.
+    """
+    # Log the detailed error
+    logger.error(f"Unhandled exception at {request.url}: {exc}", exc_info=True)
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "We're experiencing technical difficulties. Please try again later.",
+            "error_code": "INTERNAL_SERVER_ERROR"
+        }
+    )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    Handle validation errors clearly
+    """
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": "Invalid request data. Please check your input.",
+            "errors": exc.errors()
+        }
+    )
+
+# ----------------------------
 # CORS SETTINGS
 # ----------------------------
 app.add_middleware(
@@ -81,6 +119,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ----------------------------
+# MONITORING MIDDLEWARE
+# ----------------------------
+app.add_middleware(MonitoringMiddleware)
 
 # ----------------------------
 # Register Routers
@@ -118,5 +161,6 @@ if __name__ == "__main__":
         "main:app",
         host="0.0.0.0",
         port=int(os.getenv("PORT", 8000)),
-        reload=True
-    )# Trigger rebuild
+        reload=True,
+        reload_excludes=["wandb", "__pycache__", ".pytest_cache", ".git", "*.db", "*.sqlite"]
+    )

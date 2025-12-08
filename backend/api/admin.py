@@ -3,7 +3,7 @@ Admin API endpoints
 """
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
-from schemas import CreateUserRequest, UpdatePasswordRequest, DeleteUserRequest
+from schemas import CreateUserRequest, UpdatePasswordRequest, DeleteUserRequest, BulkCreateUserRequest
 from services import (
     get_all_company_admins,
     get_users_by_company, add_user, delete_user, update_user_password
@@ -152,6 +152,48 @@ async def add_company_user(
         raise HTTPException(status_code=400, detail=message)
     
     return {"message": message, "email": request.email}
+
+@router.post("/bulk-add-users")
+async def bulk_add_company_users(
+    request: BulkCreateUserRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Add multiple users to admin's company (Company Admin only)"""
+    require_admin(current_user, "company_admin")
+    
+    if current_user["role"] == "company_admin":
+        company = current_user.get("company")
+        if not company:
+            raise HTTPException(status_code=400, detail="No company associated with this admin")
+    else:
+        # Super admin fallback
+        raise HTTPException(status_code=400, detail="Super admin bulk add not fully specified yet")
+
+    results = {
+        "added": 0,
+        "failed": 0,
+        "details": []
+    }
+
+    for user_req in request.users:
+        success, message = add_user(
+            email=user_req.email,
+            password=user_req.password,
+            company=company,
+            name=user_req.name,
+            role="user",
+            db=db
+        )
+        
+        if success:
+            results["added"] += 1
+            results["details"].append({"email": user_req.email, "status": "success"})
+        else:
+            results["failed"] += 1
+            results["details"].append({"email": user_req.email, "status": "error", "message": message})
+    
+    return results
 
 @router.delete("/delete-user")
 async def delete_company_user(

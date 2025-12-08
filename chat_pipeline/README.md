@@ -4,34 +4,22 @@ Welcome to the Chat Pipeline! This folder contains everything needed to take an 
 
 ---
 
-## 1. Big Picture
+## 1. Big Picture (The "Brain")
 
-Think of the pipeline as three cooperating teams:
+Think of the pipeline as three cooperating teams that simulate how a human expert would answer a question:
 
-1. **Knowledge Team (RAG)** – Finds the right paragraphs from the knowledge base and drafts an answer.
-2. **Quality Team (Evaluation)** – Asks many test questions, reads every generated answer, and records detailed report cards.
-3. **Operations Team (Tracking & Registry)** – Logs what happened, stores the safest model version, and keeps the latest good build ready for deployment.
-
-The folders in `chat_pipeline/` map directly to these teams:
-
-| Folder | Plain-English description |
-| --- | --- |
-| `rag/` | “Answer factory.” Defines how we search the handbook, rerank passages, build prompts, and choose a language model. |
-| `configs/` | “Control room.” Central place for knobs, such as which datasets to use, how many examples to test, or which backend to call. |
-| `evaluation/` | “Audit lab.” Generates test questions, runs the pipeline end-to-end, and aggregates metrics plus bias checks. |
-| `tracking/` | “Flight recorder.” Handles experiment logging (Weights & Biases) and pushes successful models into the lightweight registry. |
-| `utils/` | Small helpers shared across teams, e.g., logging and email notifications. |
-| `results/` (created at runtime) | File cabinet that stores every experiment output (`examples.jsonl`, `summary.json`, bias reports, etc.). |
+1.  **Librarian (RAG)** – Finds the right paragraphs from the knowledge base using the `rag/` logic.
+2.  **Audit Team (Evaluation)** – Asks many test questions, grades every answer using an AI Judge (OpenAI), and generates report cards in `results/`.
+3.  **Operations (Registry)** – Pushes successful "brains" (configurations) to a secure vault (`models_registry` on GCS) so the app always uses a safe, tested version.
 
 ---
 
 ## 2. How a Question Flows Through the System
 
-1. **Retrieval** – We look up relevant handbook passages from a Chroma vector database (stored locally or synced from GCS).
-2. **Optional reranking** – A smaller “judge” model reorders the passages so the most useful ones are at the top.
-3. **Answer drafting** – Using the chosen backend (local llama.cpp, Hugging Face, or Mercury API), we build a prompt that includes the passages and let the model write an answer.
-4. **Evaluation (when running tests)** – Each generated answer is graded by a separate judge model (default: OpenAI gpt‑4o‑mini). It scores groundedness, factual correctness, answer relevance, hallucination risk, response time, and more.
-5. **Reporting and registry** – Summaries, bias reports, and metadata go to `chat_pipeline/results/`. When we are happy, the tracking scripts register the model version in `models_registry/` so that deployments can safely pull the “latest good” build.
+1.  **Retrieval** – We look up relevant handbook passages from a Chroma vector database.
+2.  **Optional reranking** – A smaller "judge" model reorders the passages so the most useful ones are at the top.
+3.  **Answer drafting** – The system prompts the LLM (OpenAI, Mercury, or Llama) with the user's question + the retrieved handbook text.
+4.  **Evaluation (The "Quality Gate")** – Before we let a new version go live, we run it against hundreds of test questions. An "AI Judge" grades the answers. If the score is > 3.0/5, we automatically "Promote" it to the registry.
 
 ---
 

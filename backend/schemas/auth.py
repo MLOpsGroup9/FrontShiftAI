@@ -33,3 +33,6 @@ class UpdatePasswordRequest(BaseModel):
 
 class DeleteUserRequest(BaseModel):
     email: EmailStr
+
+class BulkCreateUserRequest(BaseModel):
+    users: list[CreateUserRequest]

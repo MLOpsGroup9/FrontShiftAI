@@ -632,6 +632,26 @@ gcloud run services update frontshiftai-backend --region=us-central1
 
 ---
 
+## Monitoring & Observability
+
+**Status:** ✅ Fully Implemented  
+**Dashboard:** [Cloud Monitoring Dashboard](https://console.cloud.google.com/monitoring/dashboards)  
+**Detailed Metrics:** [See MONITORING.md](./MONITORING.md)
+
+### Key Features
+- **Infrastructure:** CPU, Memory, Instance Count, Error Rates
+- **Alerts:** Email notifications for high errors (>10/min) or latency (>3s)
+- **Application:** W&B tracking for every request (latency, status, company_id)
+- **Business Logic:** Granular agent tracking (PTO approved, Ticket resolved)
+- **Database:** Query performance monitoring
+
+**Where to View:**
+- **Infrastructure:** [GCP Console](https://console.cloud.google.com/run?project=frontshiftai)
+- **Application Logs:** [Logs Explorer](https://console.cloud.google.com/logs?project=frontshiftai)
+- **Business Metrics:** [Weights & Biases](https://wandb.ai/group9mlops-northeastern-university/FrontShiftAI_Agents)
+
+---
+
 ## Resources
 
 ### Live URLs

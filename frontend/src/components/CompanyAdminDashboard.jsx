@@ -13,7 +13,8 @@ import {
   scheduleHRMeeting,
   resolveHRTicket,
   addHRTicketNote,
-  getHRTicketStats
+  getHRTicketStats,
+  bulkAddUsers
 } from '../services/api';
 import MonitoringDashboard from './MonitoringDashboard';
 
@@ -51,6 +52,10 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
     password: '',
     name: ''
   });
+
+  // CSV Upload State
+  const [csvFileName, setCsvFileName] = useState('');
+  const [pendingCsvUsers, setPendingCsvUsers] = useState([]);
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -148,6 +153,83 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
       fetchUsers();
     } catch (error) {
       alert(error.response?.data?.detail || 'Failed to add user');
+    }
+  };
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const text = event.target.result;
+        const lines = text.split(/\r\n|\n/).filter(line => line.trim());
+
+        if (lines.length < 2) {
+          alert('CSV file is empty or missing headers');
+          return;
+        }
+
+        // Validate headers
+        const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
+        if (!headers.includes('name') || !headers.includes('email') || !headers.includes('password')) {
+          alert('Invalid CSV format. Headers must be: Name, Email, Password');
+          return;
+        }
+
+        const emailIdx = headers.indexOf('email');
+        const nameIdx = headers.indexOf('name');
+        const passwordIdx = headers.indexOf('password');
+
+        const usersToAdd = [];
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(',').map(v => v.trim());
+          if (values.length >= 3) {
+            usersToAdd.push({
+              email: values[emailIdx],
+              name: values[nameIdx],
+              password: values[passwordIdx],
+              company: userInfo?.company || '',
+              role: 'user'
+            });
+          }
+        }
+
+        if (usersToAdd.length === 0) {
+          alert('No valid users found in CSV');
+          return;
+        }
+
+        setPendingCsvUsers(usersToAdd);
+        setCsvFileName(file.name);
+        alert(`CSV loaded successfully. ${usersToAdd.length} users ready to populate.`);
+
+      } catch (parseError) {
+        console.error(parseError);
+        alert('Error parsing CSV file');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // Reset input to allow re-selection of same file
+  };
+
+  const handleBulkSubmit = async () => {
+    if (pendingCsvUsers.length === 0) return;
+
+    if (!confirm(`Are you sure you want to add ${pendingCsvUsers.length} users?`)) return;
+
+    setIsLoading(true);
+    try {
+      const result = await bulkAddUsers(pendingCsvUsers);
+      alert(`Bulk add complete!\nAdded: ${result.added}\nFailed: ${result.failed}`);
+      setPendingCsvUsers([]);
+      setCsvFileName('');
+      fetchUsers();
+    } catch (err) {
+      alert('Bulk add failed: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -381,12 +463,36 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
           <div className="glass-card bg-white/10 p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-white">Company Users</h2>
-              <button
-                onClick={() => setShowAddForm(!showAddForm)}
-                className="px-4 py-2 bg-white/90 hover:bg-white text-black rounded-lg transition-all"
-              >
-                {showAddForm ? 'Cancel' : '+ Add User'}
-              </button>
+              <div className="flex items-center space-x-3">
+                {csvFileName && (
+                  <span className="text-white/70 text-sm mr-2">
+                    File: <span className="text-white font-medium">{csvFileName}</span>
+                    <span className="ml-2 text-white/50">({pendingCsvUsers.length} users)</span>
+                  </span>
+                )}
+
+                {pendingCsvUsers.length > 0 && (
+                  <button
+                    onClick={handleBulkSubmit}
+                    className="px-4 py-2 bg-green-500/80 hover:bg-green-500 text-white rounded-lg transition-all shadow-lg shadow-green-500/20"
+                  >
+                    Populate Users
+                  </button>
+                )}
+
+                <button
+                  onClick={() => setShowAddForm(!showAddForm)}
+                  className="px-4 py-2 bg-white/90 hover:bg-white text-black rounded-lg transition-all"
+                >
+                  {showAddForm ? 'Cancel' : '+ Add User'}
+                </button>
+                <button
+                  onClick={() => document.getElementById('csvUpload').click()}
+                  className="px-4 py-2 bg-blue-500/80 hover:bg-blue-500 text-white rounded-lg transition-all"
+                >
+                  {csvFileName ? 'Change CSV' : 'Upload CSV'}
+                </button>
+              </div>
             </div>
 
             {showAddForm && (
@@ -476,493 +582,513 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
                 </table>
               </div>
             )}
+
+
+            {/* Hidden File Input */}
+            <input
+              type="file"
+              id="csvUpload"
+              accept=".csv"
+              style={{ display: 'none' }}
+              onChange={handleFileSelect}
+            />
           </div>
         </div>
       )}
 
       {/* Leave Balances Tab */}
-      {activeTab === 'leaves' && (
-        <div className="max-w-7xl mx-auto">
-          <div className="glass-card bg-white/10 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-white">Employee Leave Balances</h2>
-              <button
-                onClick={handleResetAllBalances}
-                className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 rounded-lg transition-all"
-              >
-                Reset All Balances
-              </button>
-            </div>
-
-            {isLoading ? (
-              <p className="text-white/60 text-center py-8">Loading...</p>
-            ) : ptoBalances.length === 0 ? (
-              <p className="text-white/60 text-center py-8">No leave balances found.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-white/10">
-                      <th className="text-left py-3 px-4 text-white/80 font-medium">Employee</th>
-                      <th className="text-center py-3 px-4 text-white/80 font-medium">Total</th>
-                      <th className="text-center py-3 px-4 text-white/80 font-medium">Used</th>
-                      <th className="text-center py-3 px-4 text-white/80 font-medium">Pending</th>
-                      <th className="text-center py-3 px-4 text-white/80 font-medium">Available</th>
-                      <th className="text-right py-3 px-4 text-white/80 font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ptoBalances.map(balance => (
-                      <tr key={balance.email} className="border-b border-white/5 hover:bg-white/5">
-                        <td className="py-3 px-4 text-white">{balance.email}</td>
-                        <td className="py-3 px-4 text-center">
-                          {editingBalance === balance.email ? (
-                            <input
-                              type="number"
-                              step="0.5"
-                              defaultValue={balance.total_days}
-                              onBlur={(e) => handleUpdateBalance(balance.email, e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleUpdateBalance(balance.email, e.target.value);
-                                if (e.key === 'Escape') setEditingBalance(null);
-                              }}
-                              autoFocus
-                              className="w-20 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-center"
-                            />
-                          ) : (
-                            <button
-                              onClick={() => setEditingBalance(balance.email)}
-                              className="text-white/90 hover:text-white"
-                            >
-                              {balance.total_days} days
-                            </button>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-center text-white/70">{balance.used_days} days</td>
-                        <td className="py-3 px-4 text-center text-yellow-400">{balance.pending_days} days</td>
-                        <td className="py-3 px-4 text-center text-green-400 font-semibold">{balance.remaining_days} days</td>
-                        <td className="py-3 px-4 text-right">
-                          <button
-                            onClick={() => handleResetBalance(balance.email)}
-                            className="px-3 py-1 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 rounded text-orange-300 text-sm transition-all"
-                          >
-                            Reset
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+      {
+        activeTab === 'leaves' && (
+          <div className="max-w-7xl mx-auto">
+            <div className="glass-card bg-white/10 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-white">Employee Leave Balances</h2>
+                <button
+                  onClick={handleResetAllBalances}
+                  className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 rounded-lg transition-all"
+                >
+                  Reset All Balances
+                </button>
               </div>
-            )}
+
+              {isLoading ? (
+                <p className="text-white/60 text-center py-8">Loading...</p>
+              ) : ptoBalances.length === 0 ? (
+                <p className="text-white/60 text-center py-8">No leave balances found.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-white/10">
+                        <th className="text-left py-3 px-4 text-white/80 font-medium">Employee</th>
+                        <th className="text-center py-3 px-4 text-white/80 font-medium">Total</th>
+                        <th className="text-center py-3 px-4 text-white/80 font-medium">Used</th>
+                        <th className="text-center py-3 px-4 text-white/80 font-medium">Pending</th>
+                        <th className="text-center py-3 px-4 text-white/80 font-medium">Available</th>
+                        <th className="text-right py-3 px-4 text-white/80 font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ptoBalances.map(balance => (
+                        <tr key={balance.email} className="border-b border-white/5 hover:bg-white/5">
+                          <td className="py-3 px-4 text-white">{balance.email}</td>
+                          <td className="py-3 px-4 text-center">
+                            {editingBalance === balance.email ? (
+                              <input
+                                type="number"
+                                step="0.5"
+                                defaultValue={balance.total_days}
+                                onBlur={(e) => handleUpdateBalance(balance.email, e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleUpdateBalance(balance.email, e.target.value);
+                                  if (e.key === 'Escape') setEditingBalance(null);
+                                }}
+                                autoFocus
+                                className="w-20 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-center"
+                              />
+                            ) : (
+                              <button
+                                onClick={() => setEditingBalance(balance.email)}
+                                className="text-white/90 hover:text-white"
+                              >
+                                {balance.total_days} days
+                              </button>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-center text-white/70">{balance.used_days} days</td>
+                          <td className="py-3 px-4 text-center text-yellow-400">{balance.pending_days} days</td>
+                          <td className="py-3 px-4 text-center text-green-400 font-semibold">{balance.remaining_days} days</td>
+                          <td className="py-3 px-4 text-right">
+                            <button
+                              onClick={() => handleResetBalance(balance.email)}
+                              className="px-3 py-1 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 rounded text-orange-300 text-sm transition-all"
+                            >
+                              Reset
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Leave Requests Tab */}
-      {activeTab === 'requests' && (
-        <div className="max-w-7xl mx-auto">
-          <div className="glass-card bg-white/10 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-white">Leave Requests</h2>
-              <div className="flex space-x-2">
-                {['all', 'pending', 'approved', 'denied'].map(filter => (
-                  <button
-                    key={filter}
-                    onClick={() => setStatusFilter(filter)}
-                    className={`px-3 py-1 rounded-lg text-sm transition-all ${statusFilter === filter
-                      ? 'bg-white/20 text-white'
-                      : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10'
-                      }`}
-                  >
-                    {filter.charAt(0).toUpperCase() + filter.slice(1)}
-                  </button>
-                ))}
+      {
+        activeTab === 'requests' && (
+          <div className="max-w-7xl mx-auto">
+            <div className="glass-card bg-white/10 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-white">Leave Requests</h2>
+                <div className="flex space-x-2">
+                  {['all', 'pending', 'approved', 'denied'].map(filter => (
+                    <button
+                      key={filter}
+                      onClick={() => setStatusFilter(filter)}
+                      className={`px-3 py-1 rounded-lg text-sm transition-all ${statusFilter === filter
+                        ? 'bg-white/20 text-white'
+                        : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10'
+                        }`}
+                    >
+                      {filter.charAt(0).toUpperCase() + filter.slice(1)}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {isLoading ? (
-              <p className="text-white/60 text-center py-8">Loading...</p>
-            ) : ptoRequests.length === 0 ? (
-              <p className="text-white/60 text-center py-8">No leave requests found.</p>
-            ) : (
-              <div className="space-y-4">
-                {ptoRequests.map(request => (
-                  <div
-                    key={request.id}
-                    className="p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/8 transition-all"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-medium text-white">{request.email}</h3>
-                          <span className={`px-2 py-1 rounded text-xs border ${getStatusColor(request.status)}`}>
-                            {request.status}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <p className="text-white/50 mb-1">Dates</p>
-                            <p className="text-white/90">
-                              {new Date(request.start_date).toLocaleDateString()} - {new Date(request.end_date).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-white/50 mb-1">Days Requested</p>
-                            <p className="text-white/90">{request.days_requested} days</p>
-                          </div>
-                          {request.reason && (
-                            <div className="col-span-2">
-                              <p className="text-white/50 mb-1">Reason</p>
-                              <p className="text-white/70">{request.reason}</p>
-                            </div>
-                          )}
-                          {request.admin_notes && (
-                            <div className="col-span-2">
-                              <p className="text-white/50 mb-1">Admin Notes</p>
-                              <p className="text-white/70">{request.admin_notes}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      {request.status === 'pending' && (
-                        <div className="flex space-x-2 ml-4">
-                          <button
-                            onClick={() => handleApproveRequest(request.id, 'approved')}
-                            className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 rounded text-green-300 transition-all"
-                          >
-                            ✓ Approve
-                          </button>
-                          <button
-                            onClick={() => handleApproveRequest(request.id, 'denied')}
-                            className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded text-red-300 transition-all"
-                          >
-                            ✗ Deny
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* HR Tickets Tab */}
-      {activeTab === 'hr_tickets' && (
-        <div className="max-w-7xl mx-auto">
-          {/* Stats Cards */}
-          {hrTicketStats && (
-            <div className="grid grid-cols-5 gap-4 mb-6">
-              <div className="glass-card bg-white/10 p-4">
-                <p className="text-white/60 text-sm mb-1">Pending</p>
-                <p className="text-2xl font-bold text-yellow-400">{hrTicketStats.total_pending}</p>
-              </div>
-              <div className="glass-card bg-white/10 p-4">
-                <p className="text-white/60 text-sm mb-1">In Progress</p>
-                <p className="text-2xl font-bold text-blue-400">{hrTicketStats.total_in_progress}</p>
-              </div>
-              <div className="glass-card bg-white/10 p-4">
-                <p className="text-white/60 text-sm mb-1">Scheduled</p>
-                <p className="text-2xl font-bold text-purple-400">{hrTicketStats.total_scheduled}</p>
-              </div>
-              <div className="glass-card bg-white/10 p-4">
-                <p className="text-white/60 text-sm mb-1">Resolved Today</p>
-                <p className="text-2xl font-bold text-green-400">{hrTicketStats.total_resolved_today}</p>
-              </div>
-              <div className="glass-card bg-white/10 p-4">
-                <p className="text-white/60 text-sm mb-1">Avg Resolution</p>
-                <p className="text-2xl font-bold text-white/90">
-                  {hrTicketStats.average_resolution_time_hours ?
-                    `${hrTicketStats.average_resolution_time_hours.toFixed(1)}h` :
-                    'N/A'
-                  }
-                </p>
-              </div>
-            </div>
-          )}
-
-          <div className="glass-card bg-white/10 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-white">HR Ticket Queue</h2>
-              <div className="flex space-x-2">
-                {/* Status Filter */}
-                <select
-                  value={hrStatusFilter || ''}
-                  onChange={(e) => setHrStatusFilter(e.target.value || null)}
-                  className="px-3 py-1 bg-white/10 border border-white/10 rounded-lg text-white text-sm"
-                >
-                  <option value="">All Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="scheduled">Scheduled</option>
-                  <option value="resolved">Resolved</option>
-                  <option value="closed">Closed</option>
-                </select>
-
-                {/* Category Filter */}
-                <select
-                  value={hrCategoryFilter || ''}
-                  onChange={(e) => setHrCategoryFilter(e.target.value || null)}
-                  className="px-3 py-1 bg-white/10 border border-white/10 rounded-lg text-white text-sm"
-                >
-                  <option value="">All Categories</option>
-                  <option value="benefits">Benefits</option>
-                  <option value="payroll">Payroll</option>
-                  <option value="workplace_issue">Workplace Issue</option>
-                  <option value="general_inquiry">General Inquiry</option>
-                  <option value="policy_question">Policy Question</option>
-                  <option value="leave_related">Leave Related</option>
-                  <option value="other">Other</option>
-                </select>
-
-                {/* Urgency Filter */}
-                <select
-                  value={hrUrgencyFilter || ''}
-                  onChange={(e) => setHrUrgencyFilter(e.target.value || null)}
-                  className="px-3 py-1 bg-white/10 border border-white/10 rounded-lg text-white text-sm"
-                >
-                  <option value="">All Urgency</option>
-                  <option value="normal">Normal</option>
-                  <option value="urgent">Urgent</option>
-                </select>
-
-                {/* Sort By */}
-                <select
-                  value={hrSortBy}
-                  onChange={(e) => setHrSortBy(e.target.value)}
-                  className="px-3 py-1 bg-white/10 border border-white/10 rounded-lg text-white text-sm"
-                >
-                  <option value="created_at">Sort: Date</option>
-                  <option value="urgency">Sort: Urgency</option>
-                  <option value="category">Sort: Category</option>
-                </select>
-              </div>
-            </div>
-
-            {isLoading ? (
-              <p className="text-white/60 text-center py-8">Loading...</p>
-            ) : hrTickets.length === 0 ? (
-              <p className="text-white/60 text-center py-8">No tickets found.</p>
-            ) : (
-              <div className="space-y-4">
-                {hrTickets.map(ticket => (
-                  <div
-                    key={ticket.id}
-                    className="p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/8 transition-all"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-medium text-white">{ticket.subject}</h3>
-                          <span className={`px-2 py-1 rounded text-xs border ${getStatusColor(ticket.status)}`}>
-                            {ticket.status.replace('_', ' ')}
-                          </span>
-                          {ticket.urgency === 'urgent' && (
-                            <span className="px-2 py-1 rounded text-xs border border-red-500/30 bg-red-500/20 text-red-400">
-                              🚨 URGENT
+              {isLoading ? (
+                <p className="text-white/60 text-center py-8">Loading...</p>
+              ) : ptoRequests.length === 0 ? (
+                <p className="text-white/60 text-center py-8">No leave requests found.</p>
+              ) : (
+                <div className="space-y-4">
+                  {ptoRequests.map(request => (
+                    <div
+                      key={request.id}
+                      className="p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/8 transition-all"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h3 className="text-lg font-medium text-white">{request.email}</h3>
+                            <span className={`px-2 py-1 rounded text-xs border ${getStatusColor(request.status)}`}>
+                              {request.status}
                             </span>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 text-sm mb-3">
-                          <div>
-                            <p className="text-white/50 mb-1">Employee</p>
-                            <p className="text-white/90">{ticket.email}</p>
                           </div>
-                          <div>
-                            <p className="text-white/50 mb-1">Category</p>
-                            <p className="text-white/90">{formatCategory(ticket.category)}</p>
-                          </div>
-                          <div>
-                            <p className="text-white/50 mb-1">Meeting Type</p>
-                            <p className="text-white/90">{formatCategory(ticket.meeting_type)}</p>
-                          </div>
-                          <div>
-                            <p className="text-white/50 mb-1">Created</p>
-                            <p className="text-white/90">{new Date(ticket.created_at).toLocaleDateString()}</p>
-                          </div>
-                          {ticket.queue_position && ticket.status === 'pending' && (
+                          <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
-                              <p className="text-white/50 mb-1">Queue Position</p>
-                              <p className="text-white/90">#{ticket.queue_position}</p>
-                            </div>
-                          )}
-                          {ticket.preferred_date && (
-                            <div>
-                              <p className="text-white/50 mb-1">Preferred Date</p>
+                              <p className="text-white/50 mb-1">Dates</p>
                               <p className="text-white/90">
-                                {new Date(ticket.preferred_date).toLocaleDateString()}
-                                {ticket.preferred_time_slot && ` (${ticket.preferred_time_slot})`}
+                                {new Date(request.start_date).toLocaleDateString()} - {new Date(request.end_date).toLocaleDateString()}
                               </p>
                             </div>
-                          )}
-                        </div>
-                        <div className="text-sm">
-                          <p className="text-white/50 mb-1">Description</p>
-                          <p className="text-white/70">{ticket.description}</p>
-                        </div>
-                        {ticket.admin_notes && (
-                          <div className="mt-3 text-sm">
-                            <p className="text-white/50 mb-1">Admin Notes</p>
-                            <p className="text-white/70 whitespace-pre-wrap">{ticket.admin_notes}</p>
-                          </div>
-                        )}
-                        {ticket.scheduled_datetime && (
-                          <div className="mt-3 p-3 bg-purple-500/10 border border-purple-500/30 rounded">
-                            <p className="text-purple-300 text-sm font-medium mb-2">📅 Meeting Scheduled</p>
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                              <div>
-                                <p className="text-white/50">Date & Time</p>
-                                <p className="text-white/90">{new Date(ticket.scheduled_datetime).toLocaleString()}</p>
-                              </div>
-                              {ticket.meeting_link && (
-                                <div>
-                                  <p className="text-white/50">Meeting Link</p>
-                                  <a href={ticket.meeting_link} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
-                                    Join Meeting
-                                  </a>
-                                </div>
-                              )}
-                              {ticket.meeting_location && (
-                                <div>
-                                  <p className="text-white/50">Location</p>
-                                  <p className="text-white/90">{ticket.meeting_location}</p>
-                                </div>
-                              )}
+                            <div>
+                              <p className="text-white/50 mb-1">Days Requested</p>
+                              <p className="text-white/90">{request.days_requested} days</p>
                             </div>
+                            {request.reason && (
+                              <div className="col-span-2">
+                                <p className="text-white/50 mb-1">Reason</p>
+                                <p className="text-white/70">{request.reason}</p>
+                              </div>
+                            )}
+                            {request.admin_notes && (
+                              <div className="col-span-2">
+                                <p className="text-white/50 mb-1">Admin Notes</p>
+                                <p className="text-white/70">{request.admin_notes}</p>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      <div className="flex flex-col space-y-2 ml-4">
-                        {ticket.status === 'pending' && (
-                          <button
-                            onClick={() => handlePickUpTicket(ticket.id)}
-                            className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded text-blue-300 transition-all text-sm"
-                          >
-                            Pick Up
-                          </button>
-                        )}
-                        {(ticket.status === 'in_progress' || ticket.status === 'pending') && (
-                          <button
-                            onClick={() => handleOpenScheduleModal(ticket)}
-                            className="px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 rounded text-purple-300 transition-all text-sm"
-                          >
-                            Schedule Meeting
-                          </button>
-                        )}
-                        {(ticket.status === 'in_progress' || ticket.status === 'scheduled') && (
-                          <>
+                        </div>
+                        {request.status === 'pending' && (
+                          <div className="flex space-x-2 ml-4">
                             <button
-                              onClick={() => handleResolveTicket(ticket.id, 'resolved')}
-                              className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 rounded text-green-300 transition-all text-sm"
+                              onClick={() => handleApproveRequest(request.id, 'approved')}
+                              className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 rounded text-green-300 transition-all"
                             >
-                              ✓ Resolve
+                              ✓ Approve
                             </button>
                             <button
-                              onClick={() => handleResolveTicket(ticket.id, 'closed')}
-                              className="px-4 py-2 bg-gray-500/20 hover:bg-gray-500/30 border border-gray-500/30 rounded text-gray-300 transition-all text-sm"
+                              onClick={() => handleApproveRequest(request.id, 'denied')}
+                              className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded text-red-300 transition-all"
                             >
-                              Close
+                              ✗ Deny
                             </button>
-                          </>
-                        )}
-                        {ticket.status !== 'resolved' && ticket.status !== 'closed' && (
-                          <button
-                            onClick={() => handleAddNote(ticket.id)}
-                            className="px-4 py-2 bg-white/10 hover:bg-white/15 border border-white/10 rounded text-white transition-all text-sm"
-                          >
-                            Add Note
-                          </button>
+                          </div>
                         )}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      }
+
+      {/* HR Tickets Tab */}
+      {
+        activeTab === 'hr_tickets' && (
+          <div className="max-w-7xl mx-auto">
+            {/* Stats Cards */}
+            {hrTicketStats && (
+              <div className="grid grid-cols-5 gap-4 mb-6">
+                <div className="glass-card bg-white/10 p-4">
+                  <p className="text-white/60 text-sm mb-1">Pending</p>
+                  <p className="text-2xl font-bold text-yellow-400">{hrTicketStats.total_pending}</p>
+                </div>
+                <div className="glass-card bg-white/10 p-4">
+                  <p className="text-white/60 text-sm mb-1">In Progress</p>
+                  <p className="text-2xl font-bold text-blue-400">{hrTicketStats.total_in_progress}</p>
+                </div>
+                <div className="glass-card bg-white/10 p-4">
+                  <p className="text-white/60 text-sm mb-1">Scheduled</p>
+                  <p className="text-2xl font-bold text-purple-400">{hrTicketStats.total_scheduled}</p>
+                </div>
+                <div className="glass-card bg-white/10 p-4">
+                  <p className="text-white/60 text-sm mb-1">Resolved Today</p>
+                  <p className="text-2xl font-bold text-green-400">{hrTicketStats.total_resolved_today}</p>
+                </div>
+                <div className="glass-card bg-white/10 p-4">
+                  <p className="text-white/60 text-sm mb-1">Avg Resolution</p>
+                  <p className="text-2xl font-bold text-white/90">
+                    {hrTicketStats.average_resolution_time_hours ?
+                      `${hrTicketStats.average_resolution_time_hours.toFixed(1)}h` :
+                      'N/A'
+                    }
+                  </p>
+                </div>
               </div>
             )}
+
+            <div className="glass-card bg-white/10 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-white">HR Ticket Queue</h2>
+                <div className="flex space-x-2">
+                  {/* Status Filter */}
+                  <select
+                    value={hrStatusFilter || ''}
+                    onChange={(e) => setHrStatusFilter(e.target.value || null)}
+                    className="px-3 py-1 bg-white/10 border border-white/10 rounded-lg text-white text-sm"
+                  >
+                    <option value="">All Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="scheduled">Scheduled</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="closed">Closed</option>
+                  </select>
+
+                  {/* Category Filter */}
+                  <select
+                    value={hrCategoryFilter || ''}
+                    onChange={(e) => setHrCategoryFilter(e.target.value || null)}
+                    className="px-3 py-1 bg-white/10 border border-white/10 rounded-lg text-white text-sm"
+                  >
+                    <option value="">All Categories</option>
+                    <option value="benefits">Benefits</option>
+                    <option value="payroll">Payroll</option>
+                    <option value="workplace_issue">Workplace Issue</option>
+                    <option value="general_inquiry">General Inquiry</option>
+                    <option value="policy_question">Policy Question</option>
+                    <option value="leave_related">Leave Related</option>
+                    <option value="other">Other</option>
+                  </select>
+
+                  {/* Urgency Filter */}
+                  <select
+                    value={hrUrgencyFilter || ''}
+                    onChange={(e) => setHrUrgencyFilter(e.target.value || null)}
+                    className="px-3 py-1 bg-white/10 border border-white/10 rounded-lg text-white text-sm"
+                  >
+                    <option value="">All Urgency</option>
+                    <option value="normal">Normal</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+
+                  {/* Sort By */}
+                  <select
+                    value={hrSortBy}
+                    onChange={(e) => setHrSortBy(e.target.value)}
+                    className="px-3 py-1 bg-white/10 border border-white/10 rounded-lg text-white text-sm"
+                  >
+                    <option value="created_at">Sort: Date</option>
+                    <option value="urgency">Sort: Urgency</option>
+                    <option value="category">Sort: Category</option>
+                  </select>
+                </div>
+              </div>
+
+              {isLoading ? (
+                <p className="text-white/60 text-center py-8">Loading...</p>
+              ) : hrTickets.length === 0 ? (
+                <p className="text-white/60 text-center py-8">No tickets found.</p>
+              ) : (
+                <div className="space-y-4">
+                  {hrTickets.map(ticket => (
+                    <div
+                      key={ticket.id}
+                      className="p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/8 transition-all"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h3 className="text-lg font-medium text-white">{ticket.subject}</h3>
+                            <span className={`px-2 py-1 rounded text-xs border ${getStatusColor(ticket.status)}`}>
+                              {ticket.status.replace('_', ' ')}
+                            </span>
+                            {ticket.urgency === 'urgent' && (
+                              <span className="px-2 py-1 rounded text-xs border border-red-500/30 bg-red-500/20 text-red-400">
+                                🚨 URGENT
+                              </span>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+                            <div>
+                              <p className="text-white/50 mb-1">Employee</p>
+                              <p className="text-white/90">{ticket.email}</p>
+                            </div>
+                            <div>
+                              <p className="text-white/50 mb-1">Category</p>
+                              <p className="text-white/90">{formatCategory(ticket.category)}</p>
+                            </div>
+                            <div>
+                              <p className="text-white/50 mb-1">Meeting Type</p>
+                              <p className="text-white/90">{formatCategory(ticket.meeting_type)}</p>
+                            </div>
+                            <div>
+                              <p className="text-white/50 mb-1">Created</p>
+                              <p className="text-white/90">{new Date(ticket.created_at).toLocaleDateString()}</p>
+                            </div>
+                            {ticket.queue_position && ticket.status === 'pending' && (
+                              <div>
+                                <p className="text-white/50 mb-1">Queue Position</p>
+                                <p className="text-white/90">#{ticket.queue_position}</p>
+                              </div>
+                            )}
+                            {ticket.preferred_date && (
+                              <div>
+                                <p className="text-white/50 mb-1">Preferred Date</p>
+                                <p className="text-white/90">
+                                  {new Date(ticket.preferred_date).toLocaleDateString()}
+                                  {ticket.preferred_time_slot && ` (${ticket.preferred_time_slot})`}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-sm">
+                            <p className="text-white/50 mb-1">Description</p>
+                            <p className="text-white/70">{ticket.description}</p>
+                          </div>
+                          {ticket.admin_notes && (
+                            <div className="mt-3 text-sm">
+                              <p className="text-white/50 mb-1">Admin Notes</p>
+                              <p className="text-white/70 whitespace-pre-wrap">{ticket.admin_notes}</p>
+                            </div>
+                          )}
+                          {ticket.scheduled_datetime && (
+                            <div className="mt-3 p-3 bg-purple-500/10 border border-purple-500/30 rounded">
+                              <p className="text-purple-300 text-sm font-medium mb-2">📅 Meeting Scheduled</p>
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                  <p className="text-white/50">Date & Time</p>
+                                  <p className="text-white/90">{new Date(ticket.scheduled_datetime).toLocaleString()}</p>
+                                </div>
+                                {ticket.meeting_link && (
+                                  <div>
+                                    <p className="text-white/50">Meeting Link</p>
+                                    <a href={ticket.meeting_link} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
+                                      Join Meeting
+                                    </a>
+                                  </div>
+                                )}
+                                {ticket.meeting_location && (
+                                  <div>
+                                    <p className="text-white/50">Location</p>
+                                    <p className="text-white/90">{ticket.meeting_location}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col space-y-2 ml-4">
+                          {ticket.status === 'pending' && (
+                            <button
+                              onClick={() => handlePickUpTicket(ticket.id)}
+                              className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded text-blue-300 transition-all text-sm"
+                            >
+                              Pick Up
+                            </button>
+                          )}
+                          {(ticket.status === 'in_progress' || ticket.status === 'pending') && (
+                            <button
+                              onClick={() => handleOpenScheduleModal(ticket)}
+                              className="px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 rounded text-purple-300 transition-all text-sm"
+                            >
+                              Schedule Meeting
+                            </button>
+                          )}
+                          {(ticket.status === 'in_progress' || ticket.status === 'scheduled') && (
+                            <>
+                              <button
+                                onClick={() => handleResolveTicket(ticket.id, 'resolved')}
+                                className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 rounded text-green-300 transition-all text-sm"
+                              >
+                                ✓ Resolve
+                              </button>
+                              <button
+                                onClick={() => handleResolveTicket(ticket.id, 'closed')}
+                                className="px-4 py-2 bg-gray-500/20 hover:bg-gray-500/30 border border-gray-500/30 rounded text-gray-300 transition-all text-sm"
+                              >
+                                Close
+                              </button>
+                            </>
+                          )}
+                          {ticket.status !== 'resolved' && ticket.status !== 'closed' && (
+                            <button
+                              onClick={() => handleAddNote(ticket.id)}
+                              className="px-4 py-2 bg-white/10 hover:bg-white/15 border border-white/10 rounded text-white transition-all text-sm"
+                            >
+                              Add Note
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Schedule Meeting Modal */}
-      {showScheduleModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="glass-card bg-white/10 p-6 w-full max-w-md">
-            <h3 className="text-xl font-semibold text-white mb-4">Schedule Meeting</h3>
-            <form onSubmit={handleScheduleMeeting} className="space-y-4">
-              <div>
-                <label className="block text-white/60 text-sm mb-2">Date & Time *</label>
-                <input
-                  type="datetime-local"
-                  value={scheduleMeetingData.datetime}
-                  onChange={(e) => setScheduleMeetingData({ ...scheduleMeetingData, datetime: e.target.value })}
-                  required
-                  className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-white/60 text-sm mb-2">Meeting Link (for online meetings)</label>
-                <input
-                  type="url"
-                  placeholder="https://meet.google.com/..."
-                  value={scheduleMeetingData.link}
-                  onChange={(e) => setScheduleMeetingData({ ...scheduleMeetingData, link: e.target.value })}
-                  className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
-                />
-              </div>
-              <div>
-                <label className="block text-white/60 text-sm mb-2">Location (for in-person meetings)</label>
-                <input
-                  type="text"
-                  placeholder="HR Office, Room 203"
-                  value={scheduleMeetingData.location}
-                  onChange={(e) => setScheduleMeetingData({ ...scheduleMeetingData, location: e.target.value })}
-                  className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
-                />
-              </div>
-              <div>
-                <label className="block text-white/60 text-sm mb-2">Notes</label>
-                <textarea
-                  placeholder="Looking forward to our meeting..."
-                  value={scheduleMeetingData.notes}
-                  onChange={(e) => setScheduleMeetingData({ ...scheduleMeetingData, notes: e.target.value })}
-                  rows="3"
-                  className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
-                />
-              </div>
-              <div className="flex space-x-3">
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-white/90 hover:bg-white text-black rounded-lg transition-all"
-                >
-                  Schedule
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowScheduleModal(false);
-                    setSelectedTicket(null);
-                  }}
-                  className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/15 border border-white/10 rounded-lg text-white transition-all"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+      {
+        showScheduleModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="glass-card bg-white/10 p-6 w-full max-w-md">
+              <h3 className="text-xl font-semibold text-white mb-4">Schedule Meeting</h3>
+              <form onSubmit={handleScheduleMeeting} className="space-y-4">
+                <div>
+                  <label className="block text-white/60 text-sm mb-2">Date & Time *</label>
+                  <input
+                    type="datetime-local"
+                    value={scheduleMeetingData.datetime}
+                    onChange={(e) => setScheduleMeetingData({ ...scheduleMeetingData, datetime: e.target.value })}
+                    required
+                    className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/60 text-sm mb-2">Meeting Link (for online meetings)</label>
+                  <input
+                    type="url"
+                    placeholder="https://meet.google.com/..."
+                    value={scheduleMeetingData.link}
+                    onChange={(e) => setScheduleMeetingData({ ...scheduleMeetingData, link: e.target.value })}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/60 text-sm mb-2">Location (for in-person meetings)</label>
+                  <input
+                    type="text"
+                    placeholder="HR Office, Room 203"
+                    value={scheduleMeetingData.location}
+                    onChange={(e) => setScheduleMeetingData({ ...scheduleMeetingData, location: e.target.value })}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/60 text-sm mb-2">Notes</label>
+                  <textarea
+                    placeholder="Looking forward to our meeting..."
+                    value={scheduleMeetingData.notes}
+                    onChange={(e) => setScheduleMeetingData({ ...scheduleMeetingData, notes: e.target.value })}
+                    rows="3"
+                    className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
+                  />
+                </div>
+                <div className="flex space-x-3">
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-white/90 hover:bg-white text-black rounded-lg transition-all"
+                  >
+                    Schedule
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowScheduleModal(false);
+                      setSelectedTicket(null);
+                    }}
+                    className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/15 border border-white/10 rounded-lg text-white transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
       {/* Monitoring Tab */}
-      {activeTab === 'monitoring' && (
-        <div className="max-w-7xl mx-auto">
-          <div className="glass-card bg-white/10 overflow-hidden rounded-xl">
-            <MonitoringDashboard userRole="company_admin" />
+      {
+        activeTab === 'monitoring' && (
+          <div className="max-w-7xl mx-auto">
+            <div className="glass-card bg-white/10 overflow-hidden rounded-xl">
+              <MonitoringDashboard userRole="company_admin" />
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 };
 

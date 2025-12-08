@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { toast } from 'sonner';
 
 // Read from .env or fallback to 8000 (matching your backend)
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -24,7 +25,7 @@ api.interceptors.request.use(
   }
 );
 
-// Add response interceptor for debugging
+// Add response interceptor for debugging and global error handling
 api.interceptors.response.use(
   (response) => {
     console.log(`✅ API Response: ${response.config.url}`, response.data);
@@ -33,13 +34,34 @@ api.interceptors.response.use(
   (error) => {
     if (error.response) {
       // Server responded with error status
-      console.error(`❌ API Error [${error.response.status}]:`, error.response.data);
+      const status = error.response.status;
+      const detail = error.response.data?.detail || "An unexpected error occurred.";
+
+      console.error(`❌ API Error [${status}]:`, error.response.data);
+
+      if (status === 401) {
+        toast.error("Session expired. Please log in again.");
+        // Optional: trigger logout logic if not handled by components
+        localStorage.removeItem('access_token');
+        // Let component handle redirect via state check if possible, or reload
+        // window.location.reload(); // Can be aggressive, let's just toast for now.
+      } else if (status === 403) {
+        toast.error("You don't have permission to perform this action.");
+      } else if (status === 422) {
+        toast.error("Invalid input. Please check your data.");
+      } else if (status >= 500) {
+        toast.error("Server error. We're working on fixing it.");
+      } else {
+        toast.error(detail);
+      }
     } else if (error.request) {
       // Request made but no response
-      console.error('❌ No response from server. Is the backend running?');
+      console.error('❌ No response from server.');
+      toast.error("Unable to connect to the server. Please check your connection.");
     } else {
       // Something else happened
       console.error('❌ Request setup error:', error.message);
+      toast.error("Error setting up request.");
     }
     return Promise.reject(error);
   }
@@ -114,6 +136,26 @@ export const logout = () => {
   localStorage.removeItem('access_token');
   localStorage.removeItem('user_email');
   localStorage.removeItem('user_company');
+};
+
+export const bulkAddUsers = async (users) => {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+    const response = await api.post('/api/admin/bulk-add-users', {
+      users: users
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Bulk Add Users Error:", error.response?.data || error.message);
+    throw error;
+  }
 };
 
 // -------------- PTO Agent APIs --------------
@@ -203,10 +245,10 @@ export const getAllPTORequests = async (statusFilter = null) => {
     if (!token) {
       throw new Error('Not authenticated');
     }
-    const url = statusFilter 
+    const url = statusFilter
       ? `/api/pto/admin/requests?status_filter=${statusFilter}`
       : '/api/pto/admin/requests';
-    
+
     const response = await api.get(url, {
       headers: {
         Authorization: `Bearer ${token}`
@@ -386,15 +428,15 @@ export const getHRTicketQueue = async (filters = {}) => {
     if (!token) {
       throw new Error('Not authenticated');
     }
-    
+
     const params = new URLSearchParams();
     if (filters.status) params.append('status_filter', filters.status);
     if (filters.category) params.append('category_filter', filters.category);
     if (filters.urgency) params.append('urgency_filter', filters.urgency);
     if (filters.sortBy) params.append('sort_by', filters.sortBy);
-    
+
     const url = `/api/hr-tickets/admin/queue${params.toString() ? '?' + params.toString() : ''}`;
-    
+
     const response = await api.get(url, {
       headers: {
         Authorization: `Bearer ${token}`

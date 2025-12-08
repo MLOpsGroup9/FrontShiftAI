@@ -99,34 +99,20 @@ backend/
 └── users.db                # SQLite database
 ```
 
-## Unified Agent Router with Automatic Fallback
+## Unified Agent Router (The "Concierge")
 
 ### Overview
 
-The unified agent router provides intelligent message routing with **automatic fallback chain** for comprehensive information retrieval. When one agent can't answer a question, the system automatically tries the next best option.
+The unified agent router is the brain of the backend. It acts as a single point of entry for all user messages. Instead of users having to choose "Talk to PTO Bot" or "Talk to HR Bot", they just speak naturally. The system intelligently routes their request to the right specialist or uses an **automatic fallback chain** to find the answer.
 
-### Fallback Architecture
+### Fallback Architecture (The "Safety Net")
 
-**Agent Fallback Chain:**
-```
-User Message
-    ↓
-Intent Detection (LLM)
-    ↓
-├─→ PTO Agent (time off requests)
-├─→ HR Ticket Agent (support requests)  
-└─→ RAG Agent (handbook queries)
-    ↓
-    No answer in handbook?
-    ↓
-    ✓ Automatic Fallback ✓
-    ↓
-    Website Extraction Agent (search company website)
-    ↓
-    Still no answer?
-    ↓
-    HR Ticket Suggestion (human support)
-```
+When the system tries to answer a question, it follows this logic:
+
+1.  **Specialist Agents**: Is this a PTO request? Or an HR ticket? (If yes, route to them).
+2.  **RAG Agent**: If not, search the PDF Handbook.
+3.  **Website Agent (Fallback)**: If the handbook doesn't have the answer, *automatically* search the company website.
+4.  **HR Ticket**: If all else fails, ask the user if they want to open a support ticket.
 
 **Example Flow:**
 ```
@@ -798,6 +784,24 @@ GET /api/admin/monitoring/stats
   Query Params: ?time_range=24h|7d|30d
   Headers: Authorization: Bearer <token>
   Response: {
+    "requests": 1500,
+    "avg_latency": 250,
+    "error_rate": 0.02
+  }
+```
+
+### Monitoring Infrastructure (NEW)
+
+**Weights & Biases Integration:**
+- **Request Tracking**: Latency, status codes, company ID
+- **Agent Metrics**: Execution time, success rates, tool usage
+- **Business KPIs**: PTO approvals, HR ticket resolutions
+- **Database Performance**: Query latency profiling
+
+**Alerting System**:
+- **Real-time Checks**: Latency > 3s, Error Rate > 5%
+- **Notifications**: Email alerts for critical thresholds
+- **Dashboard**: Centralized view of system health
     "overview": {
       "total_requests": 1250,
       "active_users": 45,

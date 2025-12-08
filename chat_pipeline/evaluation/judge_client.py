@@ -38,12 +38,19 @@ class JudgeClient:
         self.client: OpenAI | None = None
         self.pipelines: Dict[str, Any] = {}
 
-        if self.openai_key:
+        # Allow explicit override via JUDGE_BACKEND
+        # If set to 'mercury' or 'inception', we skip OpenAI even if key is present.
+        judge_backend_override = os.getenv("JUDGE_BACKEND", "").lower()
+
+        if judge_backend_override in ("mercury", "inception"):
+            logger.info("JudgeClient forced to use Mercury/Inception backend.")
+            self.backend = "mercury"
+        elif self.openai_key:
             logger.info("JudgeClient using OpenAI GPT-4o-mini backend.")
             self.client = OpenAI(api_key=self.openai_key)
             self.backend = "openai"
         else:
-            logger.warning("OPENAI_API_KEY not set; falling back to open-source judge models.")
+            logger.warning("OPENAI_API_KEY not set and no override; falling back to open-source judge models.")
 
     def score(self, judge_prompt: str, model_name: str | None = None) -> Dict[str, Any]:
         """Return parsed JSON scores from the judge backend."""
@@ -58,7 +65,20 @@ class JudgeClient:
                 timeout=REMOTE_TIMEOUT,
             )
             text = response.choices[0].message.content.strip()
+        elif self.backend == "mercury":
+            # Explicit mercury backend logic
+            mercury_key = os.getenv("INCEPTION_API_KEY")
+            if mercury_key:
+                try:
+                    text = self._call_mercury(judge_prompt, mercury_key)
+                except Exception as exc:
+                    logger.warning("Mercury judge failed: %s; attempting heavy fallback.", exc)
+                    text = self._run_hf_fallback(judge_prompt)
+            else:
+                logger.warning("JUDGE_BACKEND=mercury but INCEPTION_API_KEY not set.")
+                text = self._run_hf_fallback(judge_prompt)
         else:
+            # Fallback / Auto logic (legacy behavior if not openai and not mercury)
             mercury_key = os.getenv("INCEPTION_API_KEY")
             if mercury_key:
                 try:
