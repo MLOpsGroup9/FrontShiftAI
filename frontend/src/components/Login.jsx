@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { login } from '../services/api';
+import { ArrowLeft } from 'lucide-react';
 
-const Login = ({ onLoginSuccess }) => {
+import FrontShiftLogo from './FrontShiftLogo';
+
+const Login = ({ onLoginSuccess, onBack }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -14,15 +17,15 @@ const Login = ({ onLoginSuccess }) => {
 
     try {
       const response = await login(email, password);
-      
+
       console.log('🔐 Login response:', response);  // DEBUG
-      
+
       // Store auth data in localStorage
       localStorage.setItem('access_token', response.access_token);
       localStorage.setItem('user_email', response.email);
       localStorage.setItem('user_company', response.company);
       localStorage.setItem('user_role', response.role);  // ← ADDED THIS LINE
-      
+
       // Notify parent component
       onLoginSuccess(response);
     } catch (err) {
@@ -45,13 +48,8 @@ const Login = ({ onLoginSuccess }) => {
       <div className="w-full max-w-md relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center space-x-3 mb-4">
-            <div className="w-12 h-12 rounded-2xl border border-white/15 bg-gradient-to-br from-white/30 via-white/10 to-transparent shadow-[0_10px_30px_rgba(0,0,0,0.45)] relative overflow-hidden">
-              <div className="absolute inset-[3px] rounded-2xl bg-black/30 backdrop-blur-sm border border-white/5"></div>
-              <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/80 blur-sm opacity-80"></div>
-              <div className="absolute right-2.5 bottom-2.5 w-2.5 h-5 rounded-full bg-white/40"></div>
-            </div>
-            <h1 className="text-2xl font-semibold text-white tracking-tight">FrontShiftAI</h1>
+          <div className="inline-flex items-center justify-center mb-4">
+            <FrontShiftLogo size={48} showText={true} />
           </div>
           <p className="text-white/60 text-sm">Sign in to access your company's handbook</p>
         </div>
@@ -59,7 +57,7 @@ const Login = ({ onLoginSuccess }) => {
         {/* Login Card */}
         <div className="glass-card bg-white/10 backdrop-blur-xl p-8">
           <h2 className="text-xl font-semibold text-white mb-6">Welcome Back</h2>
-          
+
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email Input */}
             <div>
@@ -133,6 +131,14 @@ const Login = ({ onLoginSuccess }) => {
           Secure access to company handbooks and policies
         </p>
       </div>
+
+      {/* Back Button */}
+      <button
+        onClick={onBack}
+        className="absolute top-6 left-6 p-2 rounded-full bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all z-50 group"
+      >
+        <ArrowLeft size={20} className="group-hover:-translate-x-0.5 transition-transform" />
+      </button>
     </div>
   );
 };

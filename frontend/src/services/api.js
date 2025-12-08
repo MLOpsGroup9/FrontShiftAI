@@ -116,6 +116,26 @@ export const logout = () => {
   localStorage.removeItem('user_company');
 };
 
+export const bulkAddUsers = async (users) => {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+    const response = await api.post('/api/admin/bulk-add-users', {
+      users: users
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Bulk Add Users Error:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
 // -------------- PTO Agent APIs --------------
 
 // Chat with PTO Agent
@@ -203,10 +223,10 @@ export const getAllPTORequests = async (statusFilter = null) => {
     if (!token) {
       throw new Error('Not authenticated');
     }
-    const url = statusFilter 
+    const url = statusFilter
       ? `/api/pto/admin/requests?status_filter=${statusFilter}`
       : '/api/pto/admin/requests';
-    
+
     const response = await api.get(url, {
       headers: {
         Authorization: `Bearer ${token}`
@@ -386,15 +406,15 @@ export const getHRTicketQueue = async (filters = {}) => {
     if (!token) {
       throw new Error('Not authenticated');
     }
-    
+
     const params = new URLSearchParams();
     if (filters.status) params.append('status_filter', filters.status);
     if (filters.category) params.append('category_filter', filters.category);
     if (filters.urgency) params.append('urgency_filter', filters.urgency);
     if (filters.sortBy) params.append('sort_by', filters.sortBy);
-    
+
     const url = `/api/hr-tickets/admin/queue${params.toString() ? '?' + params.toString() : ''}`;
-    
+
     const response = await api.get(url, {
       headers: {
         Authorization: `Bearer ${token}`
@@ -517,46 +537,21 @@ export const getHRTicketStats = async () => {
   }
 };
 
-// -------------- Voice Agent APIs (Modal) --------------
-
-// Modal Voice Agent URL - Update this after deploying to Modal
-// After running: modal deploy voice_pipeline/modal_deploy.py
-// You'll get a URL like: https://frontshiftai-voice-agent-<hash>.modal.run
-const MODAL_VOICE_AGENT_URL = import.meta.env.VITE_MODAL_VOICE_AGENT_URL || 'http://localhost:8001';
-
-// Create voice session via Modal
-export const createVoiceSession = async (roomName = null, metadata = null) => {
+// Admin: Get monitoring dashboard stats
+export const getMonitoringStats = async (timeRange = '7d') => {
   try {
-    // Get user info from localStorage (set during login)
-    const userEmail = localStorage.getItem('user_email');
-    const userCompany = localStorage.getItem('user_company');
-
-    if (!userEmail) {
-      throw new Error('User email not found. Please log in again.');
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      throw new Error('Not authenticated');
     }
-
-    // Call Modal endpoint directly (no auth needed - session creation is public)
-    const response = await axios.post(`${MODAL_VOICE_AGENT_URL}/session`, {
-      room_name: roomName,
-      user_email: userEmail,
-      company: userCompany,
-      metadata: metadata
+    const response = await api.get(`/api/admin/monitoring/stats?time_range=${timeRange}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
     });
-
     return response.data;
   } catch (error) {
-    console.error("Create Voice Session Error:", error.response?.data || error.message);
-    throw error;
-  }
-};
-
-// Voice agent health check
-export const voiceAgentHealth = async () => {
-  try {
-    const response = await axios.get(`${MODAL_VOICE_AGENT_URL}/health`);
-    return response.data;
-  } catch (error) {
-    console.error("Voice Health Check Error:", error.message);
+    console.error("Get Monitoring Stats Error:", error.response?.data || error.message);
     throw error;
   }
 };
