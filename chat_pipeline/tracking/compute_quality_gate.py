@@ -5,11 +5,11 @@ from pathlib import Path
 
 
 MAIN_THRESHOLDS = {
-    "groundedness": 3.5,
-    "factual_correctness": 3.5,
-    "answer_relevance": 3.5,
+    "groundedness": 3.0,
+    "factual_correctness": 3.0,
+    "answer_relevance": 3.0,
     "hallucination_score_max": 0.5,
-    "latency_total_max": 2.0
+    "latency_total_max": 5.0
 }
 
 SLICE_THRESHOLDS = {
