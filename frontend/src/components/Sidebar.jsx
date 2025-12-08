@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import FrontShiftLogo from './FrontShiftLogo';
 
 const Sidebar = ({
   activeView,
@@ -51,14 +52,7 @@ const Sidebar = ({
 
         {/* Logo */}
         <div className="px-6 py-5 border-b border-white/5">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-2xl border border-white/15 bg-gradient-to-br from-white/30 via-white/10 to-transparent shadow-[0_10px_30px_rgba(0,0,0,0.45)] relative overflow-hidden">
-              <div className="absolute inset-[3px] rounded-2xl bg-black/30 backdrop-blur-sm border border-white/5"></div>
-              <div className="absolute left-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white/80 blur-sm opacity-80"></div>
-              <div className="absolute right-2 bottom-2 w-2 h-4 rounded-full bg-white/40"></div>
-            </div>
-            <h1 className="text-xl font-semibold text-white tracking-tight">FrontShiftAI</h1>
-          </div>
+          <FrontShiftLogo size={32} showText={true} />
         </div>
 
         {/* User Info */}
@@ -145,8 +139,8 @@ const Sidebar = ({
                       <li
                         key={chat.id}
                         className={`text-sm py-1.5 px-2 rounded-lg transition-all truncate flex items-center gap-2 ${currentChatId === chat.id
-                            ? 'bg-white/10 text-white'
-                            : 'text-white/60 hover:text-white/90 hover:bg-white/5'
+                          ? 'bg-white/10 text-white'
+                          : 'text-white/60 hover:text-white/90 hover:bg-white/5'
                           }`}
                       >
                         <button
