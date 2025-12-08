@@ -20,8 +20,6 @@ from .llm_config import (
     FALLBACK_CHAIN,
     GROQ_CONFIG,
     LOCAL_CONFIG,
-    GROQ_CONFIG,
-    LOCAL_CONFIG,
     MERCURY_CONFIG,
     OPENAI_CONFIG,
 )
@@ -155,8 +153,6 @@ class AgentLLMClient:
             return self._call_local(messages, temperature, max_tokens, json_mode)
         elif provider == "mercury":
             return self._call_mercury(messages, temperature, max_tokens, json_mode)
-        elif provider == "mercury":
-            return self._call_mercury(messages, temperature, max_tokens, json_mode)
         elif provider == "openai":
             return self._call_openai(messages, temperature, max_tokens, json_mode)
         else:
@@ -251,7 +247,6 @@ class AgentLLMClient:
         )
         response.raise_for_status()
 
-        data = response.json()
         data = response.json()
         return data.get("choices", [{}])[0].get("message", {}).get("content")
 
