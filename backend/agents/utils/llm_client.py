@@ -9,6 +9,7 @@ import time
 from typing import Optional, Dict, Any
 import requests
 from groq import Groq
+from openai import OpenAI
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from cachetools import TTLCache
@@ -19,7 +20,10 @@ from .llm_config import (
     FALLBACK_CHAIN,
     GROQ_CONFIG,
     LOCAL_CONFIG,
+    GROQ_CONFIG,
+    LOCAL_CONFIG,
     MERCURY_CONFIG,
+    OPENAI_CONFIG,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,7 +34,7 @@ llm_cache = TTLCache(maxsize=100, ttl=300)
 class AgentLLMClient:
     """
     Unified LLM client for agents with automatic fallback
-    Supports: Groq, Local (Ollama), Mercury
+    Supports: Groq, Local (Ollama), Mercury, OpenAI
     """
 
     def __init__(self):
@@ -40,7 +44,9 @@ class AgentLLMClient:
 
         # Initialize clients
         self.groq_client = None
+        self.openai_client = None
         self._init_groq()
+        self._init_openai()
 
     def _init_groq(self):
         """Initialize Groq client"""
@@ -53,6 +59,18 @@ class AgentLLMClient:
                 logger.warning("GROQ_API_KEY not found in environment")
         except Exception as e:
             logger.error(f"Failed to initialize Groq client: {e}")
+
+    def _init_openai(self):
+        """Initialize OpenAI client"""
+        try:
+            api_key = os.getenv("OPENAI_API_KEY")
+            if api_key:
+                self.openai_client = OpenAI(api_key=api_key)
+                logger.info("OpenAI client initialized successfully")
+            else:
+                logger.warning("OPENAI_API_KEY not found in environment")
+        except Exception as e:
+            logger.error(f"Failed to initialize OpenAI client: {e}")
 
     def chat(
         self,
@@ -137,6 +155,10 @@ class AgentLLMClient:
             return self._call_local(messages, temperature, max_tokens, json_mode)
         elif provider == "mercury":
             return self._call_mercury(messages, temperature, max_tokens, json_mode)
+        elif provider == "mercury":
+            return self._call_mercury(messages, temperature, max_tokens, json_mode)
+        elif provider == "openai":
+            return self._call_openai(messages, temperature, max_tokens, json_mode)
         else:
             logger.error(f"Unknown provider: {provider}")
             raise ValueError(f"Unknown provider: {provider}")
@@ -230,7 +252,32 @@ class AgentLLMClient:
         response.raise_for_status()
 
         data = response.json()
+        data = response.json()
         return data.get("choices", [{}])[0].get("message", {}).get("content")
+
+    def _call_openai(
+        self,
+        messages: list,
+        temperature: Optional[float],
+        max_tokens: Optional[int],
+        json_mode: bool,
+    ) -> Optional[str]:
+        """Call OpenAI API"""
+        if not self.openai_client:
+            raise Exception("OpenAI client not initialized")
+
+        kwargs = {
+            "model": OPENAI_CONFIG["model"],
+            "messages": messages,
+            "temperature": temperature or OPENAI_CONFIG["temperature"],
+            "max_tokens": max_tokens or OPENAI_CONFIG["max_tokens"],
+        }
+
+        if json_mode:
+            kwargs["response_format"] = {"type": "json_object"}
+
+        response = self.openai_client.chat.completions.create(**kwargs)
+        return response.choices[0].message.content
 
 
 # Singleton instance
