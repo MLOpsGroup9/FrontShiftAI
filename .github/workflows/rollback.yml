@@ -59,6 +59,14 @@ jobs:
           echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
         shell: bash
 
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud SDK (gsutil)
+        uses: google-github-actions/setup-gcloud@v2
+
       - name: List Available Versions
         run: |
           python -m chat_pipeline.tracking.rollback_model \
@@ -89,6 +97,7 @@ jobs:
           fi
           TARGET=$(python -m chat_pipeline.tracking.rollback_model \
             --model-name "$MODEL_NAME" \
+            --registry-dir "gs://frontshiftai-model-registry" \
             --resolve-target "${ARGS[@]}")
           if [ -z "$TARGET" ] || [ "$TARGET" = "none" ]; then
             echo "❌ Unable to resolve target version."
@@ -103,13 +112,18 @@ jobs:
           TARGET_VERSION: ${{ steps.resolve_version.outputs.target_version }}
           MODEL_NAME: ${{ inputs.model_name }}
         run: |
-          VERSION_DIR="models_registry/${MODEL_NAME}_${TARGET_VERSION}"
-          METADATA_PATH="${VERSION_DIR}/metadata.json"
-          if [ ! -f "$METADATA_PATH" ]; then
-            echo "❌ Metadata not found for ${MODEL_NAME}_${TARGET_VERSION}"
-            exit 1
-          fi
-          python3 <<'EOF' "$METADATA_PATH" "$GITHUB_OUTPUT"
+          # We need to list-versions to populate the cache or fetch the specific version
+          # However, metadata.json is small, so we can just use valid commands.
+          # The validation script needs the model registry cache populated or to query directly.
+          # Let's use the CLI `describe-version` which handles registry init.
+          
+          python -m chat_pipeline.tracking.rollback_model \
+            --model-name "$MODEL_NAME" \
+            --registry-dir "gs://frontshiftai-model-registry" \
+            --describe-version "$TARGET_VERSION" \
+            --metadata-output "target_metadata.json"
+
+          python3 <<'EOF' "target_metadata.json" "$GITHUB_OUTPUT"
 
       - name: Require Manual Approval for Production
         if: github.ref == 'refs/heads/main'
@@ -159,6 +173,14 @@ jobs:
           echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
         shell: bash
 
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud SDK (gsutil)
+        uses: google-github-actions/setup-gcloud@v2
+
       - name: Execute Rollback
         env:
           TARGET_VERSION: ${{ needs.validate-rollback-target.outputs.target_version }}
@@ -171,6 +193,7 @@ jobs:
           fi
           python -m chat_pipeline.tracking.rollback_model \
             --model-name "$MODEL_NAME" \
+            --registry-dir "gs://frontshiftai-model-registry" \
             --target-version "$TARGET_VERSION" \
             --reason "$REASON"
 
