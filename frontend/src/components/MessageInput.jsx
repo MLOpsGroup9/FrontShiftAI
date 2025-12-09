@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const MessageInput = ({ onSendMessage, isLoading, messages = [], placeholder }) => {
+const MessageInput = ({ onSendMessage, isLoading, messages = [], placeholder, onOpenVoiceMode }) => {
   const [message, setMessage] = useState('');
   const hasMessages = messages.length > 0;
 
@@ -41,7 +41,7 @@ const MessageInput = ({ onSendMessage, isLoading, messages = [], placeholder }) 
 
   return (
     <div className={`${containerClasses} transition-all duration-500`}>
-      <form onSubmit={handleSubmit} className={`${formClasses} transition-all duration-500`}>
+        <form onSubmit={handleSubmit} className={`${formClasses} transition-all duration-500`}>
         <div className={`${composerClasses} transition-all duration-500`}>
           <textarea
             rows={3}
@@ -62,11 +62,12 @@ const MessageInput = ({ onSendMessage, isLoading, messages = [], placeholder }) 
             </button>
             <button
               type="button"
+              onClick={onOpenVoiceMode}
               className="w-11 h-11 flex items-center justify-center rounded-2xl border border-white/10 text-white/60 bg-white/5 hover:text-white hover:border-white/25 hover:bg-white/10 transition-all active:scale-95"
-              title="Voice input"
+              title="Voice mode"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 18a4 4 0 004-4V7a4 4 0 10-8 0v7a4 4 0 004 4zm0 0v3m-4 0h8" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
               </svg>
             </button>
             <button

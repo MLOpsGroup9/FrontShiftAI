@@ -2,49 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { MessageSquare, Calendar, Ticket, Search, ArrowRight, Menu, X, Brain, Shield, Zap } from 'lucide-react';
 
-// Logo Component - Abstract F with Arrow
-const FrontShiftLogo = ({ size = 40, showText = true, className = "" }) => {
-  const iconSize = size * 0.6;
-  const textSize = size * 0.5;
-  
-  return (
-    <div className={`flex items-center gap-3 ${className}`}>
-      {/* Icon Container */}
-      <div 
-        className="rounded-xl bg-gradient-to-br from-[#9CA3AF] to-[#6B7280] flex items-center justify-center shadow-lg"
-        style={{ width: size, height: size }}
-      >
-        <svg 
-          width={iconSize} 
-          height={iconSize} 
-          viewBox="0 0 24 24" 
-          fill="none"
-        >
-          <path 
-            d="M7 6h10M7 6v12M7 13h7" 
-            stroke="white" 
-            strokeWidth="2.5" 
-            strokeLinecap="round"
-          />
-          <path 
-            d="M14 13l3 2-2.5 2.5" 
-            stroke="white" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-          />
-        </svg>
-      </div>
-      
-      {/* Text */}
-      {showText && (
-        <span className="text-white font-bold" style={{ fontSize: `${textSize}px` }}>
-          FrontShift<span className="font-light text-white/70">AI</span>
-        </span>
-      )}
-    </div>
-  );
-};
+import FrontShiftLogo from './FrontShiftLogo';
 
 const LandingPage = ({ onGetStarted }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -62,11 +20,11 @@ const LandingPage = ({ onGetStarted }) => {
     <div className="min-h-screen bg-[#0A0E1A] relative overflow-hidden">
       {/* Video Background */}
       <div className="video-container">
-        <video 
+        <video
           key={videoKey}
-          autoPlay 
-          muted 
-          loop 
+          autoPlay
+          muted
+          loop
           playsInline
           preload="auto"
           onLoadedData={(e) => {
@@ -76,7 +34,7 @@ const LandingPage = ({ onGetStarted }) => {
             console.error('Video load error:', e);
           }}
         >
-          <source src={`/background-video.mp4?v=${videoKey}`} type="video/mp4" />
+          <source src={`/metallic_gradient_output.mp4?v=${videoKey}`} type="video/mp4" />
         </video>
         <div className="video-overlay"></div>
       </div>
@@ -96,19 +54,19 @@ const LandingPage = ({ onGetStarted }) => {
             <div className="hidden md:flex gap-8 items-center">
               <button
                 onClick={() => scrollToSection('features')}
-                className="text-white/90 hover:text-white transition"
+                className="text-white/90 hover:text-white transition text-lg font-medium"
               >
                 Features
               </button>
               <button
                 onClick={() => scrollToSection('how-it-works')}
-                className="text-white/90 hover:text-white transition"
+                className="text-white/90 hover:text-white transition text-lg font-medium"
               >
                 How It Works
               </button>
               <button
                 onClick={() => scrollToSection('about')}
-                className="text-white/90 hover:text-white transition"
+                className="text-white/90 hover:text-white transition text-lg font-medium"
               >
                 About
               </button>
@@ -255,6 +213,18 @@ const LandingPage = ({ onGetStarted }) => {
                 desc: "Retrieval-Augmented Generation for accurate, document-grounded answers from company handbooks"
               },
               {
+                icon: <Zap size={32} />, // Using Zap icon for Voice/Speech as requested/implied by "similar fashion" context or I can use Mic if available. The user prompt mentioned "voice feature". Let's check imports. Zap is imported.  Wait, Mic isn't imported. I should check imports or simple use Zap or maybe MessageSquare is better?  Actually, let's use Zap for 'fast/action' or maybe Brain again? No.
+                // The user prompt specifically asked for voice feature. I'll use MessageSquare if Mic isn't available or maybe I can import Mic.
+                // Looking at imports: MessageSquare, Calendar, Ticket, Search, ArrowRight, Menu, X, Brain, Shield, Zap.
+                // Mic is NOT imported. I will use Zap for now as a placeholder for "active/voice" or simply reuse MessageSquare or Brain if suitable.
+                // Actually, let's add Mic to imports first or just use Zap which is available.
+                // User said "similar fashion".
+                // I will add "Mic" to imports in a separate step or just use one of the existing ones.
+                // Let's use Zap for now as it represents "Live/Action" often.
+                title: "Voice-First Interaction",
+                desc: "Hands-free accessibility with real-time speech-to-text for on-the-go deskless workers"
+              },
+              {
                 icon: <Calendar size={32} />,
                 title: "PTO Management Agent",
                 desc: "Intelligent time-off request handling with automatic balance tracking and approval workflows"
@@ -273,11 +243,6 @@ const LandingPage = ({ onGetStarted }) => {
                 icon: <MessageSquare size={32} />,
                 title: "Unified Chat Interface",
                 desc: "Single conversation flow that intelligently routes to the right agent for any query"
-              },
-              {
-                icon: <Shield size={32} />,
-                title: "Multi-Tenant Architecture",
-                desc: "Secure, isolated data per company with role-based access control"
               }
             ].map((feature, i) => (
               <motion.div

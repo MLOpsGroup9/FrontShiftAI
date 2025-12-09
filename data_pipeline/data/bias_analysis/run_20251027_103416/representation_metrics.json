@@ -1,0 +1,59 @@
+{
+  "industry": {
+    "unique": 9,
+    "gini": 0.19948849104400146,
+    "entropy": 3.0779652429066275,
+    "ratio_imbalance": 3.699999999815,
+    "top_5": {
+      "Logistics": 74,
+      "Finance": 61,
+      "Retail": 49,
+      "Manufacturing": 48,
+      "Construction": 38
+    }
+  },
+  "org": {
+    "unique": 1,
+    "gini": 0.0,
+    "entropy": -0.0,
+    "ratio_imbalance": 0.9999999999974425,
+    "top_5": {
+      "General Business": 391
+    }
+  },
+  "doc_type": {
+    "unique": 1,
+    "gini": 0.0,
+    "entropy": -0.0,
+    "ratio_imbalance": 0.9999999999974425,
+    "top_5": {
+      "handbook": 391
+    }
+  },
+  "company": {
+    "unique": 18,
+    "gini": 0.24651889740268937,
+    "entropy": 4.023585926489078,
+    "ratio_imbalance": 6.4999999991875,
+    "top_5": {
+      "Buchheit Logistics": 52,
+      "Old National Bank": 36,
+      "B G Foods": 31,
+      "Lunds Byerlys": 28,
+      "Jacob Heating And Cooling": 25
+    }
+  },
+  "policy_tags": {
+    "unique": 115,
+    "gini": 0.6072278436999753,
+    "entropy": 5.433951073589007,
+    "ratio_imbalance": 62.999999937,
+    "top_5": {
+      "": 63,
+      "REST": 57,
+      "HARASSMENT": 28,
+      "HARASSMENT|REST": 16,
+      "MEAL|REST": 11
+    }
+  }
+}
