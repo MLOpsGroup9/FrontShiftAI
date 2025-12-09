@@ -19,7 +19,7 @@ eval:
   slice_fields: [slice]
   pipeline_overrides:
     generation:
-      backend: mercury
+      backend: openai
   main:
     test_dir: chat_pipeline/evaluation/test_questions
     output_dir: chat_pipeline/results/core_eval_main

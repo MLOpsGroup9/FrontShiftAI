@@ -16,6 +16,7 @@ from agents.website_extraction.state import WebsiteExtractionState
 from db.models import Company
 
 
+@pytest.mark.state
 class TestParseQueryNode:
     """Test query parsing node"""
     
@@ -133,6 +134,7 @@ class TestParseQueryNode:
             assert len(result["search_keywords"]) > 0
 
 
+@pytest.mark.state
 class TestResolveDomainNode:
     """Test domain resolution node"""
     
@@ -219,6 +221,7 @@ class TestResolveDomainNode:
         assert result["company_domain"] is None
 
 
+@pytest.mark.state
 class TestBraveSearchNode:
     """Test Brave search execution node"""
     
@@ -304,6 +307,7 @@ class TestBraveSearchNode:
         assert result["brave_results"] == []
 
 
+@pytest.mark.state
 class TestAnalyzeResultsNode:
     """Test result analysis node"""
     
@@ -390,6 +394,7 @@ class TestAnalyzeResultsNode:
         assert result["found_answer"] is False
 
 
+@pytest.mark.state
 class TestGenerateAnswerNode:
     """Test answer generation node"""
     
@@ -484,6 +489,7 @@ class TestGenerateAnswerNode:
             assert "Hours" in result["answer"]
 
 
+@pytest.mark.state
 class TestSuggestHRTicketNode:
     """Test HR ticket suggestion node"""
     
@@ -561,6 +567,7 @@ class TestSuggestHRTicketNode:
         assert "couldn't find" in result["hr_ticket_suggestion"]
 
 
+@pytest.mark.state
 class TestFormatResponseNode:
     """Test response formatting node"""
     

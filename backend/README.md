@@ -99,34 +99,20 @@ backend/
 └── users.db                # SQLite database
 ```
 
-## Unified Agent Router with Automatic Fallback
+## Unified Agent Router (The "Concierge")
 
 ### Overview
 
-The unified agent router provides intelligent message routing with **automatic fallback chain** for comprehensive information retrieval. When one agent can't answer a question, the system automatically tries the next best option.
+The unified agent router is the brain of the backend. It acts as a single point of entry for all user messages. Instead of users having to choose "Talk to PTO Bot" or "Talk to HR Bot", they just speak naturally. The system intelligently routes their request to the right specialist or uses an **automatic fallback chain** to find the answer.
 
-### Fallback Architecture
+### Fallback Architecture (The "Safety Net")
 
-**Agent Fallback Chain:**
-```
-User Message
-    ↓
-Intent Detection (LLM)
-    ↓
-├─→ PTO Agent (time off requests)
-├─→ HR Ticket Agent (support requests)  
-└─→ RAG Agent (handbook queries)
-    ↓
-    No answer in handbook?
-    ↓
-    ✓ Automatic Fallback ✓
-    ↓
-    Website Extraction Agent (search company website)
-    ↓
-    Still no answer?
-    ↓
-    HR Ticket Suggestion (human support)
-```
+When the system tries to answer a question, it follows this logic:
+
+1.  **Specialist Agents**: Is this a PTO request? Or an HR ticket? (If yes, route to them).
+2.  **RAG Agent**: If not, search the PDF Handbook.
+3.  **Website Agent (Fallback)**: If the handbook doesn't have the answer, *automatically* search the company website.
+4.  **HR Ticket**: If all else fails, ask the user if they want to open a support ticket.
 
 **Example Flow:**
 ```
@@ -792,6 +778,48 @@ GET /api/company/task-status/{task_id}
   }
 ```
 
+### Admin & Monitoring (NEW)
+```
+GET /api/admin/monitoring/stats
+  Query Params: ?time_range=24h|7d|30d
+  Headers: Authorization: Bearer <token>
+  Response: {
+    "requests": 1500,
+    "avg_latency": 250,
+    "error_rate": 0.02
+  }
+```
+
+### Monitoring Infrastructure (NEW)
+
+**Weights & Biases Integration:**
+- **Request Tracking**: Latency, status codes, company ID
+- **Agent Metrics**: Execution time, success rates, tool usage
+- **Business KPIs**: PTO approvals, HR ticket resolutions
+- **Database Performance**: Query latency profiling
+
+**Alerting System**:
+- **Real-time Checks**: Latency > 3s, Error Rate > 5%
+- **Notifications**: Email alerts for critical thresholds
+- **Dashboard**: Centralized view of system health
+    "overview": {
+      "total_requests": 1250,
+      "active_users": 45,
+      "error_rate": 0.8,
+      "avg_response_time": "1.2s"
+    },
+    "charts": {
+      "requests_over_time": [...],
+      "agent_usage": [...],        # Super Admin only
+      "company_activity": [...]    # Super Admin only
+    },
+    "operational_stats": {         # Company Admin only
+      "pending_pto": 3,
+      "open_tickets": 5
+    }
+  }
+```
+
 ### RAG Queries
 ```
 POST /api/rag/query
@@ -959,40 +987,6 @@ WORKERS=4
 LOG_LEVEL=info
 ```
 
-### Production Checklist
-
-**Security:**
-- Change default passwords
-- Implement password hashing
-- Configure HTTPS/TLS
-- Set secure JWT secret
-- Enable CORS for trusted origins only
-- Implement rate limiting
-- Secure API keys (Brave, Groq) [NEW]
-
-**Database:**
-- Migrate to PostgreSQL
-- Configure connection pooling
-- Set up automated backups
-- Implement migration tool (Alembic)
-- Add database indexes
-- Chat history retention policies [NEW]
-
-**Monitoring:**
-- Configure application logging
-- Set up error tracking
-- Implement health check monitoring
-- Configure performance metrics
-- Set up alerting
-- Monitor external API usage (Brave Search) [NEW]
-
-**Infrastructure:**
-- Configure reverse proxy
-- Set up load balancing
-- Implement container orchestration
-- Configure auto-scaling
-- Set up deployment pipeline
-- GCS sync for data pipeline [NEW]
 
 ## Troubleshooting
 
@@ -1033,36 +1027,6 @@ pip install -r requirements.txt --force-reinstall
 - Ensure company has URL in database
 - Review search timeout settings
 
-## Future Agents
-
-The architecture supports multiple agents:
-```
-agents/
-├── pto/              # ✓ Implemented: PTO Request Agent
-├── hr_ticket/        # ✓ Implemented: HR Ticket Agent
-├── website_extraction/ # ✓ Implemented: Website Search Agent [NEW]
-├── expense/          # Planned: Expense Report Agent
-├── scheduling/       # Planned: Scheduling Agent
-└── utils/            # Shared utilities
-```
-
-Each agent follows the same pattern:
-1. Define state structure
-2. Implement processing nodes
-3. Create utility functions
-4. Build LangGraph workflow
-5. Add API endpoints
-6. Write comprehensive tests
-
-**Implemented Agents:**
-- **PTO Request Agent**: Automated vacation request processing with balance tracking
-- **HR Ticket Agent**: Employee support ticketing with queue management and meeting coordination
-- **Website Extraction Agent**: Automatic web search fallback for information not in handbooks [NEW]
-
-**Planned Agents:**
-- **Expense Report Agent**: Automated expense submission and approval workflow
-- **Scheduling Agent**: Shift scheduling and swap management
-- **Equipment Request Agent**: Company equipment and resource requests
 
 ## Resources
 

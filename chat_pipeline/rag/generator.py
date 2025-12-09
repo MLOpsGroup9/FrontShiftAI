@@ -42,6 +42,12 @@ try:  # Requests is only required when hitting the remote Mercury API.
 except ImportError:  # pragma: no cover - optional dependency
     requests = None  # type: ignore
 
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None
+
+
 try:  # Optional token-aware context truncation support.
     import tiktoken  # type: ignore
 except ImportError:  # pragma: no cover - optional dependency
@@ -66,6 +72,8 @@ DEFAULT_STREAMING_ARGS: Dict[str, Any] = {
 INCEPTION_API_BASE = os.getenv("INCEPTION_API_BASE", "https://api.inceptionlabs.ai/v1")
 INCEPTION_API_KEY = os.getenv("INCEPTION_API_KEY")
 MERCURY_MODEL = os.getenv("MERCURY_MODEL", "mercury")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
 
 GENERATION_BACKEND = os.getenv("GENERATION_BACKEND")
 HF_MODEL_NAME = os.getenv("HF_MODEL_NAME")
@@ -288,7 +296,125 @@ def _call_mercury_api(prompt: str, params: Dict[str, Any]) -> str:
                 break
             time.sleep(delay)
             delay *= REMOTE_BACKOFF
+                
     raise RuntimeError("Mercury API failed after multiple attempts.") from last_exc
+
+
+def _call_groq_api(prompt: str, params: Dict[str, Any]) -> str:
+    """Call the Groq API (OpenAI-compatible) as a backend."""
+
+    if not GROQ_API_KEY:
+        raise RuntimeError("GROQ_API_KEY is not set. Set the environment variable to use the Groq backend.")
+    if requests is None:
+        raise RuntimeError("The `requests` package is required for the Groq backend.")
+
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    system_msg = params.get("system_message")
+    user_msg = params.get("user_message")
+
+    messages = []
+    if system_msg and user_msg:
+        messages.append({"role": "system", "content": system_msg})
+        messages.append({"role": "user", "content": user_msg})
+    else:
+        messages.append({"role": "user", "content": prompt})
+
+    payload = {
+        "model": GROQ_MODEL,
+        "messages": messages,
+        "max_tokens": params.get("max_tokens"),
+        "temperature": params.get("temperature"),
+        "top_p": params.get("top_p"),
+    }
+    
+    attempts = REMOTE_MAX_ATTEMPTS
+    delay = REMOTE_BACKOFF_START
+    last_exc: Exception | None = None
+
+    for attempt in range(1, attempts + 1):
+        try:
+            if REMOTE_MIN_DELAY > 0 and attempt > 1:
+                time.sleep(REMOTE_MIN_DELAY)
+            
+            # Groq uses standard OpenAI-compatible endpoint structure
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                json=payload,
+                headers=headers,
+                timeout=REMOTE_TIMEOUT,
+            )
+            response.raise_for_status()
+            data = response.json()
+            if "choices" in data and data["choices"]:
+                message = data["choices"][0].get("message", {})
+                return (message.get("content") or "").strip()
+            raise RuntimeError(f"Unexpected response format from Groq API: {data}")
+            
+        except Exception as exc:
+            last_exc = exc
+            
+            # Basic 429 handling for Groq as well
+            is_rate_limit = False
+            if isinstance(exc, requests.exceptions.HTTPError):
+                if getattr(exc.response, "status_code", None) == 429:
+                    is_rate_limit = True
+            
+            if is_rate_limit:
+                 logger.warning("Groq API rate limit (429) hit on attempt %s/%s. Pausing 10s...", attempt, attempts)
+                 time.sleep(10.0)
+            else:
+                logger.warning("Groq API attempt %s/%s failed: %s", attempt, attempts, exc)
+                time.sleep(delay)
+                delay *= REMOTE_BACKOFF
+                
+            if attempt == attempts:
+                break
+
+    raise RuntimeError("Groq API failed after multiple attempts.") from last_exc
+
+
+def _call_openai_api(prompt: str, params: Dict[str, Any]) -> str:
+    """Call the OpenAI API as a backend."""
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY is not set.")
+    if OpenAI is None:
+        raise RuntimeError("The `openai` package is required for the OpenAI backend.")
+
+    client = OpenAI(api_key=api_key)
+    
+    system_msg = params.get("system_message")
+    user_msg = params.get("user_message")
+
+    messages = []
+    if system_msg and user_msg:
+        messages.append({"role": "system", "content": system_msg})
+        messages.append({"role": "user", "content": user_msg})
+    else:
+        messages.append({"role": "user", "content": prompt})
+
+    model = "gpt-4o-mini" # Default to 4o-mini if not specified, though typically we want this configurable
+    # You might want to respect a config variable for the model name if it exists.
+    # For now, hardcoding as per typical usage or respecting an env var would be better.
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            max_tokens=params.get("max_tokens"),
+            temperature=params.get("temperature"),
+            top_p=params.get("top_p"),
+            timeout=REMOTE_TIMEOUT,
+        )
+        return (response.choices[0].message.content or "").strip()
+    except Exception as exc:
+        logger.error("OpenAI API call failed: %s", exc)
+        raise
 
 
 def _record_backend(name: Optional[str]) -> None:
@@ -307,47 +433,86 @@ def stream_response(
     llm: Optional[Any] = None,
     **stream_overrides: Any,
 ) -> Generator[str, None, None]:
-    """Stream the model output token-by-token as it is generated."""
+    """Stream the model output token-by-token as it is generated, with fallback support."""
 
     _record_backend(None)
     params = _get_streaming_hyperparameters(stream_overrides)
     gen_cfg = get_generation_config()
-    backend = (GENERATION_BACKEND or gen_cfg.get("backend") or "auto").lower()
+    
+    # Priority order: Configured backend -> Mercury -> Groq -> OpenAI -> Local
+    # If the user specifically set GENERATION_BACKEND, we try ONLY that first, but we can implement fallbacks even then if desired.
+    # However, for this requirement: "if rag is triggered - LLM used is mercury, with groq and lopenai as a fallback"
+    # We will enforce this order if 'auto' or unset.
+    
+    configured_backend = (GENERATION_BACKEND or gen_cfg.get("backend") or "auto").lower()
 
-    # local_llm: Optional[Any] = llm
-    # if backend in ("auto", "local") and local_llm is None:
-    #     try:
-    #         local_llm = load_llm()
-    #     except Exception as exc:  # pragma: no cover - depends on env
-    #         logger.info("Local LLaMA unavailable (%s). Falling back to next backend.", exc)
-    #         local_llm = None
+    # Define the chain based on user requirement
+    # Mercury -> Groq -> OpenAI -> Local (via 'auto'/'local' check)
+    
+    chain = []
+    
+    if configured_backend != "auto" and configured_backend in ["mercury", "groq", "openai", "local", "hf"]:
+        # If user explicitly set one, put it first. The others follow as fallback if we want robust fallback.
+        # But if they set it explicitly, maybe they ONLY want that? 
+        # The user request implies a general policy: "if rag is triggered... mercury, with groq and lopenai as a fallback"
+        # So we should probably construct the chain starting with Mercury.
+        chain.append(configured_backend)
+    
+    # Standard fallback chain per request
+    # avoid duplicates
+    for provider in ["mercury", "groq", "openai", "local"]:
+        if provider not in chain:
+            chain.append(provider)
+            
+    # Now try them in order
+    last_error = None
+    
+    for backend in chain:
+        try:
+            logger.info(f"Attempting generation with backend: {backend}")
+            
+            if backend == "groq":
+                _record_backend("groq")
+                yield _call_groq_api(prompt, params)
+                return
 
-    # if backend in ("auto", "local") and local_llm is not None:
-    #     _record_backend("local")
-    #     yield from _stream_from_local_llm(local_llm, prompt, params)
-    #     return
+            if backend == "openai":
+                _record_backend("openai")
+                yield _call_openai_api(prompt, params)
+                return
 
-    # if backend in ("hf", "qwen", "llama", "auto") and allow_heavy_fallbacks():
-    #     try:
-    #         hf_label = backend if backend in ("hf", "qwen", "llama") else "hf"
-    #         _record_backend(hf_label)
-    #         yield from _stream_from_hf(prompt, params)
-    #         return
-    #     except Exception as exc:  # pragma: no cover - optional dependency
-    #         _record_backend(None)
-    #         logger.debug("HF backend unavailable: %s", exc)
-    #         if backend != "auto":
-    #             raise
-    # elif backend in ("hf", "qwen", "llama") and not allow_heavy_fallbacks():
-    #     logger.warning("Heavy HF fallback disabled; skipping backend '%s'.", backend)
-
-    # Force Mercury
-    if backend in ("mercury", "auto", "local"): # Added local/auto to force mercury even if config is wrong
-        _record_backend("mercury")
-        yield _call_mercury_api(prompt, params)
-        return
-
-    raise RuntimeError(f"Unsupported generation backend: {backend}")
+            if backend == "mercury":
+                _record_backend("mercury")
+                yield _call_mercury_api(prompt, params)
+                return
+                
+            if backend == "local":
+                 # Prepare local LLM
+                 local_llm = llm
+                 if local_llm is None:
+                     try:
+                         local_llm = load_llm()
+                     except Exception as exc:
+                         logger.warning(f"Local LLM load failed: {exc}")
+                         continue
+                         
+                 if local_llm is not None:
+                    _record_backend("local")
+                    yield from _stream_from_local_llm(local_llm, prompt, params)
+                    return
+        
+        except KeyboardInterrupt:
+            raise
+        except Exception as e:
+            logger.warning(f"Backend {backend} failed: {e}")
+            last_error = e
+            continue
+            
+    # If we get here, all failed
+    logger.error("All RAG generation backends failed.")
+    if last_error:
+        raise last_error
+    raise RuntimeError("All RAG generation backends failed.")
 
 
 def _select_prompt_template(template_key: Optional[str]) -> str:
@@ -587,7 +752,9 @@ __all__ = [
     "get_last_backend_used",
     "DEFAULT_MODEL_PATH",
     "HF_MODEL_NAME",
+    "HF_MODEL_NAME",
     "INCEPTION_API_KEY",
+    "GROQ_API_KEY",
 ]
 def _close_llm() -> None:
     """Ensure the cached LLaMA instance is cleanly closed at shutdown."""
@@ -606,3 +773,5 @@ def _close_llm() -> None:
 
 
 atexit.register(_close_llm)
+
+

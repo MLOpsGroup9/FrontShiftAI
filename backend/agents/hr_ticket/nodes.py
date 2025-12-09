@@ -1,6 +1,3 @@
-"""
-LangGraph nodes for HR Ticket Agent workflow
-"""
 from agents.hr_ticket.state import HRTicketState
 from agents.hr_ticket.tools import (
     check_open_tickets,
@@ -11,6 +8,11 @@ from agents.utils.llm_client import get_llm_client
 from sqlalchemy.orm import Session
 from datetime import datetime
 import json
+import logging
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def parse_intent_node(state: HRTicketState, db: Session) -> HRTicketState:
@@ -81,8 +83,8 @@ Examples:
         state["validation_errors"] = []
         
     except Exception as e:
-        print(f"Error parsing intent with LLM: {e}")
-        print(f"Falling back to keyword-based parsing...")
+        logger.error(f"Error parsing intent with LLM: {e}")
+        logger.info(f"Falling back to keyword-based parsing...")
         
         # Smart keyword-based fallback
         msg_lower = state["user_message"].lower()
@@ -222,7 +224,7 @@ def create_ticket_node(state: HRTicketState, db: Session) -> HRTicketState:
         state["queue_position"] = queue_position
         
     except Exception as e:
-        print(f"Error creating ticket: {e}")
+        logger.error(f"Error creating ticket: {e}")
         state["ticket_id"] = None
         state["queue_position"] = None
         state["is_valid"] = False

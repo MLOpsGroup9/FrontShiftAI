@@ -68,6 +68,14 @@ jobs:
         with:
           lfs: true
 
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -76,8 +84,9 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r chat_pipeline/requirements.txt
+          sudo apt-get update && sudo apt-get install -y libasound2-dev
+          python -m pip install --upgrade pip --no-cache-dir
+          pip install -r chat_pipeline/requirements.txt --no-cache-dir
 
       - name: Set Environment Variables
         run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
@@ -123,6 +132,14 @@ jobs:
         with:
           lfs: true
 
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -131,8 +148,9 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          sudo apt-get update && sudo apt-get install -y libasound2-dev
+          python -m pip install --upgrade pip --no-cache-dir
+          pip install -r requirements.txt --no-cache-dir
 
       - name: Set Environment Variables
         run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
@@ -151,6 +169,9 @@ jobs:
         if: ${{ inputs.quality_gate_status == 'AUTO' }}
         run: |
           python -m chat_pipeline.tracking.compute_quality_gate
+          if [ -f chat_pipeline/results/quality_gate.txt ]; then
+            cat chat_pipeline/results/quality_gate.txt # Debug output
+          fi
           STATUS=$(cat chat_pipeline/results/quality_gate.txt)
           echo "status=$STATUS" >> $GITHUB_OUTPUT
 
@@ -186,6 +207,14 @@ jobs:
         with:
           lfs: true
 
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -194,12 +223,21 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          sudo apt-get update && sudo apt-get install -y libasound2-dev
+          python -m pip install --upgrade pip --no-cache-dir
+          pip install -r requirements.txt --no-cache-dir
 
       - name: Set Environment Variables
         run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
         shell: bash
+
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud SDK (gsutil)
+        uses: google-github-actions/setup-gcloud@v2
 
       - name: Download Evaluation Artifacts (if available)
         if: ${{ inputs.evaluation_artifact_name != '' }}
@@ -226,6 +264,7 @@ jobs:
             --model-name "${{ inputs.model_name }}"
             --quality-gate-status "$QUALITY_GATE_STATUS"
             --metadata-output "models_registry/metadata_last_push.json"
+            --registry-dir "gs://frontshiftai-model-registry"
           )
 
           if [ -n "$MODEL_PATH" ]; then
@@ -266,6 +305,14 @@ jobs:
         with:
           lfs: true
 
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -274,8 +321,9 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          sudo apt-get update && sudo apt-get install -y libasound2-dev
+          python -m pip install --upgrade pip --no-cache-dir
+          pip install -r requirements.txt --no-cache-dir
 
       - name: Set Environment Variables
         run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
@@ -299,7 +347,11 @@ jobs:
           if latest_path.exists():
               if latest_path.is_symlink():
                   version_dir = latest_path.resolve()
+              elif latest_path.is_dir():
+                   # Artifact download often dereferences symlinks into directories
+                  version_dir = latest_path
               else:
+                  # It's a pointer file (fallback)
                   with open(latest_path, 'r') as f:
                       version_dir = Path(f.read().strip())
 
@@ -312,9 +364,9 @@ jobs:
                   print(f"   Model: {metadata.get('model_name')}")
                   print(f"   Metrics: {metadata.get('evaluation', {})}")
               else:
-                  print("⚠️ Metadata not found")
+                  print("⚠️ Metadata not found in version dir")
           else:
-              print("⚠️ Latest symlink not found")
+              print("⚠️ Latest symlink/directory not found")
           EOF
 
       - name: Run Sample Queries (if RAG available)

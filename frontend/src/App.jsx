@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Toaster } from 'sonner';
 import Sidebar from './components/Sidebar';
 import UserChatPage from './components/UserChatPage';
 import ConnectionStatus from './components/ConnectionStatus';
@@ -415,6 +416,7 @@ function App() {
       </div>
 
       <ConnectionStatus />
+      <Toaster position="top-right" theme="dark" richColors />
     </div>
   );
 }

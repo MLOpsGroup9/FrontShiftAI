@@ -1,9 +1,10 @@
-name: Deployment Pipeline -Deploy Backend to Cloud Run
+name: Deployment Pipeline - Deploy Backend to Cloud Run
 
 on:
   push:
     branches:
       - main
+      - krishna-branch
     paths:
       - 'backend/**'
       - 'chat_pipeline/**'
@@ -74,8 +75,8 @@ jobs:
             --set-env-vars ENVIRONMENT=production,GENERATION_BACKEND=mercury,CHROMA_REMOTE_URI=gs://frontshiftai-data/chroma_db.tar.gz \
             --set-secrets GROQ_API_KEY=GROQ_API_KEY:latest,BRAVE_API_KEY=BRAVE_API_KEY:latest,JWT_SECRET_KEY=JWT_SECRET_KEY:latest,INCEPTION_API_KEY=INCEPTION_API_KEY:latest,DATABASE_URL=DATABASE_URL:latest \
             --add-cloudsql-instances frontshiftai:us-central1:frontshiftai-db \
-            --memory 2Gi \
-            --cpu 2 \
+            --memory 4Gi \
+            --cpu 4 \
             --timeout 300 \
             --max-instances 10 \
             --min-instances 0

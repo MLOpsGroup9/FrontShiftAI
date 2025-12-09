@@ -1,11 +1,15 @@
 name: Agent Pipeline -Agent Tests - website_extraction
 
 on:
-  push:
-    branches: [ '**' ]
-  pull_request:
-    branches: [ '**' ]
   workflow_dispatch:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "backend/agents/website_extraction/**"
+  # pull_request:
+  #   branches: [ "main" ]
+  #   paths:
+  #     - "backend/agents/website_extraction/**"
 
 jobs:
   test-website-extraction-agent:
@@ -58,7 +62,7 @@ jobs:
       - name: Test Website Extraction Agent State
         run: |
           cd backend
-          pytest agents/test_agents/test_website_extraction*.py -k "state" -v --cov=agents/website_extraction/state --cov-report=term
+          pytest agents/test_agents/test_website_extraction*.py -m "state" -v --cov=agents/website_extraction/state --cov-report=term
         continue-on-error: true
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
