@@ -256,6 +256,8 @@
 - [ ] User guide (how to use the system)
 - [ ] Admin guide (manage users, approve PTO, handle tickets)
 - [ ] Deployment guide (how others can deploy)
+- [ ] **[CRITICAL]** Local Deployment Scripts (for fresh env video)
+- [ ] **[CRITICAL]** Automated Retraining Trigger (Drift -> Retrain -> Deploy)
 
 #### Required Visualizations
 - [ ] LLM performance comparison (Mercury vs Groq)
@@ -298,8 +300,16 @@
 **Part 4: Technical Highlights**
 - Show W&B dashboard
 - Show bias detection results
-- Show CI/CD pipeline in GitHub Actions
-- Show Cloud Run auto-scaling
+- [ ] Show CI/CD pipeline in GitHub Actions
+- [ ] Show Cloud Run auto-scaling
+- [ ] Show **Fresh Environment** Deployment (Script execution)
+
+#### Video Submission Checklist
+- [ ] Recording on a fresh environment (no prior installs)
+- [ ] Step-by-step walkthrough (Setup -> Deploy -> Verify)
+- [ ] Accessing deployed endpoint
+- [ ] 5-10 minutes length
+- [ ] High-quality audio/video
 
 **Tools:** Loom, OBS Studio, QuickTime
 
@@ -344,6 +354,15 @@
 - Generate simple drift report
 
 **Deliverable:** Brief drift monitoring report (optional)
+
+### 10a. Retraining Pipeline (REQUIRED)
+**Status:** ❌ Not Done
+**Priority:** 🔴 HIGH
+
+- [ ] Implement Drift Detection -> Trigger Retraining
+- [ ] Create "Retraining" workflow (even if just re-indexing or re-evaluating)
+- [ ] Automate deployment of "retrained" model
+- [ ] Notification system for retraining (Email/Slack)
 
 ---
 

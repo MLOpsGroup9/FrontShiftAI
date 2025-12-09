@@ -20,7 +20,7 @@ def get_password_hash(password):
     # hashpw returns bytes, decode to store as string
     return bcrypt.hashpw(password, bcrypt.gensalt()).decode('utf-8')
 
-def validate_credentials(email: str, password: str, db: Optional[Session] = None) -> Tuple[bool, Optional[str], Optional[str]]:
+def validate_credentials(email: str, password: str, db: Optional[Session] = None) -> Tuple[bool, Optional[str], Optional[str], Optional[str]]:
     """
     Validate user credentials
     Returns: (is_valid, company, role)
@@ -34,18 +34,18 @@ def validate_credentials(email: str, password: str, db: Optional[Session] = None
         user = db.query(User).filter(User.email == email).first()
         
         if not user:
-            return False, None, None
+            return False, None, None, None
         
         # Check if password matches (handles both plaintext and hashed for migration)
         if user.password.startswith("$2b$") or user.password.startswith("$2a$"):
             if not verify_password(password, user.password):
-                return False, None, None
+                return False, None, None, None
         else:
             # Fallback for legacy plaintext passwords (should be migrated!)
             if user.password != password:
-                return False, None, None
+                return False, None, None, None
         
-        return True, user.company, user.role.value
+        return True, user.company, user.role.value, user.name
     
     finally:
         if close_db:

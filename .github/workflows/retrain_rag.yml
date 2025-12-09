@@ -1,0 +1,56 @@
+name: Retrain and Push RAG Index
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for retraining'
+        required: false
+        default: 'Manual trigger'
+
+jobs:
+  retrain-push:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r backend/requirements.txt
+        # If specific pipeline deps are separate, install them here too
+        # pip install -r chat_pipeline/requirements.txt
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+
+    - name: Install gsutil
+      run: |
+        gcloud components install gsutil
+
+    - name: Run Pipeline Rebuild
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+        CHROMA_DIR: ${{ github.workspace }}/data_pipeline/data/vector_db
+      run: |
+        # Ensure data directory exists
+        mkdir -p data_pipeline/data
+        
+        # Run the pipeline script
+        python chat_pipeline/scripts/pipeline_runner.py
+
+    - name: Sync to GCS
+      run: |
+        gsutil -m rsync -r data_pipeline/data ${{ secrets.GCS_BUCKET }}

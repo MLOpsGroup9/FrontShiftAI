@@ -11,12 +11,25 @@ const ChatArea = ({ messages, isLoading }) => {
     scrollToBottom();
   }, [messages]);
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 18) return 'Good Afternoon';
-    return 'Good Evening';
+  const getDynamicGreeting = () => {
+    const name = localStorage.getItem('user_name') || 'there';
+    const greetings = [
+      `${name} returns! Woohoo!`,
+      `Welcome back, ${name}!`,
+      `Great to see you, ${name}!`,
+      `Hello ${name}, ready to work?`,
+      `Good to have you back, ${name}!`
+    ];
+    // Use a simple hash of the current minute to rotate or random
+    const index = Math.floor(Math.random() * greetings.length);
+    return greetings[index];
   };
+
+  const [greeting, setGreeting] = React.useState('');
+
+  useEffect(() => {
+    setGreeting(getDynamicGreeting());
+  }, []); // Run once on mount
 
   const pinnedMessage = messages.length > 0 ? messages[0] : null;
   const conversationMessages = pinnedMessage ? messages.slice(1) : [];
@@ -75,11 +88,10 @@ const ChatArea = ({ messages, isLoading }) => {
       className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
     >
       <div
-        className={`glass-card max-w-2xl px-6 py-4 ${
-          message.role === 'user'
+        className={`glass-card max-w-2xl px-6 py-4 ${message.role === 'user'
             ? 'bg-white/15 border-white/20'
             : 'bg-white/10 border-white/10'
-        }`}
+          }`}
       >
         <div className="space-y-2">
           {renderMessageContent(message.content)}
@@ -116,7 +128,7 @@ const ChatArea = ({ messages, isLoading }) => {
             </div>
           </div>
           <h3 className="text-3xl font-light text-white/90 mb-2 text-center">
-            {getGreeting()}. Can I help you with anything?
+            {greeting}. Can I help you with anything?
           </h3>
         </div>
       ) : (

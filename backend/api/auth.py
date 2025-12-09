@@ -38,9 +38,10 @@ def decode_access_token(token: str):
         email: str = payload.get("sub")
         company: str = payload.get("company")
         role: str = payload.get("role")
+        name: str = payload.get("name")
         if email is None or role is None:
             return None
-        return {"email": email, "company": company, "role": role}
+        return {"email": email, "company": company, "role": role, "name": name}
     except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -66,7 +67,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 def login(request: LoginRequest, db: Session = Depends(get_db)):  # Added db parameter
     """Login endpoint - validates credentials and returns JWT token"""
     try:
-        is_valid, company, role = validate_credentials(request.email, request.password, db)  # Pass db
+        is_valid, company, role, name = validate_credentials(request.email, request.password, db)  # Pass db
         
         if not is_valid:
             raise HTTPException(
@@ -76,7 +77,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):  # Added db par
         
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": request.email, "company": company, "role": role},
+            data={"sub": request.email, "company": company, "role": role, "name": name},
             expires_delta=access_token_expires
         )
         
@@ -85,7 +86,8 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):  # Added db par
             token_type="bearer",
             company=company,
             email=request.email,
-            role=role
+            role=role,
+            name=name
         )
     
     except HTTPException:
@@ -101,5 +103,6 @@ async def get_user_info(current_user: dict = Depends(get_current_user)):
     return UserInfo(
         email=current_user["email"],
         company=current_user.get("company"),
-        role=current_user["role"]
+        role=current_user["role"],
+        name=current_user.get("name")
     )

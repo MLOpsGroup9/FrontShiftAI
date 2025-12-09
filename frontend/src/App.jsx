@@ -42,6 +42,10 @@ function App() {
       if (token && email) {
         try {
           const userData = await getUserInfo();
+          if (!userData.name) {
+            // Fallback if name is missing in response but saved locally or in token
+            userData.name = localStorage.getItem('user_name') || 'User';
+          }
           setUserInfo(userData);
           setIsAuthenticated(true);
         } catch (error) {
@@ -105,6 +109,7 @@ function App() {
   const handleLoginSuccess = (loginData) => {
     setUserInfo({
       email: loginData.email,
+      name: loginData.name,
       company: loginData.company,
       role: loginData.role
     });
@@ -184,9 +189,9 @@ function App() {
 
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return 'Yesterday';
-    if (diffDays <= 7) return `${diffDays} days ago`;
-    if (diffDays <= 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-    return `${Math.floor(diffDays / 30)} months ago`;
+    if (diffDays <= 7) return 'Previous 7 Days';
+    if (diffDays <= 30) return 'Previous 30 Days';
+    return '30 Days +';
   };
 
   const groupedChats = chatHistory.reduce((groups, chat) => {

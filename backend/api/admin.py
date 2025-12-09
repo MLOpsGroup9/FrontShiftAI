@@ -223,6 +223,46 @@ async def delete_company_user(
     
     return {"message": message}
 
+@router.delete("/bulk-delete-users")
+async def bulk_delete_company_users(
+    company_name: str,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete ALL users from a company (Super Admin only).
+    Does NOT delete the company itself.
+    """
+    require_admin(current_user, "super_admin")
+    
+    # Verify company exists (optional but good practice)
+    from db.models import Company, User
+    company_exists = db.query(Company).filter(Company.name == company_name).first()
+    if not company_exists:
+        raise HTTPException(status_code=404, detail=f"Company '{company_name}' not found")
+
+    # Fetch users to be deleted for logging/confirmation
+    users_to_delete = db.query(User).filter(User.company == company_name).all()
+    count = len(users_to_delete)
+    
+    if count == 0:
+        return {"message": f"No users found for company '{company_name}'", "count": 0}
+
+    # Perform deletion
+    try:
+        # We can do a bulk delete query
+        db.query(User).filter(User.company == company_name).delete(synchronize_session=False)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete users: {str(e)}")
+
+    return {
+        "message": f"Successfully deleted {count} users from company '{company_name}'",
+        "count": count,
+        "company": company_name
+    }
+
 @router.put("/update-password")
 async def update_password(
     request: UpdatePasswordRequest,

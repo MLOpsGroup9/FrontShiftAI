@@ -1,109 +1,178 @@
-![Python](https://img.shields.io/badge/Python-3.12+-blue)
-![Status](https://img.shields.io/badge/Status-Active-brightgreen)
-![Documentation](https://img.shields.io/badge/Docs-Comprehensive-blueviolet)
+# FrontShiftAI: AI Concierge for Deskless Workers
 
-# FrontShiftAI: The AI Copilot for Deskless Workers
+![Python](https://img.shields.io/badge/Python-3.12+-blue) ![React](https://img.shields.io/badge/React-18.2-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-0.104-green) ![Docker](https://img.shields.io/badge/Docker-Enabled-blue) ![Status](https://img.shields.io/badge/Status-Active-brightgreen)
 
 **Team Members**: Harshitkumar Brahmbhatt, Krishna Venkatesh, Raghav Gali, Rishi Raj Kuleri, Sujitha Godishala, Swathi Baba Eswarappa
 
 ---
 
-## 📖 What is FrontShiftAI?
-**(In Simple Terms)**
+## 📖 About The Project
 
-Imagine a **"Deskless" Worker**—a nurse, a construction foreman, or a retail store manager. They don't sit at a computer all day. When they have a question like *"How do I request time off?"* or *"What is the safety protocol for this machine?"*, they can't easily search through a 50-page PDF handbook on a slow HR portal.
+**FrontShiftAI** is an intelligent, multi-agent AI assistant designed specifically for the "deskless" workforce—nurses, construction foremen, retail managers, and field technicians. These workers don't have easy access to HR portals or complex documentation systems while on the job.
 
-**FrontShiftAI** is an intelligent assistant that lives on their phone or tablet. It acts like a **24/7 HR & Operations Concierge**:
-1.  **It Reads Everything**: We feed it all the company's PDF handbooks and policies.
-2.  **It Understands Questions**: Additionaly, it speaks plain English (e.g., "I need a sick day tomorrow").
-3.  **It Takes Action**: It doesn't just answer; it can actually *log* the request or *file* a ticket for them.
+FrontShiftAI bridges this gap by acting as a **24/7 HR & Operations Concierge**. It ingests thousands of pages of PDF handbooks, understands company policies, and provides instant, accurate answers via a chat interface. Beyond just answering questions, it can actively perform tasks like checking PTO balances, filing leave requests, and opening HR support tickets.
 
----
-
-## 🏗️ How It Works (The "Secret Sauce")
-
-We built a system that combines **Brain Power (LLMs)** with **Reliable Data (RAG)**.
-
-### 1. The "Librarian" (Data Pipeline)
-*   **What it does**: Reads thousands of PDF pages, organizes them, and indexes them so they are searchable.
-*   **Tech**: Python, OCR (for reading scanned docs), ChromaDB (Vector Database).
-
-### 2. The "Brain" (Chat Pipeline)
-*   **What it does**: When a user asks a question, this part searches the "Library", finds the exact page, and then uses an advanced AI (like GPT-4 or Llama) to write a polite, accurate answer.
-*   **Safety**: It never guesses. If the answer isn't in the handbook, it says "I don't know" or looks up the company website for public info (like office hours).
-*   **Tech**: OpenAI / Llama Models, RAG (Retrieval-Augmented Generation), Mercury API.
-
-### 3. The "Concierge" (Backend & Agents)
-*   **What it does**: Handling complex tasks.
-    *   *User*: "I want vacation next week."
-    *   *Concierge*: "Checking your balance... You have 5 days left. Shall I book it?"
-*   **Tech**: FastAPI, LangGraph (for multi-step reasoning), SQL Database.
-
----
-
-## 📂 Project Structure
-(Where to find things in this repo)
-
-| Folder | Purpose |
-| :--- | :--- |
-| **`backend/`** | **The Core Service**. Runs the API, manages the database, and hosts the "Agents" (PTO, HR Ticket). |
-| **`chat_pipeline/`** | **The AI Logic**. Handles the "thinking"—retrieving documents, evaluating answers, and tracking model quality. |
-| **`data_pipeline/`** | **The Data Factory**. Downloads PDFs, cleans extracting text, and saves them into the efficient Vector Database. |
-| **`frontend/`** | **The User Interface**. The React website where users actually chat with the bot. |
-| **`.github/workflows/`** | **Automation**. Scripts that automatically test the code and deploy it to the cloud whenever we make changes. |
+### 🌐 Live Demo & Deployment
+- **Frontend Application (Vercel)**: [Access App Here](https://frontshift-ai.vercel.app/) *(URL inferred from context, please verifying if different)*
+- **Backend API (Google Cloud Run)**: `https://frontshiftai-backend-vvukpmzsxa-uc.a.run.app`
+- **Voice Agent API**: `https://ragavgsm21--frontshiftai-voice-agent-web-api.modal.run`
 
 ---
 
 ## 🚀 Key Features
 
-### ✅ 1. Retrieval-Augmented Generation (RAG)
-We don't just "ask ChatGPT". We explicitly provide the company's *own* handbook as context. This makes the answers **100% grounded in company policy**, reducing wrong answers ("hallucinations").
+### 🧠 1. Multi-Agent Intelligence
+The system isn't just a chatbot; it's a squad of specialized agents coordinated by a central brain:
+*   **Unified Router**: Automatically understands if a user is asking a policy question, requesting time off, or reporting a grievance and routes it to the right expert.
+*   **RAG Agent (The Librarian)**: Uses advanced Retrieval-Augmented Generation to search company PDFs. It cites its sources (page numbers and links) so users can trust the answer.
+*   **PTO Agent (The HR Assistant)**: A transactional agent that can:
+    *   Check live leave balances.
+    *   Understand natural language requests ("I need next Friday off").
+    *   Validate requests against holidays and blackout dates.
+    *   Book the time off in the database.
+*   **HR Ticket Agent (The Support Rep)**: Handles complex inquiries that require human intervention. It categorizes issues (Payroll, Benefits, etc.), assigns priority, and schedules meetings.
+*   **Website Extraction Agent (The Researcher)**: If the handbook doesn't have the answer (e.g., "What are the office hours?"), it automatically searches the company's public website for real-time info.
 
-### ✅ 2. Intelligent Fallback
-If the handbook doesn't have the answer, our **Unified Agent** is smart enough to:
-*   **Search the Web**: If you ask "What are the office hours?", it checks the company's public website.
-*   **Open a Ticket**: If you ask for help, it offers to connect you with a human HR rep.
+### 🏢 2. Multi-Tenant Architecture
+*   **One System, Many Companies**: A single deployment serves multiple organizations (Crouse Medical, TechCorp, RetailCo).
+*   **Data Isolation**: Each company's data (documents, users, tickets) is strictly segregated.
+*   **Dynamic Branding**: The UI adapts to the user's company context.
 
-### ✅ 3. Smart Actions (Agents)
-*   **PTO Agent**: Can check balances and book time off.
-*   **Ticket Agent**: Can categorize and file support requests.
+### 🛠️ 3. Super Admin & Company Management
+*   **Self-Service Onboarding**: Super Admins can add new companies instantly.
+    *   *Input*: Company Name, Domain, Handbook PDF URL.
+    *   *Automation*: The system automatically downloads the PDF, runs OCR, chunks the text, generates embeddings, and rebuilds the vector index—all in the background.
+    *   *Consistency*: The new index is synced to Google Cloud Storage (GCS) so all API instances update automatically.
+*   **Bulk Management**: Tools to bulk-delete users or remove entire companies cleanly.
 
-### ✅ 4. Enterprise-Grade Ops
-*   **Model Registry**: We track every version of our AI. If "v2" acts weird, we can instantly "Rollback" to "v1".
-*   **Monitoring**: We use dashboards (Weights & Biases, Google Cloud) to watch for errors or slow responses in real-time.
+### 📊 4. Enterprise-Grade Operations
+*   **Model Registry**: We version-control our AI "brains". We can rollout v2 and rollback to v1 instantly if issues arise.
+*   **Monitoring**: Real-time dashboards (Weights & Biases) track token usage, latency, and user feedback (thumbs up/down).
+*   **CI/CD**: Automated GitHub Actions for testing backend/frontend and retraining RAG models.
 
 ---
 
-## 🛠️ Getting Started (For Developers)
+## 📂 Repository Structure
 
-Want to run this locally?
+The codebase is organized into modular microservices for scalability and maintainability.
+
+```text
+FrontShiftAI/
+├── backend/                  # FastAPI Application (The "Brain")
+│   ├── agents/               # LangGraph workflow definitions for PTO, HR, RAG
+│   ├── api/                  # REST API endpoints (Auth, Chat, Admin)
+│   ├── db/                   # Database models and connection logic
+│   ├── jobs/                 # Celery background tasks (Ingestion, Rebuilds)
+│   ├── services/             # Core logic (Auth Service, RAG Service)
+│   ├── main.py               # Application entry point
+│   └── requirements.txt      # Python dependencies
+│
+├── frontend/                 # React Application (The "Face")
+│   ├── src/
+│   │   ├── components/       # Reusable UI components (ChatArea, Sidebar)
+│   │   ├── services/         # API client integration
+│   │   └── App.jsx           # Main routing logic
+│   ├── package.json          # Node dependencies and scripts
+│   └── vite.config.js        # Build configuration
+│
+├── data_pipeline/            # Data Engineering (The "Factory")
+│   ├── scripts/              # Python scripts for PDF ingestion and embedding
+│   ├── data/                 # Local storage for vector DB (synced to GCS)
+│   └── Dockerfile            # Container for running data jobs
+│
+├── chat_pipeline/            # AI Research & Eval (The "Lab")
+│   ├── rag/                  # RAG logic (retriever, reranker, generator)
+│   ├── evaluation/           # Scripts to test answer quality (DeepEval)
+│   └── configs/              # YAML configs for experiments
+│
+├── .github/workflows/        # CI/CD Automation
+│   ├── deploy-vercel.yml     # Frontend deployment
+│   ├── retrain_rag.yml       # Manual trigger to rebuild RAG index
+│   └── backend.yml           # Backend testing
+│
+└── docker-compose.yml        # Local development orchestration
+```
+
+---
+
+## 🛠️ Getting Started
 
 ### Prerequisites
-*   Python 3.12+
-*   Docker (recommended for Data Pipeline)
+*   Python 3.10+
+*   Node.js 18+
+*   Docker (optional, for Redis/Celery)
 
-### Quick Start
-1.  **Clone the Repo**:
-    ```bash
-    git clone https://github.com/MLOpsGroup9/FrontShiftAI.git
-    cd FrontShiftAI
-    ```
+### 1. Backend Setup
+The backend powers the API and AI agents.
 
-2.  **Run the Backend**:
-    ```bash
-    cd backend
-    pip install -r requirements.txt
-    python main.py
-    ```
-    *API will run at `http://localhost:8000`*
+```bash
+cd backend
 
-3.  **Run the Data Pipeline**:
-    *See `data_pipeline/README.md` for the full Docker setup.*
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-4.  **Run the Chat Evaluation**:
-    *See `chat_pipeline/README.md` to run the "Quality Gate" tests.*
+# Install dependencies
+pip install -r requirements.txt
+
+# Set up environment variables
+cp .env.example .env
+# (Populate .env with your OpenAI/Groq/DB credentials)
+
+# Run the server
+python main.py
+```
+*API will be available at `http://localhost:8000`*
+
+### 2. Frontend Setup
+The modern React UI.
+
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+```
+*App will be available at `http://localhost:5173`*
+
+### 3. Data Pipeline (RAG Ingestion)
+To ingest a new company handbook locally:
+
+```bash
+# Ensure you are provided the OpenAI/Embedding keys
+cd data_pipeline
+
+# Run the ingestion script
+python scripts/pipeline_runner.py
+```
+
+### 4. Running Tests
+We maintain high code quality with comprehensive test suites.
+
+```bash
+# Backend Tests
+pytest backend/tests
+
+# Agent Logic Tests
+pytest backend/agents/test_agents
+```
+
+---
+
+## 💻 Tech Stack
+
+| Component | Technologies |
+| :--- | :--- |
+| **Backend** | Python, FastAPI, SQLAlchemy, Pydantic, Celery, Redis |
+| **Frontend** | React, Vite, TailwindCSS, Framer Motion, Axios |
+| **AI/ML** | LangChain, LangGraph, ChromaDB, HuggingFace, OpenAI, Groq, Llama |
+| **DevOps** | Docker, Google Cloud Run, Google Cloud Storage, GitHub Actions, Vercel |
+| **Monitoring** | Weights & Biases (W&B), DeepEval |
 
 ---
 
 ## 📜 License
-MIT License. Created by the MLOpsGroup9 Team at Northeastern University.
+MIT License. Created by MLOpsGroup9 (Northeastern University).

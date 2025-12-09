@@ -21,7 +21,9 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
   // Company form state
   const [newCompany, setNewCompany] = useState({
     company_name: '',
+    company_name: '',
     domain: '',
+    email_domain: '', // Added
     url: ''
   });
 
@@ -131,9 +133,55 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
       });
 
       setShowAddCompanyForm(false);
-      setNewCompany({ company_name: '', domain: '', url: '' });
+      setShowAddCompanyForm(false);
+      setNewCompany({ company_name: '', domain: '', email_domain: '', url: '' });
     } catch (error) {
       alert(error.response?.data?.detail || 'Failed to add company');
+    }
+  };
+
+  const handleDeleteCompany = async (companyName) => {
+    if (!confirm(`Delete company "${companyName}"? This will delete all associated data and rebuild the index. This action is irreversible.`)) return;
+
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await axios.delete(
+        `${API_BASE_URL}/api/company/delete`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { company_name: companyName } // Sent as query param
+        }
+      );
+
+      // Start tracking the deletion task
+      setProcessingTask(response.data.task_id);
+      setTaskStatus({
+        status: 'pending',
+        message: 'Deletion task queued'
+      });
+
+    } catch (error) {
+      alert(error.response?.data?.detail || 'Failed to delete company');
+    }
+  };
+
+  const handleBulkDeleteUsers = async (companyName) => {
+    if (!confirm(`Delete ALL users for company "${companyName}"? This cannot be undone.`)) return;
+
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await axios.delete(
+        `${API_BASE_URL}/api/admin/bulk-delete-users`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { company_name: companyName }
+        }
+      );
+
+      alert(response.data.message);
+      fetchData(); // Refresh counts
+    } catch (error) {
+      alert(error.response?.data?.detail || 'Failed to delete users');
     }
   };
 
@@ -305,6 +353,14 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
                     <option value="FieldServiceTechnicians">Field Service Technicians</option>
                   </select>
                   <input
+                    type="text"
+                    placeholder="Email Domain (e.g., gmail.com)"
+                    value={newCompany.email_domain}
+                    onChange={(e) => setNewCompany({ ...newCompany, email_domain: e.target.value })}
+                    required
+                    className="px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
+                  />
+                  <input
                     type="url"
                     placeholder="PDF URL (e.g., https://example.com/handbook.pdf)"
                     value={newCompany.url}
@@ -336,7 +392,9 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
                       <th className="text-left py-3 px-4 text-white/80 font-medium">Company</th>
                       <th className="text-left py-3 px-4 text-white/80 font-medium">Domain</th>
                       <th className="text-left py-3 px-4 text-white/80 font-medium">Email Domain</th>
+                      <th className="text-left py-3 px-4 text-white/80 font-medium">Email Domain</th>
                       <th className="text-left py-3 px-4 text-white/80 font-medium">Handbook URL</th>
+                      <th className="text-right py-3 px-4 text-white/80 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -354,6 +412,21 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
                           >
                             View PDF
                           </a>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            onClick={() => handleBulkDeleteUsers(company.name)}
+                            className="mr-3 text-red-400 hover:text-red-300 text-sm"
+                            title="Delete All Users"
+                          >
+                            Delete Users
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCompany(company.name)}
+                            className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded text-red-300 text-sm transition-all"
+                          >
+                            Delete ID
+                          </button>
                         </td>
                       </tr>
                     ))}

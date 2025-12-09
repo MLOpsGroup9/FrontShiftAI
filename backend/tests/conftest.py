@@ -9,15 +9,18 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add backend directory to path
+backend_path = Path(__file__).parent.parent
+sys.path.insert(0, str(backend_path))
+# Add project root to path
+sys.path.insert(0, str(backend_path.parent))
 
 from db.connection import Base, get_db
 from main import app
 
 # Test database URL (use in-memory SQLite for tests)
 TEST_DATABASE_URL = "sqlite://"
+
 
 @pytest.fixture(scope="function")
 def test_engine():

@@ -99,7 +99,17 @@ class TestValidateDatesNode:
         # Ensure we start on a Monday
         while start_date.weekday() != 0:  # Monday = 0
             start_date += timedelta(days=1)
+            
+        # Ensure selected week doesn't contain holidays
+        holiday_dates = {h.holiday_date for h in sample_holidays}
         
+        # Check adjacent weeks until we find a clear one
+        for _ in range(5):  # Try 5 weeks max
+            current_range = {start_date + timedelta(days=i) for i in range(5)}
+            if not current_range.intersection(holiday_dates):
+                break
+            start_date += timedelta(days=7)
+            
         end_date = start_date + timedelta(days=4)  # Mon-Fri (5 business days)
         
         state = PTOAgentState(
