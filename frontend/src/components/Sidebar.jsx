@@ -189,19 +189,6 @@ const Sidebar = ({
         </div>
       </div>
 
-      {/* Persistent Toggle Button (Open) - Only visible when closed */}
-      {!isOpen && (
-        <button
-          onClick={onToggle}
-          className="fixed left-4 top-4 z-20 w-10 h-10 bg-[#1a1a24] text-white/60 hover:text-white border border-white/10 rounded-full flex items-center justify-center cursor-pointer hover:bg-white/10 transition-all shadow-lg"
-          title="Open Sidebar"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-      )}
-
       {/* Mobile Overlay */}
       {isMobile && isOpen && (
         <div

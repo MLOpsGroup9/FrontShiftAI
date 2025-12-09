@@ -1,40 +1,8 @@
 import React, { useState } from 'react';
-import { motion, useMotionTemplate, useMotionValue } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { MessageSquare, Calendar, Ticket, Search, ArrowRight, Menu, X, Brain, Shield, Zap } from 'lucide-react';
 
 import FrontShiftLogo from './FrontShiftLogo';
-
-const SpotlightCard = ({ children, className = "" }) => {
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-
-  function handleMouseMove({ currentTarget, clientX, clientY }) {
-    const { left, top } = currentTarget.getBoundingClientRect();
-    mouseX.set(clientX - left);
-    mouseY.set(clientY - top);
-  }
-
-  return (
-    <div
-      className={`group relative border border-white/10 bg-white/5 overflow-hidden ${className}`}
-      onMouseMove={handleMouseMove}
-    >
-      <motion.div
-        className="pointer-events-none absolute -inset-px rounded-3xl opacity-0 transition duration-300 group-hover:opacity-100"
-        style={{
-          background: useMotionTemplate`
-            radial-gradient(
-              650px circle at ${mouseX}px ${mouseY}px,
-              rgba(255, 255, 255, 0.15),
-              transparent 80%
-            )
-          `,
-        }}
-      />
-      <div className="relative h-full">{children}</div>
-    </div>
-  );
-};
 
 const LandingPage = ({ onGetStarted }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -50,9 +18,6 @@ const LandingPage = ({ onGetStarted }) => {
 
   return (
     <div className="min-h-screen bg-[#0A0E1A] relative overflow-hidden">
-      {/* Noise Texture */}
-      <div className="bg-noise"></div>
-
       {/* Video Background */}
       <div className="video-container">
         <video
@@ -107,7 +72,7 @@ const LandingPage = ({ onGetStarted }) => {
               </button>
               <button
                 onClick={onGetStarted}
-                className="btn-glass text-white px-6 py-2 rounded-xl font-semibold text-lg"
+                className="bg-[#E0E0E0] text-black px-6 py-2 rounded-xl hover:bg-white transition font-semibold"
               >
                 Get Started
               </button>
@@ -161,7 +126,7 @@ const LandingPage = ({ onGetStarted }) => {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative z-10 pt-20 pb-32 px-6 min-h-[80vh] flex items-center">
+      <section className="relative z-10 pt-20 pb-32 px-6 min-h-screen flex items-center">
         <div className="max-w-7xl mx-auto">
           <div className="text-center max-w-4xl mx-auto">
             {/* Tag Pill */}
@@ -171,7 +136,7 @@ const LandingPage = ({ onGetStarted }) => {
               transition={{ duration: 0.6 }}
               className="inline-flex items-center gap-2 glass-card px-4 py-2 rounded-full mb-8"
             >
-
+              <span className="text-sm text-[#9CA3AF] font-semibold">2025</span>
               <span className="text-sm text-white/90">Context-Aware Intelligence</span>
             </motion.div>
 
@@ -180,14 +145,13 @@ const LandingPage = ({ onGetStarted }) => {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="text-6xl md:text-7xl lg:text-8xl font-bold mb-6 leading-tight drop-shadow-2xl animate-text-shimmer"
+              className="text-6xl md:text-7xl lg:text-8xl font-bold mb-6 leading-tight"
               style={{
-                background: 'linear-gradient(135deg, #FFFFFF 0%, #E2E8F0 25%, #94A3B8 50%, #E2E8F0 75%, #FFFFFF 100%)',
+                background: 'linear-gradient(180deg, #E8E8E8 0%, #C0C0C0 25%, #A8A8A8 50%, #C0C0C0 75%, #E8E8E8 100%)',
                 WebkitBackgroundClip: 'text',
                 backgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
-                color: 'transparent',
-                backgroundSize: '200% auto',
+                color: 'transparent'
               }}
             >
               Your AI Copilot
@@ -287,17 +251,16 @@ const LandingPage = ({ onGetStarted }) => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: i * 0.1 }}
-                className="h-full"
+                whileHover={{ scale: 1.05, y: -5 }}
+                className="glass-card rounded-3xl p-8 hover:border-white/20 transition-all duration-300 group"
               >
-                <SpotlightCard className="rounded-3xl p-8 h-full backdrop-blur-xl">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#9CA3AF]/20 to-[#6B7280]/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                    <div className="text-[#9CA3AF]">
-                      {feature.icon}
-                    </div>
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#9CA3AF]/20 to-[#6B7280]/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <div className="text-[#9CA3AF]">
+                    {feature.icon}
                   </div>
-                  <h3 className="text-2xl font-bold text-white mb-4">{feature.title}</h3>
-                  <p className="text-white/70">{feature.desc}</p>
-                </SpotlightCard>
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-4">{feature.title}</h3>
+                <p className="text-white/70">{feature.desc}</p>
               </motion.div>
             ))}
           </div>

@@ -556,4 +556,60 @@ export const getMonitoringStats = async (timeRange = '7d') => {
   }
 };
 
+// -------------- Voice Agent APIs --------------
+
+// Create voice session with LiveKit
+export const createVoiceSession = async (userEmail = null, company = null) => {
+  try {
+    // Use VITE_VOICE_API_URL for voice agent (Modal or local)
+    const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_MODAL_VOICE_AGENT_URL || 'http://localhost:8001';
+    
+    // Get user's JWT token for backend authentication passthrough
+    const userToken = localStorage.getItem('access_token');
+    if (!userToken) {
+      throw new Error('Not authenticated - please login first');
+    }
+    
+    console.log('🎙️ Creating voice session...');
+    console.log('   Voice API URL:', voiceApiUrl);
+    console.log('   User:', userEmail);
+    console.log('   Company:', company);
+    
+    const response = await axios.post(`${voiceApiUrl}/session`, {
+      user_email: userEmail,
+      company: company,
+      user_token: userToken  // Pass user's JWT for backend auth
+    });
+    
+    console.log('✅ Voice session created:', response.data);
+    return response.data;  // {session_id, room_name, token, livekit_url}
+  } catch (error) {
+    console.error("Create Voice Session Error:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// End voice session (optional cleanup)
+export const endVoiceSession = async (sessionId) => {
+  try {
+    console.log('🔚 Voice session ended:', sessionId);
+    return { success: true };
+  } catch (error) {
+    console.error("End Voice Session Error:", error);
+    return { success: false };
+  }
+};
+
+// Voice agent health check
+export const voiceAgentHealthCheck = async () => {
+  try {
+    const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_MODAL_VOICE_AGENT_URL || 'http://localhost:8001';
+    const response = await axios.get(`${voiceApiUrl}/health`, { timeout: 10000 });
+    return response.data;
+  } catch (error) {
+    console.error("Voice Agent Health Check Error:", error.message);
+    throw error;
+  }
+};
+
 export default api;

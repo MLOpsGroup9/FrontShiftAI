@@ -408,6 +408,8 @@ function App() {
             isLoading={isLoading}
             onSendMessage={handleSendMessage}
             userInfo={userInfo}
+            isSidebarOpen={isSidebarOpen}
+            onOpenSidebar={() => setIsSidebarOpen(true)}
           />
         </div>
       </div>
