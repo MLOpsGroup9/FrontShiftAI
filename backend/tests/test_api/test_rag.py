@@ -19,6 +19,11 @@ def test_rag_query_with_auth(mock_pipeline, client, auth_headers):
             "section_title": "PTO"
         }
     ]
+    mock_result.timings = {
+        "retrieval": 0.1,
+        "generation": 0.2,
+        "cache_hit": 0.0
+    }
     mock_pipeline.run.return_value = mock_result
     
     response = client.post(
@@ -39,6 +44,11 @@ def test_rag_query_filters_by_company(mock_pipeline, client, auth_headers):
     mock_result = Mock()
     mock_result.answer = "Answer"
     mock_result.metadata = []
+    mock_result.timings = {
+        "retrieval": 0.1,
+        "generation": 0.2,
+        "cache_hit": 0.0
+    }
     mock_pipeline.run.return_value = mock_result
     
     response = client.post(
