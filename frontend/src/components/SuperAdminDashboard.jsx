@@ -443,13 +443,13 @@ const SuperAdminDashboard = ({ onLogout, userInfo }) => {
                             className="mr-3 text-red-400 hover:text-red-300 text-sm"
                             title="Delete All Users"
                           >
-                            Delete Users
+                            Delete All Users
                           </button>
                           <button
                             onClick={() => handleDeleteCompany(company.name)}
                             className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded text-red-300 text-sm transition-all"
                           >
-                            Delete ID
+                            Delete Company
                           </button>
                         </td>
                       </tr>

@@ -33,6 +33,15 @@ The system isn't just a chatbot; it's a squad of specialized agents coordinated 
 *   **HR Ticket Agent (The Support Rep)**: Handles complex inquiries that require human intervention. It categorizes issues (Payroll, Benefits, etc.), assigns priority, and schedules meetings.
 *   **Website Extraction Agent (The Researcher)**: If the handbook doesn't have the answer (e.g., "What are the office hours?"), it automatically searches the company's public website for real-time info.
 
+#### 🧠 1.1 LLM Architecture & Resiliency
+To ensure 99.9% uptime and low latency, we employ a robust fallback strategy across different model providers:
+
+| Component | Main LLM | Backup Chain (in order) |
+| :--- | :--- | :--- |
+| **LLM Decider** (Routing) | **Groq** <br>*(Llama 3.1 8B Instant)* | 1. **Mercury** <br>2. **OpenAI** *(GPT-4o-mini)* <br>3. **Local** *(Ollama/Llama 3)* |
+| **Agentic Flow** (PTO/HR) | **Groq** <br>*(Llama 3.1 8B Instant)* | 1. **Mercury** <br>2. **OpenAI** *(GPT-4o-mini)* <br>3. **Local** *(Ollama/Llama 3)* |
+| **RAG Model** (Generator) | **Mercury** <br>*(Custom Model)* | 1. **Groq** <br>2. **OpenAI** *(GPT-4o-mini)* <br>3. **Local** *(Llama 3.2 3B GGUF)* |
+
 ### 🏢 2. Multi-Tenant Architecture
 *   **One System, Many Companies**: A single deployment serves multiple organizations (Crouse Medical, TechCorp, RetailCo).
 *   **Data Isolation**: Each company's data (documents, users, tickets) is strictly segregated.
