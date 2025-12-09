@@ -13,10 +13,12 @@ class LoginResponse(BaseModel):
     token_type: str
     company: Optional[str] = None
     email: str
+    name: Optional[str] = None
     role: str
 
 class UserInfo(BaseModel):
     email: str
+    name: Optional[str] = None
     company: Optional[str] = None
     role: str
 

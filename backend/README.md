@@ -59,7 +59,7 @@ backend/
 │   ├── pto_agent.py        # PTO agent endpoints
 │   ├── hr_ticket_agent.py  # HR ticket endpoints
 │   ├── unified_agent.py    # Unified chat router [UPDATED]
-│   └── company_management.py # Company management [NEW]
+│   ├── company_management.py # Company management (Add/Delete/Rebuild) [NEW]
 │
 ├── db/                      # Database Layer
 │   ├── connection.py       # SQLAlchemy setup
@@ -769,14 +769,24 @@ POST /api/company/add
     "company_name": "New Medical Center"
   }
 
-GET /api/company/task-status/{task_id}
-  Response: {
-    "task_id": "uuid",
-    "status": "running",
-    "message": "Running data pipeline...",
     "started_at": "2025-11-26T10:00:00"
   }
+
+DELETE /api/company/delete
+  Query Param: ?company_name=TestCorp
+  Response: {"message": "Company deletion started", "task_id": "...", ...}
+
+DELETE /api/admin/bulk-delete-users
+  Query Param: ?company_name=TestCorp
+  Response: {"message": "Successfully deleted 15 users...", "count": 15}
 ```
+
+### Background Jobs (Celery)
+We use Celery with Redis to handle long-running operations:
+- **Company Ingestion**: Downloads PDF, runs OCR/chunking, embeds vectors, rebuilds ChromaDB.
+- **Company Deletion**: Removes company from index, rebuilds ChromaDB.
+- **RAG Rebuild**: Both actions trigger a full index rebuild and sync to Google Cloud Storage (GCS) to ensure all pods stay consistent.
+
 
 ### Admin & Monitoring (NEW)
 ```

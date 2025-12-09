@@ -122,3 +122,83 @@ def process_company_pipeline_task(self, task_id: str, company_name: str, domain:
         
     finally:
         db.close()
+
+@celery_app.task(bind=True)
+def process_delete_company_task(self, task_id: str, company_name: str):
+    """
+    Celery task to handle company deletion and RAG rebuild
+    """
+    db: Session = SessionLocal()
+    task = db.query(Task).filter(Task.id == task_id).first()
+    
+    if not task:
+        logger.error(f"Task {task_id} not found")
+        return
+    
+    try:
+        task.status = "running"
+        task.started_at = datetime.now(timezone.utc)
+        task.message = "Updating url.json..."
+        db.commit()
+        
+        # Step 1: Remove from url.json
+        if URL_JSON_PATH.exists():
+            with open(URL_JSON_PATH, 'r') as f:
+                try:
+                    companies_data = json.load(f)
+                except json.JSONDecodeError:
+                    companies_data = []
+            
+            # Filter out deleted company
+            companies_data = [c for c in companies_data if c.get("company") != company_name]
+            
+            with open(URL_JSON_PATH, 'w') as f:
+                json.dump(companies_data, f, indent=4)
+                
+        # Step 2: Rebuild Pipeline (same as add)
+        task.message = "Rebuilding RAG index (this may take a while)..."
+        db.commit()
+        
+        env = os.environ.copy()
+        env["PYTHONPATH"] = f"{PROJECT_ROOT}:{env.get('PYTHONPATH', '')}"
+        
+        result = subprocess.run(
+            ["python", str(PIPELINE_SCRIPT)],
+            capture_output=True,
+            text=True,
+            timeout=600,
+            env=env,
+            cwd=str(PROJECT_ROOT)
+        )
+        
+        if result.returncode != 0:
+            raise Exception(f"Pipeline rebuild failed: {result.stderr}")
+            
+        # Step 3: Sync to GCS
+        task.message = "Syncing changes to Google Cloud Storage..."
+        db.commit()
+        
+        sync_result = subprocess.run(
+            ["gsutil", "-m", "rsync", "-r", str(DATA_DIR), GCS_BUCKET],
+            capture_output=True,
+            text=True,
+            timeout=300,
+            env=env
+        )
+        
+        if sync_result.returncode != 0:
+            raise Exception(f"GCS sync failed: {sync_result.stderr}")
+            
+        task.status = "completed"
+        task.message = "Company deleted and index rebuilt successfully!"
+        task.completed_at = datetime.now(timezone.utc)
+        db.commit()
+        
+    except Exception as e:
+        logger.exception(f"Deletion task {task_id} failed")
+        task.status = "failed"
+        task.error = str(e)
+        task.completed_at = datetime.now(timezone.utc)
+        db.commit()
+    finally:
+        db.close()

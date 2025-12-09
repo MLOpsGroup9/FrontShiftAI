@@ -28,10 +28,11 @@ def test_validate_credentials_success(test_db):
     services.auth_service.SessionLocal = lambda: test_db
     
     try:
-        is_valid, company, role = validate_credentials("test@example.com", "testpass")
+        is_valid, company, role, user_name = validate_credentials("test@example.com", "testpass")
         assert is_valid is True
         assert company == "Test Company"
         assert role == "user"
+        assert user_name == "Test User"
     finally:
         services.auth_service.SessionLocal = original_session
 
@@ -52,10 +53,11 @@ def test_validate_credentials_wrong_password(test_db):
     services.auth_service.SessionLocal = lambda: test_db
     
     try:
-        is_valid, company, role = validate_credentials("test@example.com", "wrongpass")
+        is_valid, company, role, user_name = validate_credentials("test@example.com", "wrongpass")
         assert is_valid is False
         assert company is None
         assert role is None
+        assert user_name is None
     finally:
         services.auth_service.SessionLocal = original_session
 

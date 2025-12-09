@@ -21,6 +21,15 @@ Think of the pipeline as three cooperating teams that simulate how a human exper
 3.  **Answer drafting** – The system prompts the LLM (OpenAI, Mercury, or Llama) with the user's question + the retrieved handbook text.
 4.  **Evaluation (The "Quality Gate")** – Before we let a new version go live, we run it against hundreds of test questions. An "AI Judge" grades the answers. If the score is > 3.0/5, we automatically "Promote" it to the registry.
 
+## 2.5 Automated Rebuilds (New)
+
+The backend now orchestrates full index rebuilds via Celery tasks when companies are added or removed. This process:
+1.  Updates `url.json` with the latest company list.
+2.  Runs the ingestion pipeline (`pipeline_runner.py`).
+3.  Syncs the fresh vector store to GCS (`gsutil rsync`).
+4.  Pods (on restart) pull the latest data from GCS.
+
+
 ---
 
 ## 3. Running the Pipeline

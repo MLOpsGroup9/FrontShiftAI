@@ -61,10 +61,10 @@ const Sidebar = ({
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white/90 truncate">
-                  {userInfo.email}
+                  {userInfo.name || 'User'}
                 </p>
                 <p className="text-xs text-white/50 truncate mt-0.5">
-                  {userInfo.company}
+                  {userInfo.email}
                 </p>
               </div>
               <button

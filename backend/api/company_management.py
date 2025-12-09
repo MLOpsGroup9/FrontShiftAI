@@ -19,6 +19,7 @@ router = APIRouter(prefix="/api/company", tags=["company_management"])
 class AddCompanyRequest(BaseModel):
     company_name: str
     domain: str
+    email_domain: str  # Added manual entry
     url: HttpUrl
 
 
@@ -74,8 +75,14 @@ async def add_company(
     db.add(new_task)
     
     # Add company to DB immediately (so we have the record)
-    # Extract email domain from company name
-    email_domain = request.company_name.lower().replace(" ", "").replace("&", "") + ".com"
+    # Use provided email domain
+    email_domain = request.email_domain.lower().strip()
+    if not email_domain.startswith('.'):
+        if '@' in email_domain:
+             email_domain = email_domain.split('@')[-1] # take part after @
+        # If it doesn't represent a domain structure, we assume user knows what they are doing or we enforce it.
+        # Let's just ensure it's saved as provided but clean.
+
     
     db_company = Company(
         name=request.company_name,
@@ -122,4 +129,49 @@ async def get_task_status(
         error=task.error,
         started_at=task.started_at,
         completed_at=task.completed_at
+    )
+
+
+@router.delete("/delete", response_model=AddCompanyResponse)
+async def delete_company(
+    company_name: str,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete a company and trigger rebuild.
+    """
+    verify_super_admin(current_user)
+    
+    # Check if company exists
+    company = db.query(Company).filter(Company.name == company_name).first()
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    # Create task ID
+    task_id = str(uuid.uuid4())
+    
+    # Create Task record in DB
+    new_task = Task(
+        id=task_id,
+        status="pending",
+        message="Deletion task queued",
+        task_type="company_deletion",
+        payload=str({"company_name": company_name})
+    )
+    db.add(new_task)
+    
+    # Delete from DB immediately
+    db.delete(company)
+    db.commit()
+    
+    # Trigger Celery task (we reuse the same generic pipeline task wrapper or create a new one)
+    # Ideally should be a separate task, but for now we can use a new task function
+    from jobs.tasks import process_delete_company_task
+    process_delete_company_task.delay(task_id, company_name)
+    
+    return AddCompanyResponse(
+        message="Company deletion started",
+        task_id=task_id,
+        company_name=company_name
     )

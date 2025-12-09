@@ -28,6 +28,7 @@ jobs:
         working-directory: frontend
         env:
           VITE_API_URL: https://frontshiftai-backend-vvukpmzsxa-uc.a.run.app
+          VITE_VOICE_API_URL: https://ragavgsm21--frontshiftai-voice-agent-web-api.modal.run
 
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25

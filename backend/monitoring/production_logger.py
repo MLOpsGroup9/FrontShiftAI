@@ -38,15 +38,23 @@ class ProductionMonitor:
     def _initialize_wandb(self):
         """Initialize WANDB for production monitoring"""
         try:
+            # Smart project selection
+            # 1. Use WANDB_PROJECT if explicitly set
+            # 2. Else if ENVIRONMENT=production, use FrontShiftAI_Production
+            # 3. Else default to FrontShiftAI_Agents (development)
+            env_type = os.getenv("ENVIRONMENT", "development")
+            default_project = "FrontShiftAI_Production" if env_type == "production" else "FrontShiftAI_Agents"
+            project_name = os.getenv("WANDB_PROJECT", default_project)
+
             self.run = wandb.init(
-                project=os.getenv("WANDB_PROJECT", "FrontShiftAI_Agents"),
+                project=project_name,
                 entity=os.getenv("WANDB_ENTITY", "group9mlops-northeastern-university"),
-                name=f"production-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
+                name=f"{env_type}-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
                 job_type="production-monitoring",
-                tags=["production", "monitoring"],
+                tags=[env_type, "monitoring"],
                 reinit=True
             )
-            print("✅ Production monitoring initialized with WANDB")
+            print(f"✅ Production monitoring initialized with WANDB (Project: {project_name})")
         except Exception as e:
             print(f"⚠️ WANDB initialization failed: {e}")
             self.run = None

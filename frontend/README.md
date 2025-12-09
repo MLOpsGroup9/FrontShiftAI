@@ -73,7 +73,10 @@ The application supports three distinct user roles with role-based routing:
 **Super Admins:**
 - Multi-company user management
 - System-wide administration
-- Company configuration
+- Multi-company user management
+- System-wide administration
+- Company configuration (Add/Delete)
+- Bulk User Management
 
 ### Component Hierarchy
 
@@ -226,8 +229,8 @@ Admin notes are prominently displayed to users for transparent communication.
 
 **Features:**
 - Company logo and branding
-- User information display (email, company)
-- Chat history with search functionality
+- User information display (name, email)
+- Chat history grouped by date (Today, Yesterday, 7 Days, etc.)
 - New chat creation
 - Session management (logout)
 

@@ -24,6 +24,7 @@ const Login = ({ onLoginSuccess, onBack }) => {
       localStorage.setItem('access_token', response.access_token);
       localStorage.setItem('user_email', response.email);
       localStorage.setItem('user_company', response.company);
+      localStorage.setItem('user_name', response.name || 'User');
       localStorage.setItem('user_role', response.role);  // ← ADDED THIS LINE
 
       // Notify parent component
