@@ -463,36 +463,18 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
           <div className="glass-card bg-white/10 p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-white">Company Users</h2>
-              <div className="flex items-center space-x-3">
-                {csvFileName && (
-                  <span className="text-white/70 text-sm mr-2">
-                    File: <span className="text-white font-medium">{csvFileName}</span>
-                    <span className="ml-2 text-white/50">({pendingCsvUsers.length} users)</span>
-                  </span>
-                )}
-
-                {pendingCsvUsers.length > 0 && (
-                  <button
-                    onClick={handleBulkSubmit}
-                    className="px-4 py-2 bg-green-500/80 hover:bg-green-500 text-white rounded-lg transition-all shadow-lg shadow-green-500/20"
-                  >
-                    Populate Users
-                  </button>
-                )}
-
-                <button
-                  onClick={() => setShowAddForm(!showAddForm)}
-                  className="px-4 py-2 bg-white/90 hover:bg-white text-black rounded-lg transition-all"
-                >
-                  {showAddForm ? 'Cancel' : '+ Add User'}
-                </button>
-                <button
-                  onClick={() => document.getElementById('csvUpload').click()}
-                  className="px-4 py-2 bg-blue-500/80 hover:bg-blue-500 text-white rounded-lg transition-all"
-                >
-                  {csvFileName ? 'Change CSV' : 'Upload CSV'}
-                </button>
-              </div>
+              <button
+                onClick={() => setShowAddForm(!showAddForm)}
+                className="px-4 py-2 bg-white/90 hover:bg-white text-black rounded-lg transition-all"
+              >
+                {showAddForm ? 'Cancel' : '+ Add User'}
+              </button>
+              <button
+                onClick={() => document.getElementById('csvUpload').click()}
+                className="ml-2 px-4 py-2 bg-blue-500/80 hover:bg-blue-500 text-white rounded-lg transition-all"
+              >
+                Upload CSV
+              </button>
             </div>
 
             {showAddForm && (
@@ -583,14 +565,78 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
               </div>
             )}
 
-
             {/* Hidden File Input */}
             <input
               type="file"
               id="csvUpload"
               accept=".csv"
               style={{ display: 'none' }}
-              onChange={handleFileSelect}
+              onChange={async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = async (event) => {
+                  try {
+                    const text = event.target.result;
+                    const lines = text.split(/\r\n|\n/).filter(line => line.trim());
+
+                    if (lines.length < 2) {
+                      alert('CSV file is empty or missing headers');
+                      return;
+                    }
+
+                    // Validate headers
+                    const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
+                    if (!headers.includes('name') || !headers.includes('email') || !headers.includes('password')) {
+                      alert('Invalid CSV format. Headers must be: Name, Email, Password');
+                      return;
+                    }
+
+                    const emailIdx = headers.indexOf('email');
+                    const nameIdx = headers.indexOf('name');
+                    const passwordIdx = headers.indexOf('password');
+
+                    const usersToAdd = [];
+                    for (let i = 1; i < lines.length; i++) {
+                      const values = lines[i].split(',').map(v => v.trim());
+                      if (values.length >= 3) {
+                        // Simple parsing assuming no commas in fields for now
+                        usersToAdd.push({
+                          email: values[emailIdx],
+                          name: values[nameIdx],
+                          password: values[passwordIdx],
+                          company: userInfo?.company || '', // will be enforced by backend mostly
+                          role: 'user'
+                        });
+                      }
+                    }
+
+                    if (usersToAdd.length === 0) {
+                      alert('No valid users found in CSV');
+                      return;
+                    }
+
+                    if (confirm(`Attempting to add ${usersToAdd.length} users. Continue?`)) {
+                      setIsLoading(true);
+                      try {
+                        const result = await bulkAddUsers(usersToAdd);
+                        alert(`Bulk add complete!\nAdded: ${result.added}\nFailed: ${result.failed}`);
+                        fetchUsers();
+                      } catch (err) {
+                        alert('Bulk add failed: ' + (err.response?.data?.detail || err.message));
+                      } finally {
+                        setIsLoading(false);
+                        e.target.value = ''; // Reset input
+                      }
+                    }
+                  } catch (parseError) {
+                    console.error(parseError);
+                    alert('Error parsing CSV file');
+                  }
+                };
+                reader.readAsText(file);
+              }}
             />
           </div>
         </div>
@@ -678,97 +724,96 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
       }
 
       {/* Leave Requests Tab */}
-      {
-        activeTab === 'requests' && (
-          <div className="max-w-7xl mx-auto">
-            <div className="glass-card bg-white/10 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-white">Leave Requests</h2>
-                <div className="flex space-x-2">
-                  {['all', 'pending', 'approved', 'denied'].map(filter => (
-                    <button
-                      key={filter}
-                      onClick={() => setStatusFilter(filter)}
-                      className={`px-3 py-1 rounded-lg text-sm transition-all ${statusFilter === filter
-                        ? 'bg-white/20 text-white'
-                        : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10'
-                        }`}
-                    >
-                      {filter.charAt(0).toUpperCase() + filter.slice(1)}
-                    </button>
-                  ))}
-                </div>
+      {activeTab === 'requests' && (
+        <div className="max-w-7xl mx-auto">
+          <div className="glass-card bg-white/10 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-white">Leave Requests</h2>
+              <div className="flex space-x-2">
+                {['all', 'pending', 'approved', 'denied'].map(filter => (
+                  <button
+                    key={filter}
+                    onClick={() => setStatusFilter(filter)}
+                    className={`px-3 py-1 rounded-lg text-sm transition-all ${statusFilter === filter
+                      ? 'bg-white/20 text-white'
+                      : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10'
+                      }`}
+                  >
+                    {filter.charAt(0).toUpperCase() + filter.slice(1)}
+                  </button>
+                ))}
               </div>
 
-              {isLoading ? (
-                <p className="text-white/60 text-center py-8">Loading...</p>
-              ) : ptoRequests.length === 0 ? (
-                <p className="text-white/60 text-center py-8">No leave requests found.</p>
-              ) : (
-                <div className="space-y-4">
-                  {ptoRequests.map(request => (
-                    <div
-                      key={request.id}
-                      className="p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/8 transition-all"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <h3 className="text-lg font-medium text-white">{request.email}</h3>
-                            <span className={`px-2 py-1 rounded text-xs border ${getStatusColor(request.status)}`}>
-                              {request.status}
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <p className="text-white/50 mb-1">Dates</p>
-                              <p className="text-white/90">
-                                {new Date(request.start_date).toLocaleDateString()} - {new Date(request.end_date).toLocaleDateString()}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-white/50 mb-1">Days Requested</p>
-                              <p className="text-white/90">{request.days_requested} days</p>
-                            </div>
-                            {request.reason && (
-                              <div className="col-span-2">
-                                <p className="text-white/50 mb-1">Reason</p>
-                                <p className="text-white/70">{request.reason}</p>
-                              </div>
-                            )}
-                            {request.admin_notes && (
-                              <div className="col-span-2">
-                                <p className="text-white/50 mb-1">Admin Notes</p>
-                                <p className="text-white/70">{request.admin_notes}</p>
-                              </div>
-                            )}
-                          </div>
+              </div>
+
+            {isLoading ? (
+              <p className="text-white/60 text-center py-8">Loading...</p>
+            ) : ptoRequests.length === 0 ? (
+              <p className="text-white/60 text-center py-8">No leave requests found.</p>
+            ) : (
+              <div className="space-y-4">
+                {ptoRequests.map(request => (
+                  <div
+                    key={request.id}
+                    className="p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/8 transition-all"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <h3 className="text-lg font-medium text-white">{request.email}</h3>
+                          <span className={`px-2 py-1 rounded text-xs border ${getStatusColor(request.status)}`}>
+                            {request.status}
+                          </span>
                         </div>
-                        {request.status === 'pending' && (
-                          <div className="flex space-x-2 ml-4">
-                            <button
-                              onClick={() => handleApproveRequest(request.id, 'approved')}
-                              className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 rounded text-green-300 transition-all"
-                            >
-                              ✓ Approve
-                            </button>
-                            <button
-                              onClick={() => handleApproveRequest(request.id, 'denied')}
-                              className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded text-red-300 transition-all"
-                            >
-                              ✗ Deny
-                            </button>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <p className="text-white/50 mb-1">Dates</p>
+                            <p className="text-white/90">
+                              {new Date(request.start_date).toLocaleDateString()} - {new Date(request.end_date).toLocaleDateString()}
+                            </p>
                           </div>
-                        )}
+                          <div>
+                            <p className="text-white/50 mb-1">Days Requested</p>
+                            <p className="text-white/90">{request.days_requested} days</p>
+                          </div>
+                          {request.reason && (
+                            <div className="col-span-2">
+                              <p className="text-white/50 mb-1">Reason</p>
+                              <p className="text-white/70">{request.reason}</p>
+                            </div>
+                          )}
+                          {request.admin_notes && (
+                            <div className="col-span-2">
+                              <p className="text-white/50 mb-1">Admin Notes</p>
+                              <p className="text-white/70">{request.admin_notes}</p>
+                            </div>
+                          )}
+                        </div>
                       </div>
+                      {request.status === 'pending' && (
+                        <div className="flex space-x-2 ml-4">
+                          <button
+                            onClick={() => handleApproveRequest(request.id, 'approved')}
+                            className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 rounded text-green-300 transition-all"
+                          >
+                            ✓ Approve
+                          </button>
+                          <button
+                            onClick={() => handleApproveRequest(request.id, 'denied')}
+                            className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded text-red-300 transition-all"
+                          >
+                            ✗ Deny
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )
-      }
+        </div>
+      )}
 
       {/* HR Tickets Tab */}
       {
@@ -1009,86 +1054,82 @@ const CompanyAdminDashboard = ({ onLogout, userInfo }) => {
       }
 
       {/* Schedule Meeting Modal */}
-      {
-        showScheduleModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="glass-card bg-white/10 p-6 w-full max-w-md">
-              <h3 className="text-xl font-semibold text-white mb-4">Schedule Meeting</h3>
-              <form onSubmit={handleScheduleMeeting} className="space-y-4">
-                <div>
-                  <label className="block text-white/60 text-sm mb-2">Date & Time *</label>
-                  <input
-                    type="datetime-local"
-                    value={scheduleMeetingData.datetime}
-                    onChange={(e) => setScheduleMeetingData({ ...scheduleMeetingData, datetime: e.target.value })}
-                    required
-                    className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white/60 text-sm mb-2">Meeting Link (for online meetings)</label>
-                  <input
-                    type="url"
-                    placeholder="https://meet.google.com/..."
-                    value={scheduleMeetingData.link}
-                    onChange={(e) => setScheduleMeetingData({ ...scheduleMeetingData, link: e.target.value })}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white/60 text-sm mb-2">Location (for in-person meetings)</label>
-                  <input
-                    type="text"
-                    placeholder="HR Office, Room 203"
-                    value={scheduleMeetingData.location}
-                    onChange={(e) => setScheduleMeetingData({ ...scheduleMeetingData, location: e.target.value })}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white/60 text-sm mb-2">Notes</label>
-                  <textarea
-                    placeholder="Looking forward to our meeting..."
-                    value={scheduleMeetingData.notes}
-                    onChange={(e) => setScheduleMeetingData({ ...scheduleMeetingData, notes: e.target.value })}
-                    rows="3"
-                    className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
-                  />
-                </div>
-                <div className="flex space-x-3">
-                  <button
-                    type="submit"
-                    className="flex-1 px-4 py-2 bg-white/90 hover:bg-white text-black rounded-lg transition-all"
-                  >
-                    Schedule
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowScheduleModal(false);
-                      setSelectedTicket(null);
-                    }}
-                    className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/15 border border-white/10 rounded-lg text-white transition-all"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
+      {showScheduleModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="glass-card bg-white/10 p-6 w-full max-w-md">
+            <h3 className="text-xl font-semibold text-white mb-4">Schedule Meeting</h3>
+            <form onSubmit={handleScheduleMeeting} className="space-y-4">
+              <div>
+                <label className="block text-white/60 text-sm mb-2">Date & Time *</label>
+                <input
+                  type="datetime-local"
+                  value={scheduleMeetingData.datetime}
+                  onChange={(e) => setScheduleMeetingData({ ...scheduleMeetingData, datetime: e.target.value })}
+                  required
+                  className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-white/60 text-sm mb-2">Meeting Link (for online meetings)</label>
+                <input
+                  type="url"
+                  placeholder="https://meet.google.com/..."
+                  value={scheduleMeetingData.link}
+                  onChange={(e) => setScheduleMeetingData({ ...scheduleMeetingData, link: e.target.value })}
+                  className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
+                />
+              </div>
+              <div>
+                <label className="block text-white/60 text-sm mb-2">Location (for in-person meetings)</label>
+                <input
+                  type="text"
+                  placeholder="HR Office, Room 203"
+                  value={scheduleMeetingData.location}
+                  onChange={(e) => setScheduleMeetingData({ ...scheduleMeetingData, location: e.target.value })}
+                  className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
+                />
+              </div>
+              <div>
+                <label className="block text-white/60 text-sm mb-2">Notes</label>
+                <textarea
+                  placeholder="Looking forward to our meeting..."
+                  value={scheduleMeetingData.notes}
+                  onChange={(e) => setScheduleMeetingData({ ...scheduleMeetingData, notes: e.target.value })}
+                  rows="3"
+                  className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white placeholder-white/40"
+                />
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-white/90 hover:bg-white text-black rounded-lg transition-all"
+                >
+                  Schedule
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowScheduleModal(false);
+                    setSelectedTicket(null);
+                  }}
+                  className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/15 border border-white/10 rounded-lg text-white transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
-        )
-      }
+        </div>
+      )}
       {/* Monitoring Tab */}
-      {
-        activeTab === 'monitoring' && (
-          <div className="max-w-7xl mx-auto">
-            <div className="glass-card bg-white/10 overflow-hidden rounded-xl">
-              <MonitoringDashboard userRole="company_admin" />
-            </div>
+      {activeTab === 'monitoring' && (
+        <div className="max-w-7xl mx-auto">
+          <div className="glass-card bg-white/10 overflow-hidden rounded-xl">
+            <MonitoringDashboard userRole="company_admin" />
           </div>
-        )
-      }
-    </div >
+        </div>
+      )}
+    </div>
   );
 };
 

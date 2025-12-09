@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { login } from '../services/api';
 import { ArrowLeft } from 'lucide-react';
 
+import FrontShiftLogo from './FrontShiftLogo';
+
 const Login = ({ onLoginSuccess, onBack }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -46,13 +48,8 @@ const Login = ({ onLoginSuccess, onBack }) => {
       <div className="w-full max-w-md relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center space-x-3 mb-4">
-            <div className="w-12 h-12 rounded-2xl border border-white/15 bg-gradient-to-br from-white/30 via-white/10 to-transparent shadow-[0_10px_30px_rgba(0,0,0,0.45)] relative overflow-hidden">
-              <div className="absolute inset-[3px] rounded-2xl bg-black/30 backdrop-blur-sm border border-white/5"></div>
-              <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/80 blur-sm opacity-80"></div>
-              <div className="absolute right-2.5 bottom-2.5 w-2.5 h-5 rounded-full bg-white/40"></div>
-            </div>
-            <h1 className="text-2xl font-semibold text-white tracking-tight">FrontShiftAI</h1>
+          <div className="inline-flex items-center justify-center mb-4">
+            <FrontShiftLogo size={48} showText={true} />
           </div>
           <p className="text-white/60 text-sm">Sign in to access your company's handbook</p>
         </div>
