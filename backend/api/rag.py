@@ -113,7 +113,6 @@ async def rag_query(
         )
 
     except Exception as e:
-<<<<<<< HEAD
         duration = time.time() - start_time
         logger.error(
             "RAG Query failed",
@@ -128,10 +127,3 @@ async def rag_query(
             exc_info=True
         )
         raise HTTPException(status_code=500, detail=str(e))
-=======
-        logger.error(f"RAG Query failed: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=500, 
-            detail="An internal error occurred while processing your query."
-        )
->>>>>>> 5ea987702461d61f134c1be592a3ed17e329e3b7
