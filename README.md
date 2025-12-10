@@ -35,6 +35,54 @@ Unlike standard chatbots, FrontShiftAI operates as a **Multi-Tenant System of Ag
 
 ---
 
+## 🚀 Key Features
+
+### 🧠 1. Multi-Agent Intelligence
+
+The system isn't just a chatbot; it's a squad of specialized agents coordinated by a central brain:
+
+*   **Unified Router**: Automatically understands if a user is asking a policy question, requesting time off, or reporting a grievance and routes it to the right expert.
+*   **RAG Agent (The Librarian)**: Uses advanced Retrieval-Augmented Generation to search company PDFs. It cites its sources (page numbers and links) so users can trust the answer.
+*   **PTO Agent (The HR Assistant)**: A transactional agent that can:
+    *   Check live leave balances.
+    *   Understand natural language requests ("I need next Friday off").
+    *   Validate requests against holidays and blackout dates.
+    *   Book the time off in the database.
+*   **HR Ticket Agent (The Support Rep)**: Handles complex inquiries that require human intervention. It categorizes issues (Payroll, Benefits, etc.), assigns priority, and schedules meetings.
+*   **Website Extraction Agent (The Researcher)**: If the handbook doesn't have the answer (e.g., "What are the office hours?"), it automatically searches the company's public website for real-time info.
+
+### 🧠 1.1 LLM Architecture & Resiliency
+
+To ensure 99.9% uptime and low latency, we employ a robust fallback strategy across different model providers:
+
+| Component | Main LLM | Backup Chain (in order) |
+| :--- | :--- | :--- |
+| **LLM Decider** (Routing) | **Groq**<br>(Llama 3.1 8B Instant) | 1. Mercury<br>2. OpenAI (GPT-4o-mini)|
+| **Agentic Flow** (PTO/HR) | **Groq**<br>(Llama 3.1 8B Instant) | 1. Mercury<br>2. OpenAI (GPT-4o-mini)|
+| **RAG Model** (Generator) | **Mercury**<br>(Custom Model) | 1. Groq<br>2. OpenAI (GPT-4o-mini)|
+
+### 🏢 2. Multi-Tenant Architecture
+
+*   **One System, Many Companies**: A single deployment serves multiple organizations (Crouse Medical, TechCorp, RetailCo).
+*   **Data Isolation**: Each company's data (documents, users, tickets) is strictly segregated.
+*   **Dynamic Branding**: The UI adapts to the user's company context.
+
+### 🛠️ 3. Super Admin & Company Management
+
+*   **Self-Service Onboarding**: Super Admins can add new companies instantly.
+    *   *Input*: Company Name, Domain, Handbook PDF URL.
+    *   *Automation*: The system automatically downloads the PDF, runs OCR, chunks the text, generates embeddings, and rebuilds the vector index—all in the background.
+    *   *Consistency*: The new index is synced to Google Cloud Storage (GCS) so all API instances update automatically.
+*   **Bulk Management**: Tools to bulk-delete users or remove entire companies cleanly.
+
+### 📊 4. Enterprise-Grade Operations
+
+*   **Model Registry**: We version-control our AI "brains". We can rollout v2 and rollback to v1 instantly if issues arise.
+*   **Monitoring**: Real-time dashboards (Weights & Biases) track token usage, latency, and user feedback (thumbs up/down).
+*   **CI/CD**: Automated GitHub Actions for testing backend/frontend and retraining RAG models.
+
+---
+
 ## 📚 Documentation
 
 Detailed guides for every subsystem are available in their respective directories:
@@ -126,18 +174,7 @@ FrontShiftAI/
 
 ---
 
-## 🚀 Key Features
 
-- **Unified Agent Router**: Intelligently discerns user intent to route requests to the specialized sub-agent (RAG, PTO, or Ticket).
-- **RAG "Librarian"**: Retrieval-Augmented Generation pipeline grounded in company handbooks, providing page-level citations.
-- **Transactional Agents**:
-    - **PTO Agent**: Checks balances, validates holiday logic, and commits leave requests.
-    - **Website Agent**: Automatic fallback to Brave Search for "live" data (e.g., "Is the office open today?").
-- **Multi-Tenancy**: Single deployment serving 19+ distinct companies with complete data isolation.
-- **Monitoring Suite**: Real-time dashboards visualizing Token Usage, Latency, and Agent Accuracy via **Weights & Biases**.
-- **Secure Infrastructure**: Zero-trust security model with Workload Identity and Secret Manager integration.
-
----
 
 ## 🏗️ Cloud Deployment Architecture
 
