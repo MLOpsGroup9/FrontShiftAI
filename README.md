@@ -35,9 +35,9 @@ Unlike standard chatbots, FrontShiftAI operates as a **Multi-Tenant System of Ag
 
 ---
 
-## 🚀 Key Features
+## Key Features
 
-### 🧠 1. Multi-Agent Intelligence
+### 1. Multi-Agent Intelligence
 
 The system isn't just a chatbot; it's a squad of specialized agents coordinated by a central brain:
 
@@ -51,7 +51,7 @@ The system isn't just a chatbot; it's a squad of specialized agents coordinated 
 *   **HR Ticket Agent (The Support Rep)**: Handles complex inquiries that require human intervention. It categorizes issues (Payroll, Benefits, etc.), assigns priority, and schedules meetings.
 *   **Website Extraction Agent (The Researcher)**: If the handbook doesn't have the answer (e.g., "What are the office hours?"), it automatically searches the company's public website for real-time info.
 
-### 🧠 1.1 LLM Architecture & Resiliency
+### 1.1 LLM Architecture & Resiliency
 
 To ensure 99.9% uptime and low latency, we employ a robust fallback strategy across different model providers:
 
@@ -61,13 +61,13 @@ To ensure 99.9% uptime and low latency, we employ a robust fallback strategy acr
 | **Agentic Flow** (PTO/HR) | **Groq**<br>(Llama 3.1 8B Instant) | 1. Mercury<br>2. OpenAI (GPT-4o-mini)|
 | **RAG Model** (Generator) | **Mercury**<br>(Custom Model) | 1. Groq<br>2. OpenAI (GPT-4o-mini)|
 
-### 🏢 2. Multi-Tenant Architecture
+### 2. Multi-Tenant Architecture
 
 *   **One System, Many Companies**: A single deployment serves multiple organizations (Crouse Medical, TechCorp, RetailCo).
 *   **Data Isolation**: Each company's data (documents, users, tickets) is strictly segregated.
 *   **Dynamic Branding**: The UI adapts to the user's company context.
 
-### 🛠️ 3. Super Admin & Company Management
+### 3. Super Admin & Company Management
 
 *   **Self-Service Onboarding**: Super Admins can add new companies instantly.
     *   *Input*: Company Name, Domain, Handbook PDF URL.
@@ -75,7 +75,7 @@ To ensure 99.9% uptime and low latency, we employ a robust fallback strategy acr
     *   *Consistency*: The new index is synced to Google Cloud Storage (GCS) so all API instances update automatically.
 *   **Bulk Management**: Tools to bulk-delete users or remove entire companies cleanly.
 
-### 📊 4. Enterprise-Grade Operations
+###  4. Enterprise-Grade Operations
 
 *   **Model Registry**: We version-control our AI "brains". We can rollout v2 and rollback to v1 instantly if issues arise.
 *   **Monitoring**: Real-time dashboards (Weights & Biases) track token usage, latency, and user feedback (thumbs up/down).
@@ -83,7 +83,7 @@ To ensure 99.9% uptime and low latency, we employ a robust fallback strategy acr
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 Detailed guides for every subsystem are available in their respective directories:
 
@@ -98,7 +98,7 @@ Detailed guides for every subsystem are available in their respective directorie
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```
 FrontShiftAI/
@@ -176,7 +176,7 @@ FrontShiftAI/
 
 
 
-## 🏗️ Cloud Deployment Architecture
+## Cloud Deployment Architecture
 
 The system is architected as a serverless microservices application on **Google Cloud Platform (GCP)**.
 
@@ -230,7 +230,7 @@ The system acts as a knowledge engine for organizational data.
 
 ---
 
-## 📊 Monitoring & Testing
+## Monitoring & Testing
 
 ### Monitoring Strategy
 We utilize a dual-layer strategy to ensure reliability:
@@ -247,7 +247,7 @@ We utilize a dual-layer strategy to ensure reliability:
 
 ---
 
-## ⚖️ Fairness & Bias Mitigation
+## Fairness & Bias Mitigation
 
 We actively monitor for **Representation Bias** to ensure equitable performance across all 19+ tenant organizations, regardless of their size or industry.
 
@@ -267,7 +267,7 @@ We actively monitor for **Representation Bias** to ensure equitable performance 
 
 ---
 
-## 💰 Cost Analysis (Monthly Estimate)
+## Cost Analysis (Monthly Estimate)
 
 Designed for student-budget constraints (Free Tier capable).
 
@@ -281,7 +281,7 @@ Designed for student-budget constraints (Free Tier capable).
 
 ---
 
-## ⚡ Installation & Contributing
+##  Installation & Contributing
 
 ### Prerequisites
 - Python 3.10+
@@ -325,5 +325,5 @@ Please fork the repository and submit Pull Requests to the `main` branch.
 
 ---
 
-## 📜 License
+## License
 Proprietary software developed by **MLOps Group 9** (Northeastern University).
