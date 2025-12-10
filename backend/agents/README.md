@@ -63,7 +63,7 @@ START
   ↓
 Parse Intent (extract dates, reason)
   ↓
-Validate Dates (check past, holidays, blackouts)
+Validate Request (check dates, mandatory reason)
   ↓
 [Valid?] → No → Generate Error Response → END
   ↓ Yes
@@ -105,7 +105,7 @@ State is a dictionary that flows through the workflow. Each node receives it, mo
 
 **PTO State Fields:**
 - Input: user_email, company, user_message
-- Parsed: start_date, end_date, reason, intent
+- Parsed: start_date, end_date, reason (required), intent
 - Validation: is_valid, validation_errors, total_business_days
 - Balance: remaining_days, has_sufficient_balance
 - Conflicts: has_conflicts, conflicting_requests
@@ -124,7 +124,7 @@ State is a dictionary that flows through the workflow. Each node receives it, mo
 Uses LLM to extract structured data from natural language. Sends system prompt + user message, receives JSON response, parses into state fields.
 
 **Validate Node:**
-Checks business rules. Past dates, holidays, blackouts for PTO. Required fields, valid categories for HR tickets. Adds errors to state, sets is_valid flag.
+Checks business rules. Past dates, holidays, blackouts, and mandatory reason for PTO. Required fields, valid categories for HR tickets. Adds errors to state, sets is_valid flag.
 
 **Database Operations Node:**
 Queries or creates records. Checks balances, detects conflicts for PTO. Calculates queue position, checks duplicates for HR tickets.
@@ -228,6 +228,7 @@ Test workflow steps with mock state:
 
 **Validation Tests:**
 - Reject past dates
+- Reject missing reason
 - Reject weekend-only requests
 - Exclude holidays correctly
 - Detect blackout periods
@@ -280,7 +281,7 @@ pytest agents/test_agents/test_pto_tools.py::test_calculate_business_days
 
 **Key Nodes:**
 1. Parse dates and reason from message
-2. Validate against holidays, blackouts, past dates
+2. Validate dates and verify reason is provided
 3. Check employee balance
 4. Detect conflicts with approved requests
 5. Create request record
@@ -288,6 +289,7 @@ pytest agents/test_agents/test_pto_tools.py::test_calculate_business_days
 
 **Business Rules:**
 - Cannot request past dates
+- Reason must be provided
 - Must include weekdays
 - Holidays excluded from count
 - Blackout periods rejected

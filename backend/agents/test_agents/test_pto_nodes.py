@@ -135,7 +135,7 @@ class TestValidateDatesNode:
             used_days=None,
             pending_days=None,
             remaining_days=None,
-            reason=None,
+            reason="Vacation",
             error_message=None
         )
         
@@ -253,7 +253,7 @@ class TestValidateDatesNode:
             used_days=None,
             pending_days=None,
             remaining_days=None,
-            reason=None,
+            reason="Vacation",
             error_message=None
         )
         
@@ -296,7 +296,7 @@ class TestValidateDatesNode:
             used_days=None,
             pending_days=None,
             remaining_days=None,
-            reason=None,
+            reason="Vacation",
             error_message=None
         )
         

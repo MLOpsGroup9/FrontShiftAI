@@ -141,7 +141,7 @@ Tests individual processing steps in the PTO request workflow.
 
 **TestValidateDatesNode (5 tests):**
 - Validates date validation logic
-- Tests: Valid dates, past dates (rejection), weekend-only (rejection), holiday exclusion, single day
+- Tests: Valid dates, past dates (rejection), weekend-only (rejection), missing reason (rejection), holiday exclusion, single day
 - Ensures business rules are enforced
 
 **TestCheckBalanceNode (5 tests):**
