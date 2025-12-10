@@ -1,16 +1,11 @@
 name: Deployment Pipeline - Deploy Backend to Cloud Run
 
 on:
-  push:
-    branches:
-      - main
-      - krishna-branch
-    paths:
-      - 'backend/**'
-      - 'chat_pipeline/**'
-      - 'data_pipeline/**'
-      - 'Dockerfile.backend'
-      - '.github/workflows/deploy-backend.yml'
+  workflow_run:
+    workflows: ["Deployment Pipeline - Backend CI Tests"]
+    branches: [main]
+    types: 
+      - completed
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -21,6 +16,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     
     permissions:
       contents: read
@@ -29,6 +25,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Free up disk space
         run: |
