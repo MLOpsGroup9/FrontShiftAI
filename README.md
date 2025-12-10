@@ -10,14 +10,14 @@
 
 ---
 
-## 🎥 Video Demo
+## Video Demo
 
 
 [![Watch the Demo](https://img.youtube.com/vi/PLACEHOLDER/0.jpg)](https://drive.google.com/drive/folders/1-BDy_7jMf0nWLNDfPSK6pi_NX8RqyYpC?usp=sharing)
 
 ---
 
-## 📖 Abstract
+## Abstract
 
 **FrontShiftAI** is an enterprise-grade, multi-agent artificial intelligence platform designed to bridge the "HR gap" for deskless workers—nurses, construction foremen, and field technicians who lack access to traditional corporate portals. By functioning as a **24/7 Operations Concierge**, the system ingests thousands of pages of static organizational handbooks and transforms them into an interactive, actionable voice and chat interface.
 
@@ -25,7 +25,7 @@ Unlike standard chatbots, FrontShiftAI operates as a **Multi-Tenant System of Ag
 
 ---
 
-## 🔗 Deployment Access
+## Deployment Access
 
 | Component | Provider | URL |
 |-----------|----------|-----|
@@ -196,7 +196,7 @@ For a detailed breakdown of all resources, see the [Deployment Guide](./deployme
 
 ---
 
-## 🛠️ Technical Stack
+## Technical Stack
 
 ### Core Application
 - **Backend Language**: Python 3.12 (AsyncIO)
@@ -220,7 +220,7 @@ For a detailed breakdown of all resources, see the [Deployment Guide](./deployme
 
 ---
 
-## 💾 Data Usage
+## Data Usage
 
 The system acts as a knowledge engine for organizational data.
 1.  **Ingestion**: `data_pipeline` scripts ingest raw PDF handbooks (~50-100 pages each).
