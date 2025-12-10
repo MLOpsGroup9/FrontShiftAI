@@ -12,7 +12,6 @@
 
 ## 🎥 Video Demo
 
-*(Video submission link to be added here. Please insert YouTube or Loom link.)*
 
 [![Watch the Demo](https://img.youtube.com/vi/PLACEHOLDER/0.jpg)](https://drive.google.com/drive/folders/1-BDy_7jMf0nWLNDfPSK6pi_NX8RqyYpC?usp=sharing)
 
@@ -37,6 +36,7 @@ Detailed guides for every subsystem are available in their respective directorie
 | **Frontend Architecture** | Component hierarchy, Design System, UX flows | [Frontend README](./frontend/README.md) |
 | **Data Pipeline** | Ingestion logic, OCR, Embedding generation | [Data Pipeline README](./data_pipeline/README.md) |
 | **ML Pipeline** | RAG evaluation, DeepEval framework | [Chat Pipeline README](./chat_pipeline/README.md) |
+| **Monitoring** | W&B tracking, Cloud Logging, and Alerts | [Monitoring README](./monitoring/README.md) |
 
 ---
 
