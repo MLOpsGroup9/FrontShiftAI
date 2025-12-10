@@ -8,11 +8,13 @@ The FrontShiftAI Frontend is a modern, high-performance single-page application 
 
 ---
 
-## 1. System Architecture
+### 1.1 Quick Links
+- **Local Development**: [http://localhost:5173](http://localhost:5173)
+- **Production URL (Vercel)**: [https://frontshiftai.vercel.app/](https://frontshiftai.vercel.app/)
+- **Production URL (Cloud Run)**: [https://frontshiftai-frontend-vvukpmzsxa-uc.a.run.app](https://frontshiftai-frontend-vvukpmzsxa-uc.a.run.app)
+- **Deployment Repo**: [https://github.com/MLOpsGroup9/FrontShiftAI](https://github.com/MLOpsGroup9/FrontShiftAI)
 
-The frontend is architected as a modular component hierarchy with a strict separation between presentation (Components) and data access (Service Layer).
-
-### 1.1 Component Hierarchy & Data Flow
+### 1.2 System Architecture
 
 ```mermaid
 graph TD
@@ -107,6 +109,32 @@ A React-based visualization suite using **Recharts** to render real-time telemet
 - **Code Splitting**: Vite automatically chunks vendor libraries separately from application code.
 - **Lazy Loading**: Route-based code splitting ensures admin dashboard bundles are not loaded for regular users.
 - **Memoization**: `useMemo` and `useCallback` are employed in data-heavy views (like the Monitoring Dashboard) to prevent unnecessary re-renders.
+
+---
+
+### 4.3 Project Structure
+The folder structure follows a standard React/Vite pattern with feature-centric organization:
+
+```
+frontend/
+├── public/                 # Static assets (favicons, robots.txt)
+├── src/                    # Source Code
+│   ├── components/         # Reusable UI Components
+│   │   ├── Chat/           # Chat interface components
+│   │   ├── Dashboard/      # Admin dashboard widgets
+│   │   └── Shared/         # Common UI elements (Buttons, Cards)
+│   ├── hooks/              # Custom React Hooks
+│   │   └── useAuth.js      # Auth state management
+│   ├── services/           # API Integration Layer
+│   │   └── api.js          # Axios instance & endpoints
+│   ├── App.jsx             # Root Component & Routing
+│   ├── main.jsx            # Entrypoint & DOM rendering
+│   └── index.css           # Tailwind directives & global styles
+├── index.html              # HTML Template
+├── vite.config.js          # Vite Configuration
+├── tailwind.config.js      # Tailwind Configuration
+└── package.json            # Dependencies & Scripts
+```
 
 ---
 

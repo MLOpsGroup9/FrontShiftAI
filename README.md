@@ -25,6 +25,16 @@ Unlike standard chatbots, FrontShiftAI operates as a **Multi-Tenant System of Ag
 
 ---
 
+## 🔗 Deployment Access
+
+| Component | Provider | URL |
+|-----------|----------|-----|
+| **Frontend App** | **Vercel** ( Recommended) | [https://frontshiftai.vercel.app/](https://frontshiftai.vercel.app/) |
+| **Frontend App** | Cloud Run | [https://frontshiftai-frontend-vvukpmzsxa-uc.a.run.app](https://frontshiftai-frontend-vvukpmzsxa-uc.a.run.app) |
+| **Backend API** | Cloud Run | [https://frontshiftai-backend-vvukpmzsxa-uc.a.run.app/docs](https://frontshiftai-backend-vvukpmzsxa-uc.a.run.app/docs) |
+
+---
+
 ## 📚 Documentation
 
 Detailed guides for every subsystem are available in their respective directories:

@@ -30,6 +30,42 @@ The backend now orchestrates full index rebuilds via Celery tasks when companies
 4.  Pods (on restart) pull the latest data from GCS.
 
 
+### 2.6 Codebase Structure
+
+```
+chat_pipeline/
+├── configs/                # YAML Configuration files
+│   ├── experiments/        # Specific experiment setups (core_eval, smoke)
+│   └── rag.yaml            # Base RAG settings
+├── data_pipeline/          # Ingestion Logic
+│   └── ingestion.py        # PDF -> ChromaDB loader
+├── rag/                    # Retrieval & Generation Logic
+│   ├── pipeline.py         # Main RAG Pipeline definition
+│   ├── generator.py        # Answer Generation Logic
+│   ├── retriever.py        # ChromaDB Query / Retrieval Logic
+│   ├── reranker.py         # Document Re-ranking Logic
+│   ├── data_loader.py      # Data loading utilities
+│   ├── config_manager.py   # Configuration Management
+│   ├── prompt_templates.py # Jinja2 Prompt Templates
+│   └── chain.py            # LangChain Definitions
+├── evaluation/             # Testing & Judging Logic
+│   ├── evaluation_runner.py # Main Evaluation Runner
+│   ├── eval_judge.py       # Judge Logic Implementation
+│   ├── judge_client.py     # Client for Judge LLM
+│   ├── tuning_runner.py    # Hyperparameter Tuning
+│   ├── generator.py        # Test Set Generator
+│   └── test_questions/     # Evaluation Datasets (JSONL)
+├── tracking/               # MLOps & Model Registry
+│   ├── deploy_model.py     # Promotion Script
+│   ├── compute_gate.py     # Quality Gate Check
+│   ├── rollback_model.py   # Rollback Logic
+│   ├── push_to_registry.py # Registry Push Utility
+│   └── exp_tracking.py     # W&B Experiment Tracking
+├── utils/                  # Shared Utilities
+├── tests/                  # Unit Tests
+└── cli.py                  # Main CLI Entrypoint
+```
+
 ---
 
 ## 3. Running the Pipeline

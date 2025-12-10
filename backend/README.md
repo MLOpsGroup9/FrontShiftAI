@@ -8,11 +8,16 @@ The FrontShiftAI backend is a sophisticated, multi-tenant Retrieval-Augmented Ge
 
 ---
 
-## 1. System Architecture
+### 1.1 Quick Links
+- **Local API**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Production API**: [https://frontshiftai-backend-vvukpmzsxa-uc.a.run.app/docs](https://frontshiftai-backend-vvukpmzsxa-uc.a.run.app/docs)
+- **Monitoring (W&B)**: [https://wandb.ai/group9mlops-northeastern-university/FrontShiftAI](https://wandb.ai/group9mlops-northeastern-university/FrontShiftAI)
+
+### 1.2 System Architecture
 
 The backend architecture follows a microservices-inspired monolithic design, emphasizing modularity, scalability, and strict separation of concerns.
 
-### 1.1 High-Level Data Flow
+### 1.3 High-Level Data Flow
 
 ```mermaid
 graph TD
@@ -123,15 +128,48 @@ The codebase follows a domain-driven structure:
 
 ```
 backend/
-├── agents/             # LangGraph implementations
-│   ├── pto/            # PTO specific logic (nodes, tools, state)
-│   ├── hr_ticket/      # Ticket management logic
-│   └── website/        # Fallback search agent
-├── api/                # REST endpoints (Routes)
-├── services/           # Business logic layer (Service pattern)
-├── db/                 # Database models & connections
-├── schemas/            # Pydantic data validation models
-└── monitoring/         # Observability instrumentation
+├── agents/                     # LangGraph Agent Implementations
+│   ├── pto/                    # PTO Agent (vacation logic)
+│   ├── hr_ticket/              # HR Ticket Agent (Jira/Helpdesk logic)
+│   ├── website/                # Website Extraction Agent (fallback search)
+│   ├── rag/                    # RAG Agent (document retrieval)
+│   ├── unified_agent.py        # Unified Agent Router (The "Concierge")
+│   ├── agent_router.py         # Router Logic
+│   ├── pto_agent.py            # PTO Logic
+│   ├── hr_ticket_agent.py      # HR Ticket Logic
+│   ├── rag.py                  # RAG Logic
+│   ├── company_management.py   # Company Management Logic
+│   ├── admin.py                # Admin Agent Logic
+│   ├── auth.py                 # Authorization Logic
+│   └── health.py               # Health Check Logic
+├── api/                        # REST API Layer
+│   ├── routes/                 # FastAPI Routers
+│   │   ├── chat.py             # Chat endpoints
+│   │   ├── auth.py             # Authentication endpoints
+│   │   └── admin.py            # Administrative endpoints
+│   └── deps.py                 # Dependency Injection (DB, User)
+├── core/                       # Core configurations
+│   ├── config.py               # Environment settings (Pydantic Settings)
+│   └── security.py             # JWT & Password hashing
+├── db/                         # Database Access
+│   ├── models/                 # SQLAlchemy Models (User, Ticket, Request)
+│   │   └── models.py           # DB Models definition
+│   ├── connection.py           # DB Connection logic
+│   ├── seed.py                 # Database Seeding script
+│   └── migrations/             # Alembic versions
+├── schemas/                    # Pydantic Schemas (Data Transfer Objects)
+│   ├── chat.py                 # Chat request/response schemas
+│   ├── user.py                 # User profile schemas
+│   └── common.py               # Shared enums and types
+├── services/                   # Business Logic Layer
+│   ├── auth_service.py         # Login & Registration logic
+│   └── chat_service.py         # Chat persistence logic
+├── monitoring/                 # Observability
+│   └── telemetry.py            # OpenTelemetry & W&B integration
+├── jobs/                       # Background Tasks
+│   └── celerey_worker.py       # Async task definitions
+├── tests/                      # Pytest Suite
+└── main.py                     # Application Entrypoint
 ```
 
 ---

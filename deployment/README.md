@@ -8,6 +8,12 @@ This document details the production infrastructure, deployment pipeline, and se
 
 ---
 
+### 🔗 Deployment Access
+- **Frontend App (Vercel)**: [https://frontshiftai.vercel.app/](https://frontshiftai.vercel.app/)
+- **Frontend App (Cloud Run)**: [https://frontshiftai-frontend-vvukpmzsxa-uc.a.run.app](https://frontshiftai-frontend-vvukpmzsxa-uc.a.run.app)
+- **Backend API Docs**: [https://frontshiftai-backend-vvukpmzsxa-uc.a.run.app/docs](https://frontshiftai-backend-vvukpmzsxa-uc.a.run.app/docs)
+- **Repository**: [https://github.com/MLOpsGroup9/FrontShiftAI](https://github.com/MLOpsGroup9/FrontShiftAI)
+
 ## ☁️ Cloud Resources Inventory
 
 We utilize 7 core Google Cloud Platform services to effect a serverless, auto-scaling architecture.
