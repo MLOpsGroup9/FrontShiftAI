@@ -39,20 +39,11 @@ class ProductionMonitor:
         """Initialize WANDB for production monitoring"""
         try:
             # Smart project selection
-            # 1. Use WANDB_PROJECT if explicitly set
-            # 2. Else if ENVIRONMENT=production, use FrontShiftAI_Production
-            # 3. Else default to FrontShiftAI_Agents (development)
+            # 1. Use WANDB_PRODUCTION_PROJECT if set
+            # 2. Default to FrontShiftAI_Production (Production/Realtime traffic)
+            # Note: Agent evaluations use a separate logger (WandbLogger) that targets FrontShiftAI_Agents
+            project_name = os.getenv("WANDB_PRODUCTION_PROJECT", "FrontShiftAI_Production")
             env_type = os.getenv("ENVIRONMENT", "development")
-            
-            # Smart project selection
-            # 1. If ENVIRONMENT=production, prioritize WANDB_PRODUCTION_PROJECT or default to FrontShiftAI_Production
-            # 2. Else use WANDB_PROJECT if set
-            # 3. Else default to FrontShiftAI_Agents (development)
-            
-            if env_type == "production":
-                project_name = os.getenv("WANDB_PRODUCTION_PROJECT", "FrontShiftAI_Production")
-            else:
-                project_name = os.getenv("WANDB_PROJECT", "FrontShiftAI_Agents")
 
             self.run = wandb.init(
                 project=project_name,
