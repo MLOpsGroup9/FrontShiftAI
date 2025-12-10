@@ -106,8 +106,14 @@ def validate_dates_node(state: PTOAgentState, db: Session) -> PTOAgentState:
         state["is_valid"] = False
         return state
     
+    # Check if reason is provided
+    if not state.get("reason"):
+        state["validation_errors"].append("Reason for PTO request is required")
+        state["is_valid"] = False
+        return state
+
     state["is_valid"] = True
-    logger.info(f"Dates validated successfully. Business days: {business_days}")
+    logger.info(f"Dates and reason validated successfully. Business days: {business_days}")
     return state
 
 

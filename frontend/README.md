@@ -1,788 +1,149 @@
 # FrontShiftAI Frontend
 
-React-based user interface for the FrontShiftAI multi-tenant RAG system, providing intuitive access to company handbooks, PTO management, and HR support ticketing across multiple organizations.
+**Reactive User Interface for Multi-Tenant Intelligent Agent System**
 
-## Quick Start
+## Abstract
 
-```bash
-# Navigate to frontend
-cd frontend
+The FrontShiftAI Frontend is a modern, high-performance single-page application (SPA) built with **React 18** and **Vite**. It serves as the visual orchestration layer for the multi-tenant RAG system, providing a seamless interface for users to interact with intelligent agents, manage time-off requests, and track HR support tickets. The application implements a sophisticated **Role-Based Access Control (RBAC)** system, ensuring secure data isolation and appropriate feature access for regular users, company administrators, and super administrators. The design philosophy centers on **"Glassmorphism"**, utilizing translucency and blurring to create a depth-rich, premium user experience.
 
-# Install dependencies
-npm install
+---
 
-# Start development server
-npm run dev
+## 1. System Architecture
+
+The frontend is architected as a modular component hierarchy with a strict separation between presentation (Components) and data access (Service Layer).
+
+### 1.1 Component Hierarchy & Data Flow
+
+```mermaid
+graph TD
+    App[Root: App.jsx] -->|Auth State| Router{Role Router}
+    
+    Router -->|Role: Super Admin| SuperDash[Super Admin Dashboard]
+    Router -->|Role: Company Admin| CompDash[Company Admin Dashboard]
+    Router -->|Role: User| UserView[User Chat Interface]
+    
+    subgraph "User Interface Layer"
+        UserView -->|Layout| Sidebar[Navigation Sidebar]
+        UserView -->|Content| Tabs[Tab Manager]
+        
+        Tabs -->|Active: Chat| Chat[Unified Chat Area]
+        Tabs -->|Active: PTO| PTO[PTO Requests Panel]
+        Tabs -->|Active: HR| HR[HR Tickets Panel]
+        
+        Chat -->|Input| MsgIn[Message Input]
+        Chat -->|Display| MsgList[Message List]
+    end
+    
+    subgraph "Service Layer (API)"
+        msgService[Chat Service]
+        authService[Auth Service]
+        ptoService[PTO Service]
+    end
+    
+    Chat <-->|Async/Await| msgService
+    UserView <-->|Context| authService
 ```
 
-Access application: http://localhost:5173
+### 1.2 Key Architectural Patterns
 
-## Project Structure
+- **Service Layer Pattern**: All API interactions are encapsulated in `src/services/api.js`. Components never make direct `fetch` or `axios` calls. This abstraction simplifies testing and allows for centralized error handling and interceptors (e.g., auto-injecting JWT tokens).
+- **Role-Based Routing**: Dynamic rendering logic determines the widget tree based on the user's `role` claim in their JWT. This securely hides administrative interfaces from regular users at the client level.
+- **Unidirectional Data Flow**: State is managed primarily through React Hooks (`useState`, `useEffect`) and passed down via props, ensuring predictable rendering behavior.
 
-```
-frontend/
-├── src/
-│   ├── components/          # React Components
-│   │   ├── ChatArea.jsx             # Message display area
-│   │   ├── MessageInput.jsx         # Chat input interface
-│   │   ├── Sidebar.jsx              # Navigation sidebar
-│   │   ├── UserChatPage.jsx         # Main chat container with tabs
-│   │   ├── PTORequestsTab.jsx       # PTO requests view
-│   │   ├── HRTicketsTab.jsx         # HR tickets view with admin notes
-│   │   ├── Login.jsx                # Authentication interface
-│   │   ├── ConnectionStatus.jsx     # Backend connection indicator
-│   │   ├── CompanyAdminDashboard.jsx  # Company admin interface
-│   │   ├── SuperAdminDashboard.jsx    # Super admin interface
-│   │   └── MonitoringDashboard.jsx    # Real-time analytics [NEW]
-│   │
-│   ├── services/            # API Integration
-│   │   └── api.js          # API client and endpoints
-│   │
-│   ├── App.jsx             # Root application component
-│   ├── main.jsx            # Application entry point
-│   └── index.css           # Global styles and Tailwind
-│
-├── public/                 # Static assets
-├── .env                    # Environment configuration
-├── package.json           # Dependencies and scripts
-├── tailwind.config.js     # Tailwind CSS configuration
-├── postcss.config.js      # PostCSS configuration
-├── vite.config.js         # Vite build configuration
-└── index.html             # HTML entry point
-```
+---
 
-## Architecture
+## 2. Design System & UX
 
-### User Flow
+The application's visual language is built on a custom **Tailwind CSS** configuration, implementing a "Glassmorphism" aesthetic to convey modernity and fluidity.
 
-The application supports three distinct user roles with role-based routing:
+### 2.1 Aesthetic Principles
 
-**Regular Users:**
-- Tab-based interface for seamless navigation
-- Chat tab for unified agent interactions (RAG, PTO, HR)
-- PTO Requests tab for viewing time-off history and balances
-- HR Tickets tab for viewing support requests and admin notes
-
-**Company Admins:**
-- PTO request management (approve/deny)
-- Employee PTO balance administration
-- HR ticket queue management
-- Meeting scheduling and note communication
-- Bulk user import via CSV
-
-**Super Admins:**
-- Multi-company user management
-- System-wide administration
-- Multi-company user management
-- System-wide administration
-- Company configuration (Add/Delete)
-- Bulk User Management
-
-### Component Hierarchy
-
-```
-App.jsx
-├── Login.jsx (unauthenticated)
-├── SuperAdminDashboard.jsx (super_admin role)
-├── CompanyAdminDashboard.jsx (company_admin role)
-└── Regular User Interface (user role)
-    ├── Sidebar.jsx
-    │   ├── Logo
-    │   ├── User Info
-    │   ├── Search Bar
-    │   └── Recent Chats
-    │
-    └── UserChatPage.jsx
-        ├── Tab Navigation (Chat | PTO Requests | HR Tickets)
-        ├── Chat Tab
-        │   ├── ChatArea.jsx (message display)
-        │   └── MessageInput.jsx (input interface)
-        │
-        ├── PTORequestsTab.jsx
-        │   ├── Balance Overview
-        │   └── Request History
-        │
-        └── HRTicketsTab.jsx
-            ├── Ticket List
-            └── Ticket Details (with admin notes)
-```
-
-## Key Features
-
-### Unified Chat Interface
-
-The chat interface provides seamless interaction with multiple AI agents through a single conversation flow.
-
-**Implementation:**
-```javascript
-// App.jsx - Message Handler
-const handleSendMessage = async (message) => {
-  // Send to unified router endpoint
-  const response = await axios.post(
-    `${API_BASE_URL}/api/chat/message`,
-    { message },
-    { headers: { Authorization: `Bearer ${token}` }}
-  );
-  
-  // Response includes agent_used field
-  const assistantMessage = {
-    role: 'assistant',
-    content: response.data.response,
-    agentType: response.data.agent_used,
-    // Agent-specific metadata preserved
-    ...metadata
-  };
-};
-```
-
-**Agent Routing:**
-- User queries automatically routed to appropriate agent (RAG, PTO, HR Ticket)
-- Seamless context switching between agent types
-- Unified response format across all agents
-
-**Example Conversation:**
-```
-User: "What is the remote work policy?"
-System: [RAG Agent] According to the handbook...
-
-User: "I need 3 days off next week"
-System: [PTO Agent] PTO request created...
-
-User: "Schedule a meeting with HR about benefits"
-System: [HR Ticket Agent] Support ticket created...
-```
-
-### Tab-Based Navigation
-
-**Chat Tab:**
-- Primary interface for all requests
-- Natural language processing for all agent types
-- Real-time message streaming
-- Source attribution for RAG responses
-- Message persistence across sessions
-
-**PTO Requests Tab:**
-- Visual balance dashboard showing:
-  - Available days
-  - Used days
-  - Pending days
-  - Total allocation
-- Request history with status indicators
-- Detailed request information (dates, reason, admin notes)
-- Color-coded status badges (pending, approved, denied)
-
-**HR Tickets Tab:**
-- Comprehensive ticket listing
-- Expandable ticket details
-- Admin notes visibility for transparent communication
-- Status tracking (pending, in_progress, scheduled, resolved, closed)
-- Meeting information display
-- Category icons for quick identification
-
-### Monitoring Dashboard (NEW)
-
-**Real-Time Analytics:**
-- **Role-Based Views**:
-  - **Super Admins**: Global system stats, agent usage distribution, company activity leaderboard.
-  - **Company Admins**: Company-specific stats, top active users, operational bottlenecks (PTO/Tickets).
-- **Visualizations**: Interactive charts using Recharts (Line, Bar, Pie).
-- **Dark Theme**: Dedicated dark mode UI for high-contrast monitoring.
-- **Metrics**: Request volume, response times, error rates, and active user counts.
-- **Real-time Alerts**: UI notifications for critical system events (high latency, error spikes).
-
-### HR Ticket Notes System
-
-Admin notes are prominently displayed to users for transparent communication.
-
-**Display Features:**
-```javascript
-// HRTicketsTab.jsx - Notes Section
-{ticket.notes && ticket.notes.length > 0 && (
-  <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
-    <p className="text-xs text-blue-400 mb-3 font-medium">Admin Notes:</p>
-    <div className="space-y-3">
-      {ticket.notes.map((note, idx) => (
-        <div key={idx} className="bg-white/5 rounded-lg p-3">
-          <div className="flex items-start justify-between mb-2">
-            <span className="text-xs text-white/50">
-              {note.admin_email || 'Admin'}
-            </span>
-            <span className="text-xs text-white/40">
-              {new Date(note.created_at).toLocaleDateString()}
-            </span>
-          </div>
-          <p className="text-sm text-white/90">{note.note}</p>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
-```
-
-**Note Characteristics:**
-- Chronological display with timestamps
-- Admin attribution
-- Highlighted presentation for visibility
-- Real-time updates when fetching ticket details
-
-### Clean Sidebar Design
-
-**Features:**
-- Company logo and branding
-- User information display (name, email)
-- Chat history grouped by date (Today, Yesterday, 7 Days, etc.)
-- New chat creation
-- Session management (logout)
-
-**Removed Elements:**
-- No auto-populated PTO balance section
-- No recent PTO requests preview
-- No HR tickets preview
-- All status information moved to dedicated tabs
-
-**Rationale:**
-- Cleaner, less cluttered interface
-- Clear separation between navigation and status views
-- Dedicated tabs provide comprehensive information
-- Reduced cognitive load
-
-### Authentication & Authorization
-
-**JWT-Based Authentication:**
-```javascript
-// services/api.js
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Automatic token injection
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Automatic logout on 401
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      logout();
-      window.location.href = '/';
-    }
-    return Promise.reject(error);
-  }
-);
-```
-
-**Session Management:**
-- Token stored in localStorage
-- Automatic token validation on mount
-- Persistent sessions across page refreshes
-- Automatic logout on token expiration
-
-**Role-Based Routing:**
-```javascript
-// App.jsx - Role-Based Display
-if (userInfo?.role === 'super_admin') {
-  return <SuperAdminDashboard />;
-}
-
-if (userInfo?.role === 'company_admin') {
-  return <CompanyAdminDashboard />;
-}
-
-// Regular user interface
-return <UserChatInterface />;
-```
-
-### Chat History Management
-
-**Features:**
-- Automatic conversation saving
-- Time-based grouping (Today, Yesterday, This Week, etc.)
-- Chat search functionality
-- Individual chat deletion
-- Chat restoration on selection
-
-**Implementation:**
-```javascript
-// App.jsx - Chat History State
-const [chatHistory, setChatHistory] = useState(() => {
-  const saved = localStorage.getItem('chatHistory');
-  return saved ? JSON.parse(saved) : [];
-});
-
-// Save to localStorage on change
-useEffect(() => {
-  localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
-}, [chatHistory]);
-
-// Group by time
-const groupedChats = chatHistory.reduce((groups, chat) => {
-  const timeLabel = getTimeLabel(chat.timestamp);
-  if (!groups[timeLabel]) {
-    groups[timeLabel] = [];
-  }
-  groups[timeLabel].push(chat);
-  return groups;
-}, {});
-```
-
-### Responsive Design
-
-**Tailwind CSS Implementation:**
-- Mobile-first approach
-- Adaptive layouts for different screen sizes
-- Touch-friendly interface elements
-- Responsive sidebar with resizing capability
-
-**Glassmorphism Design:**
 ```css
-/* index.css - Glass Effect */
+/* Core Glass Effect */
 .glass-card {
   @apply backdrop-blur-xl bg-white/10 border border-white/10 rounded-2xl;
-}
-
-.sidebar-glass {
-  background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
 }
 ```
 
-**Visual Effects:**
-- Floating orb animations
-- Smooth transitions
-- Hover states
-- Loading animations
+- **Translucency**: UI cards use alpha-channel backgrounds (`bg-white/10`) with `backdrop-filter: blur(20px)` to create a frosted glass effect that adapts to the dynamic gradient backgrounds.
+- **Micro-Interactions**: Elements feature subtle hover states (`scale-105`, `brightness-110`) and smooth transitions (`transition-all duration-300`) to provide tactile feedback.
+- **Typography**: High-contrast, sans-serif typography ensures readability against complex backgrounds.
 
-### Error Handling
+---
 
-**Connection Status Indicator:**
-```javascript
-// ConnectionStatus.jsx
-const [isConnected, setIsConnected] = useState(true);
+## 3. Core Features
 
-useEffect(() => {
-  const checkConnection = async () => {
-    try {
-      await axios.get(`${API_BASE_URL}/docs`);
-      setIsConnected(true);
-    } catch (error) {
-      setIsConnected(false);
-    }
-  };
-  
-  const interval = setInterval(checkConnection, 30000);
-  return () => clearInterval(interval);
-}, []);
-```
+### 3.1 Unified Chat Interface
+The heart of the application is the chat interface, which abstracts the complexity of the underlying multi-agent system.
+- **Real-time Streaming**: (Planned) Architecture supports streaming token responses for lower perceived latency.
+- **Source Attribution**: RAG responses visually distinguish "citations" with clickable source links.
+- **Agent Awareness**: The UI dynamically indicates which agent is active (e.g., "Answering via **PTO Agent**").
 
-**Error Messages:**
-- Network connectivity issues
-- Authentication failures
-- API errors with context
-- User-friendly error descriptions
+### 3.2 Administrative Dashboards
+- **Company Admin**: Provides a localized view of organization-specific metrics, PTO approval queues, and staff lists.
+- **Super Admin**: A global command center for provisioning new company tenants and monitoring system-wide health.
 
-## API Integration
+### 3.3 Monitoring Dashboard
+A React-based visualization suite using **Recharts** to render real-time telemetry from the backend.
+- Displays request latency distributions.
+- Visualizes agent utilization rates (RAG vs. PTO vs. Website Extraction).
 
-### Service Layer
+---
 
-All API interactions are centralized in `src/services/api.js`:
+## 4. Technical Implementation
 
-**Authentication:**
-```javascript
-export const login = async (email, password) => {
-  const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
-    email,
-    password,
-  });
-  
-  localStorage.setItem('access_token', response.data.access_token);
-  localStorage.setItem('user_email', response.data.email);
-  localStorage.setItem('user_company', response.data.company);
-  
-  return response.data;
-};
+### 4.1 Technology Stack
 
-export const logout = () => {
-  localStorage.removeItem('access_token');
-  localStorage.removeItem('user_email');
-  localStorage.removeItem('user_company');
-};
+| Category | Technology | Rationale |
+|----------|------------|-----------|
+| **Core** | React 18 | Concurrent features, massive ecosystem. |
+| **Build Tool** | Vite | Extremely fast HMR (Hot Module Replacement) and optimized production builds. |
+| **Styling** | Tailwind CSS | Utility-first CSS for rapid, consistent design system implementation. |
+| **HTTP Client** | Axios | Rich feature set including interceptors for JWT management. |
+| **Charts** | Recharts | Composable, reliable charting library for dashboards. |
 
-export const getUserInfo = async () => {
-  const response = await apiClient.get('/api/auth/me');
-  return response.data;
-};
-```
+### 4.2 Performance Optimization
+- **Code Splitting**: Vite automatically chunks vendor libraries separately from application code.
+- **Lazy Loading**: Route-based code splitting ensures admin dashboard bundles are not loaded for regular users.
+- **Memoization**: `useMemo` and `useCallback` are employed in data-heavy views (like the Monitoring Dashboard) to prevent unnecessary re-renders.
 
-**Unified Chat:**
-```javascript
-export const sendChatMessage = async (message) => {
-  const response = await apiClient.post('/api/chat/message', { message });
-  return response.data;
-};
-```
+---
 
-**PTO Management:**
-```javascript
-export const getPTOBalance = async () => {
-  const response = await apiClient.get('/api/pto/balance');
-  return response.data;
-};
+## 5. Development & Deployment
 
-export const getPTORequests = async () => {
-  const response = await apiClient.get('/api/pto/requests');
-  return response.data;
-};
-```
-
-**HR Tickets:**
-```javascript
-export const getMyHRTickets = async () => {
-  const response = await apiClient.get('/api/hr-tickets/my-tickets');
-  return response.data;
-};
-
-export const getHRTicketDetails = async (ticketId) => {
-  const response = await apiClient.get(`/api/hr-tickets/${ticketId}`);
-  return response.data;
-};
-```
-
-## Styling
-
-### Tailwind CSS Configuration
-
-```javascript
-// tailwind.config.js
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {
-      colors: {
-        // Custom color palette
-      },
-      animation: {
-        'float-orb': 'float 6s ease-in-out infinite',
-        'pulse-glow': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-      },
-    },
-  },
-  plugins: [],
-}
-```
-
-### Design System
-
-**Color Palette:**
-- Primary: Dark background with gradient overlays
-- Accent: White with varying opacity levels
-- Status Colors:
-  - Pending: Yellow (`text-yellow-400`)
-  - Approved/Resolved: Green (`text-green-400`)
-  - Denied/Closed: Red (`text-red-400`)
-  - In Progress: Blue (`text-blue-400`)
-  - Scheduled: Purple (`text-purple-400`)
-
-**Typography:**
-- Font Family: System font stack
-- Headings: Bold, high contrast
-- Body Text: White with 90% opacity
-- Secondary Text: White with 50-60% opacity
-
-**Spacing:**
-- Consistent padding and margins using Tailwind's spacing scale
-- Card padding: `px-6 py-4`
-- Section spacing: `space-y-6`
-
-## Development
-
-### Environment Configuration
+### 5.1 Local Setup
 
 ```bash
-# .env
-VITE_API_URL=http://localhost:8000
-```
-
-### Development Server
-
-```bash
-# Start with hot reload
-npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-```
-
-### Code Organization
-
-**Component Structure:**
-```javascript
-// Standard component template
-import React, { useState, useEffect } from 'react';
-import { apiFunction } from '../services/api';
-
-const ComponentName = ({ prop1, prop2 }) => {
-  const [state, setState] = useState(initialValue);
-
-  useEffect(() => {
-    // Side effects
-  }, [dependencies]);
-
-  const handleEvent = () => {
-    // Event handler logic
-  };
-
-  return (
-    <div className="tailwind-classes">
-      {/* JSX content */}
-    </div>
-  );
-};
-
-export default ComponentName;
-```
-
-**State Management:**
-- React hooks for local state
-- Props for parent-child communication
-- localStorage for persistence
-- No external state management library (Redux, etc.)
-
-### Best Practices
-
-**Component Guidelines:**
-- Single responsibility principle
-- Reusable, composable components
-- Props validation through PropTypes or TypeScript
-- Clear naming conventions
-
-**Performance:**
-- Memoization for expensive calculations
-- Lazy loading for large components
-- Debouncing for search inputs
-- Efficient re-rendering strategies
-
-**Accessibility:**
-- Semantic HTML elements
-- ARIA labels where necessary
-- Keyboard navigation support
-- Screen reader compatibility
-
-## Testing
-
-
-### Testing Tools
-
-```bash
-# Install testing dependencies
-npm install --save-dev @testing-library/react @testing-library/jest-dom vitest
-
-# Run tests (when implemented)
-npm run test
-```
-
-## Deployment
-
-### Build Process
-
-```bash
-# Production build
-npm run build
-
-# Output: dist/ directory
-# - Optimized JavaScript bundles
-# - Minified CSS
-# - Static assets
-```
-
-### Environment Variables
-
-**Production Configuration:**
-```bash
-# .env.production
-VITE_API_URL=https://api.yourcompany.com
-```
-
-**Docker Build Arguments:**
-The `VITE_API_URL` must be passed as a build argument during the Docker build process to be baked into the static files.
-
-```bash
-docker build --build-arg VITE_API_URL=https://api.yourcompany.com -t frontend .
-```
-
-### Hosting Options
-
-**Static Hosting:**
-- Vercel
-- Netlify
-- AWS S3 + CloudFront
-- GitHub Pages
-
-**Build Output:**
-```
-dist/
-├── index.html
-├── assets/
-│   ├── index-[hash].js
-│   ├── index-[hash].css
-│   └── [other-assets]
-└── favicon.ico
-```
-
-### Nginx Configuration Example
-
-```nginx
-server {
-    listen 80;
-    server_name yourdomain.com;
-
-    root /var/www/frontshiftai/dist;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    location /api {
-        proxy_pass http://backend:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
-
-## Troubleshooting
-
-### Common Issues
-
-**Backend Connection Failed:**
-```bash
-# Verify backend is running
-curl http://localhost:8000/docs
-
-# Check VITE_API_URL in .env
-cat .env
-
-# Ensure CORS is configured on backend
-```
-
-**Build Errors:**
-```bash
-# Clear node_modules and reinstall
-rm -rf node_modules package-lock.json
+# 1. Install dependencies
 npm install
 
-# Clear Vite cache
-rm -rf node_modules/.vite
+# 2. Environment Setup
+cp .env.example .env
+# Set VITE_API_URL=http://localhost:8000
+
+# 3. Start Development Server
+npm run dev
 ```
 
-**Authentication Issues:**
-```bash
-# Clear localStorage
-localStorage.clear()
+### 5.2 Production Build
 
-# Check token in browser DevTools
-localStorage.getItem('access_token')
+The application is containerized using a multi-stage Docker build for optimal image size.
 
-# Verify token with backend
-curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/auth/me
+1.  **Build Stage**: Uses Node.js to compile the React assets (`npm run build`).
+2.  **Runtime Stage**: Uses Nginx (Alpine) to serve the static assets.
+3.  **Result**: A lightweight (~50MB) container ready for Cloud Run.
+
+```dockerfile
+# Simplified Dockerfile flow
+FROM node:18-alpine as builder
+RUN npm run build
+
+FROM nginx:alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
 ```
 
-**UI Not Updating:**
-```bash
-# Hard refresh (Ctrl+Shift+R or Cmd+Shift+R)
-# Clear browser cache
-# Check React DevTools for state changes
-```
-
-## Browser Support
-
-**Supported Browsers:**
-- Chrome/Edge (latest 2 versions)
-- Firefox (latest 2 versions)
-- Safari (latest 2 versions)
-
-**Required Features:**
-- ES6+ JavaScript support
-- CSS Grid and Flexbox
-- localStorage API
-- Fetch API
-- WebSocket (future feature)
-
-## Performance Optimization
-
-**Current Optimizations:**
-- Code splitting via Vite
-- Tree shaking for unused code
-- Asset optimization (images, fonts)
-- Lazy loading for large components
-
-**Future Improvements:**
-- Service worker for offline support
-- Progressive Web App (PWA) capabilities
-- Virtual scrolling for long lists
-- Image lazy loading
-- Component-level code splitting
-
-## Future Enhancements
-
-**Planned Features:**
-- Real-time updates via WebSocket
-- Notification system
-- File upload support for documents
-- Advanced search and filtering
-- Dark/light theme toggle
-- Multi-language support (i18n)
-- Mobile application (React Native)
-
-**UI/UX Improvements:**
-- Drag-and-drop file upload
-- Rich text editor for messages
-- Emoji picker
-- Markdown rendering
-- Syntax highlighting for code blocks
-- PDF preview in browser
-
-## Resources
-
-- **React Documentation**: https://react.dev
-- **Vite Documentation**: https://vitejs.dev
-- **Tailwind CSS**: https://tailwindcss.com
-- **Axios**: https://axios-http.com
-
-## Default Credentials
-
-```
-Super Admin:
-  Email: admin@group9.com
-  Password: admin123
-
-Company Admin:
-  Email: admin@crousemedical.com
-  Password: admin123
-
-Regular User:
-  Email: user@crousemedical.com
-  Password: password123
-```
+---
 
 ## License
-
-Copyright 2025 FrontShiftAI. All rights reserved.
+Proprietary software developed for FrontShiftAI.

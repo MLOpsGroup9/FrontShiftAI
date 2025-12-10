@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const MessageInput = ({ onSendMessage, isLoading, messages = [], placeholder, onOpenVoiceMode }) => {
+const MessageInput = ({ onSendMessage, isLoading, messages = [], placeholder, onOpenVoiceMode, onStop }) => {
   const [message, setMessage] = useState('');
   const hasMessages = messages.length > 0;
 
@@ -41,7 +41,7 @@ const MessageInput = ({ onSendMessage, isLoading, messages = [], placeholder, on
 
   return (
     <div className={`${containerClasses} transition-all duration-500`}>
-        <form onSubmit={handleSubmit} className={`${formClasses} transition-all duration-500`}>
+      <form onSubmit={handleSubmit} className={`${formClasses} transition-all duration-500`}>
         <div className={`${composerClasses} transition-all duration-500`}>
           <textarea
             rows={3}
@@ -54,12 +54,6 @@ const MessageInput = ({ onSendMessage, isLoading, messages = [], placeholder, on
           />
 
           <div className="absolute bottom-4 right-4 flex items-center gap-2 flex-wrap justify-end">
-            <button type="button" className={agentButtonClasses} title="Open agent tools">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-              </svg>
-              <span>Agent</span>
-            </button>
             <button
               type="button"
               onClick={onOpenVoiceMode}
@@ -70,16 +64,30 @@ const MessageInput = ({ onSendMessage, isLoading, messages = [], placeholder, on
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
               </svg>
             </button>
-            <button
-              type="submit"
-              disabled={!message.trim() || isLoading}
-              className="w-11 h-11 flex items-center justify-center rounded-2xl bg-gradient-to-br from-white/90 to-white/60 text-black/70 shadow-[0_12px_25px_rgba(15,15,20,0.55)] disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_15px_30px_rgba(15,15,20,0.65)] transition-all active:scale-95"
-              title="Send message"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12l14-7-7 14-2-5-5-2z" />
-              </svg>
-            </button>
+
+            {isLoading ? (
+              <button
+                type="button"
+                onClick={onStop}
+                className="w-11 h-11 flex items-center justify-center rounded-2xl bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 hover:border-red-500/50 shadow-[0_12px_25px_rgba(255,50,50,0.15)] transition-all active:scale-95"
+                title="Stop generation"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={!message.trim()}
+                className="w-11 h-11 flex items-center justify-center rounded-2xl bg-gradient-to-br from-white/90 to-white/60 text-black/70 shadow-[0_12px_25px_rgba(15,15,20,0.55)] disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_15px_30px_rgba(15,15,20,0.65)] transition-all active:scale-95"
+                title="Send message"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12l14-7-7 14-2-5-5-2z" />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
       </form>

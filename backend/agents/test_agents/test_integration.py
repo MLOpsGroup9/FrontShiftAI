@@ -26,7 +26,7 @@ class TestPTOAgentIntegration:
         result = await agent.execute(
             user_email=sample_pto_balance.email,
             company=sample_pto_balance.company,
-            message="I need 3 days off from December 24 to December 26"
+            message="I need 3 days off from December 24 to December 26 for vacation"
         )
         
         # Verify response
@@ -72,7 +72,7 @@ class TestPTOAgentIntegration:
         result = await agent.execute(
             user_email=sample_pto_balance.email,
             company=sample_pto_balance.company,
-            message="I need 20 days off next month"
+            message="I need 20 days off next month for a world tour"
         )
         
         # Should reject due to insufficient balance
@@ -202,7 +202,7 @@ class TestMultiAgentInteraction:
         pto_result = await pto_agent.execute(
             user_email=sample_user.email,
             company=sample_user.company,
-            message="I need 3 days off next week"
+            message="I need 3 days off next week for vacation"
         )
         
         assert pto_result['response'] is not None
@@ -230,14 +230,14 @@ class TestMultiAgentInteraction:
         result1 = await agent.execute(
             user_email=sample_pto_balance.email,
             company=sample_pto_balance.company,
-            message="I need 3 days off December 1-3"
+            message="I need 3 days off December 1-3 for vacation"
         )
         
         # Second request (different dates)
         result2 = await agent.execute(
             user_email=sample_pto_balance.email,
             company=sample_pto_balance.company,
-            message="I need 2 days off December 10-11"
+            message="I need 2 days off December 10-11 for personal reasons"
         )
         
         # Both should process (success depends on balance)
@@ -260,7 +260,7 @@ class TestWorkflowStateConsistency:
         result = await agent.execute(
             user_email=sample_pto_balance.email,
             company=sample_pto_balance.company,
-            message="I need 3 days off next week"
+            message="I need 3 days off next week for moving house"
         )
         
         # Verify result structure

@@ -46,6 +46,7 @@ keys/
 
 #logs
 data_pipeline/logs/
+logs/
 
 # Data 
 /data/

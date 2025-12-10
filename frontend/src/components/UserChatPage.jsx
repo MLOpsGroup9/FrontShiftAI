@@ -11,7 +11,8 @@ const UserChatPage = ({
   onSendMessage,
   userInfo,
   isSidebarOpen,
-  onOpenSidebar
+  onOpenSidebar,
+  onStop
 }) => {
   const [activeTab, setActiveTab] = useState('chat');
   const [isVoiceModeOpen, setIsVoiceModeOpen] = useState(false);
@@ -46,31 +47,28 @@ const UserChatPage = ({
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setActiveTab('chat')}
-              className={`px-4 py-2 rounded-lg text-sm transition-all ${
-                activeTab === 'chat'
+              className={`px-4 py-2 rounded-lg text-sm transition-all ${activeTab === 'chat'
                   ? 'bg-white/10 border border-white/10 text-white'
                   : 'bg-white/5 border border-white/10 text-white/60 hover:bg-white/10 hover:text-white/80'
-              }`}
+                }`}
             >
               Chat
             </button>
             <button
               onClick={() => setActiveTab('pto')}
-              className={`px-4 py-2 rounded-lg text-sm transition-all ${
-                activeTab === 'pto'
+              className={`px-4 py-2 rounded-lg text-sm transition-all ${activeTab === 'pto'
                   ? 'bg-white/10 border border-white/10 text-white'
                   : 'bg-white/5 border border-white/10 text-white/60 hover:bg-white/10 hover:text-white/80'
-              }`}
+                }`}
             >
               PTO Requests
             </button>
             <button
               onClick={() => setActiveTab('hr')}
-              className={`px-4 py-2 rounded-lg text-sm transition-all ${
-                activeTab === 'hr'
+              className={`px-4 py-2 rounded-lg text-sm transition-all ${activeTab === 'hr'
                   ? 'bg-white/10 border border-white/10 text-white'
                   : 'bg-white/5 border border-white/10 text-white/60 hover:bg-white/10 hover:text-white/80'
-              }`}
+                }`}
             >
               HR Tickets
             </button>
@@ -89,12 +87,13 @@ const UserChatPage = ({
               messages={messages}
               placeholder="Ask about PTO, HR policies, benefits, or schedule a meeting..."
               onOpenVoiceMode={() => setIsVoiceModeOpen(true)}
+              onStop={onStop}
             />
           </>
         )}
-        
+
         {activeTab === 'pto' && <PTORequestsTab userInfo={userInfo} />}
-        
+
         {activeTab === 'hr' && <HRTicketsTab userInfo={userInfo} />}
       </div>
     </div>

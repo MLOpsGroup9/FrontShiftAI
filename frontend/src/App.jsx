@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Toaster } from 'sonner';
 import Sidebar from './components/Sidebar';
@@ -26,6 +26,7 @@ function App() {
   const [isResizing, setIsResizing] = useState(false);
   const [currentChatId, setCurrentChatId] = useState(null);
   const [chatHistory, setChatHistory] = useState([]);
+  const abortControllerRef = useRef(null);
 
   // Sidebar state
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
@@ -249,6 +250,15 @@ function App() {
     };
   }, [isResizing]);
 
+  const handleStopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsLoading(false);
+      console.log('🛑 Generation stopped by user');
+    }
+  };
+
   const handleSendMessage = async (message) => {
     const userMessage = {
       role: 'user',
@@ -262,6 +272,12 @@ function App() {
     try {
       console.log('📤 Sending message to smart router:', message);
 
+      // Create new abort controller for this request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+
       const token = localStorage.getItem('access_token');
       const response = await axios.post(
         `${API_BASE_URL}/api/chat/message`,
@@ -273,7 +289,8 @@ function App() {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
-          }
+          },
+          signal: abortControllerRef.current.signal
         }
       );
 
@@ -321,6 +338,9 @@ function App() {
         errorMsg = '🔌 Cannot connect to backend. Please ensure the backend server is running on port 8000.';
       } else if (error.response?.data?.detail) {
         errorMsg = `Backend error: ${error.response.data.detail}`;
+      } else if (error.name === 'Canceled') {
+        // Request was aborted by user
+        return;
       }
 
       const errorMessage = {
@@ -416,6 +436,7 @@ function App() {
             userInfo={userInfo}
             isSidebarOpen={isSidebarOpen}
             onOpenSidebar={() => setIsSidebarOpen(true)}
+            onStop={handleStopGeneration}
           />
         </div>
       </div>
