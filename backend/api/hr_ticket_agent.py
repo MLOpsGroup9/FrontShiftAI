@@ -73,7 +73,7 @@ async def create_ticket_via_chat(
         )
         
         # Log ticket creation metric
-        if result["ticket_created"]:
+        if result["ticket_created"] and production_monitor.run:
             production_monitor.run.log({
                 "business/hr_ticket_created": 1,
                 "business/company": current_user["company"],
@@ -193,12 +193,13 @@ def cancel_ticket(
     
     # Log cancellation metric
     execution_time_ms = (time.time() - start_time) * 1000
-    production_monitor.run.log({
-        "business/hr_ticket_cancelled": 1,
-        "business/company": current_user["company"],
-        "business/cancellation_time_ms": execution_time_ms,
-        "timestamp": time.time()
-    })
+    if production_monitor.run:
+        production_monitor.run.log({
+            "business/hr_ticket_cancelled": 1,
+            "business/company": current_user["company"],
+            "business/cancellation_time_ms": execution_time_ms,
+            "timestamp": time.time()
+        })
     
     return SimpleResponse(
         message="Ticket cancelled successfully",
@@ -299,12 +300,13 @@ def pick_ticket(
     
     # Log ticket pickup
     execution_time_ms = (time.time() - start_time) * 1000
-    production_monitor.run.log({
-        "business/hr_ticket_picked_up": 1,
-        "business/company": current_user["company"],
-        "business/pickup_time_ms": execution_time_ms,
-        "timestamp": time.time()
-    })
+    if production_monitor.run:
+        production_monitor.run.log({
+            "business/hr_ticket_picked_up": 1,
+            "business/company": current_user["company"],
+            "business/pickup_time_ms": execution_time_ms,
+            "timestamp": time.time()
+        })
     
     return SimpleResponse(
         message="Ticket assigned to you",
@@ -349,12 +351,13 @@ def schedule_meeting(
     
     # Log meeting scheduled
     execution_time_ms = (time.time() - start_time) * 1000
-    production_monitor.run.log({
-        "business/hr_meeting_scheduled": 1,
-        "business/company": current_user["company"],
-        "business/schedule_time_ms": execution_time_ms,
-        "timestamp": time.time()
-    })
+    if production_monitor.run:
+        production_monitor.run.log({
+            "business/hr_meeting_scheduled": 1,
+            "business/company": current_user["company"],
+            "business/schedule_time_ms": execution_time_ms,
+            "timestamp": time.time()
+        })
     
     return SimpleResponse(
         message="Meeting scheduled successfully",
@@ -407,7 +410,8 @@ def resolve_ticket(
     if resolution_time_hours:
         metrics["business/hr_ticket_resolution_time_hours"] = resolution_time_hours
     
-    production_monitor.run.log(metrics)
+    if production_monitor.run:
+        production_monitor.run.log(metrics)
     
     return SimpleResponse(
         message=f"Ticket {request.status.value} successfully",
