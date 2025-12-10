@@ -5,127 +5,181 @@
 
 ---
 
-## 1. GCP Cloud Monitoring (Infrastructure) ✅
+## 1. General Implementation Overview
 
-Infrastructure-level monitoring handles the "health" of the underlying services (Cloud Run, Cloud SQL).
+We have implemented a comprehensive monitoring strategy that covers both infrastructure health and application performance. This dual-layer approach ensures we can detect issues at the server level (e.g., high CPU, memory leaks) as well as the logic level (e.g., agent hallucinations, API latency).
 
-### Metrics Tracked
-- **Request Count**: Volume of incoming traffic
-- **Response Latency (p95)**: 95th percentile latency (user experience)
-- **Error Rate (5xx)**: Server-side errors
-- **CPU Utilization**: Container resource usage
-- **Memory Utilization**: Container memory usage
-- **Container Instance Count**: Auto-scaling behavior (0-10 instances)
-
----
-
-## 2. GCP Alerts ✅
-
-Proactive alerting system configured to notify administrators of critical issues.
-
-| Alert Name | Condition | Duration | Notification |
-|------------|-----------|----------|--------------|
-| **High Error Rate** | > 10 errors/min | 5 min | Email (group9mlops@gmail.com) |
-| **High Response Latency** | > 3 seconds | 5 min | Email |
-| **High CPU Usage** | > 80% utilization | 5 min | Email |
+### Key Components:
+1.  **Infrastructure Monitoring (GCP)**: Focuses on the "health" of the underlying services like Cloud Run and Cloud SQL.
+    *   **Goal**: Ensure 99.9% uptime and auto-scale effectively during load spikes.
+    *   **Scope**: CPU, Memory, Network I/O, Disk usage, and Database connection pools.
+2.  **Application Monitoring (Weights & Biases)**: Focuses on the "intelligence" and business logic.
+    *   **Goal**: Validate the quality of AI responses and track business KPIs.
+    *   **Scope**: Agent hallucinations, tool usage frequency, token consumption, and specific business outcomes (e.g., PTO approved).
+3.  **Alerting**: Automated notifications via email when critical thresholds are breached (e.g., error rates > 10/min).
 
 ---
 
-## 3. WANDB Request Monitoring (Application) ✅
+## 2. Weights & Biases Monitoring (Detailed)
 
-Application-level request tracking logging every API hit to Weights & Biases.
+Weights & Biases (W&B) is our primary tool for observing the behavior of our AI agents and the application logic. Unlike traditional logs which just say "error", W&B traces allow us to replay the exact conversation that led to a failure.
 
-| Metric | Description |
-|--------|-------------|
-| `request/endpoint` | API endpoint accessed (e.g., `/api/chat`) |
-| `request/method` | HTTP method (GET, POST) |
-| `request/status_code` | Response status (200, 403, 500) |
-| `request/latency_ms` | Processing time in milliseconds |
-| `request/success` | Binary indicator (1=success) |
-| `request/error` | Binary indicator (1=error) |
-| `request/company_id` | Multi-tenant isolation tracking |
-| `request/user_id` | User activity tracking |
+### 2.1 Overall System Health
+The main dashboard provides a high-level view of the entire system's pulse. We track:
+*   **System Metrics**: GPU/CPU usage of the inference server (if applicable) or the container handling the logic.
+*   **Memory Usage**: Tracking RAM consumption to identify potential memory leaks in our Python application, specifically during heavy RAG processing.
+*   **Disk I/O**: Monitoring read/write speeds, which is crucial for vector database lookups.
 
----
+![System Monitoring](images/system_monitoring_1.png)
+*Figure 2.1: System resources and high-level request tracking.*
 
-## 4. WANDB Agent Monitoring (Business Logic) ✅
+### 2.2 Production Dashboard
+This view focuses on production-specific metrics, separating dev/test traffic from real user interactions. It helps us correlate user activity with system load.
+*   **Active Users**: Real-time count of unique users interacting with the system.
+*   **Request Latency**: We track P50, P90, and P99 latency. reliable P99 latency is critical for user experience in chat applications.
+*   **Tokens per Second**: A key metric for the LLM; drops in this metric indicate upstream provider (OpenAI/Gemini) latency or network bottlenecks.
 
-Performance metrics for specific AI agents.
+![Production Dashboard](images/production_1.png)
+*Figure 2.2: Overall Production Dashboard showing active users and request success rates.*
 
-| Agent | Metric | Description |
-|-------|--------|-------------|
-| **PTO** | `agent/pto/execution_time_ms` | Time to process PTO request |
-| | `agent/pto/success` | Successful completion |
-| | `agent/pto/failure` | Failed execution |
-| **HR Ticket** | `agent/hr_ticket/execution_time_ms` | Time to process ticket |
-| | `agent/hr_ticket/success` | Successful completion |
-| **RAG** | `agent/rag/execution_time_ms` | Retrieval & Generation time |
-| | `agent/rag/success` | Successful query |
-| **Website** | `agent/website_extraction/execution_time_ms` | Scraper performance |
+![Production Details](images/production_2.png)
+*Figure 2.3: Detailed metric breakdown for production traffic.*
 
----
+### 2.3 Agent Evaluations
+We have specific monitoring for each of our AI agents to ensure they are performing their specific tasks correctly.
 
-## 5. WANDB Business Metrics (KPIs) ✅
+#### Summary of Agents
+A consolidated view of all agent performances. This allows us to compare:
+*   **Success Rate by Agent**: Which agent fails the most?
+*   **Cost per Agent**: Which agent consumes the most tokens?
+*   **Latency by Agent**: Which agent is the slowest? (Usually RAG agents are slower than transactional agents).
 
-High-level business value metrics.
+![Agent Summary](images/agent_eval_summary.png)
+*Figure 2.4: Comparative summary of all agent performance metrics.*
 
-### PTO System
-- `business/pto_request_created`: New PTO submission
-- `business/pto_approved`: Admin approval count
-- `business/pto_denied`: Admin denial count
-- `business/pto_days_approved`: Total days approved
-- `business/pto_days_denied`: Total days denied
+#### PTO Agent
+Tracks the specific workflow of PTO requests. We monitor:
+*   **Intent Classification Confidence**: How sure was the agent that the user wanted PTO?
+*   **Tool Usage**: Did the agent correctly call the `check_balance` tool before `submit_request`?
+*   **Slot Filling**: Did the agent successfully extract "start date", "end date", and "reason" from the user's prompt?
 
-### HR Ticket System
-- `business/hr_ticket_created`: New ticket count
-- `business/hr_ticket_cancelled`: Cancellation count
-- `business/hr_ticket_picked_up`: Admin pickup events
-- `business/hr_meeting_scheduled`: Scheduled meetings
-- `business/hr_ticket_resolved`: Resolution events
-- `business/hr_ticket_resolution_time_hours`: Time to resolve
+![PTO Agent](images/agent_eval_PTO.png)
+*Figure 2.5: Detailed traces and metrics for the PTO Agent.*
 
----
+#### HR Ticket Agent
+Monitors the creation, cancellation, and resolution of HR tickets.
+*   **RAG Relevance**: We measure the cosine similarity distance of retrieved documents. Low similarity scores trigger alerts for "potentially irrelevant answers".
+*   **Resolution Time**: The time between ticket creation and "resolved" status.
+*   **Document Retrieval Count**: How many documents were needed to answer the question? (Too many might indicate poor indexing).
 
-## 6. WANDB Database Monitoring ✅
+![HR Ticket Agent](images/agent_eval_hrticket.png)
+*Figure 2.6: HR Ticket Agent performance and tool usage attributes.*
 
-Query performance tracking to identify slow database operations.
+#### Website Agent
+Tracks the performance of the web scraper and content extractor.
+*   **Scraping Success Rate**: Percentage of URLs successfully parsed.
+*   **HTML Parsing Time**: Time taken to convert raw HTML to clean markdown for the LLM.
+*   **Token Count of Content**: We monitor if scraped pages are too large, which would overflow the LLM's context window.
 
-| Query Type | Metric |
-|------------|--------|
-| PTO Balance Check | `database/pto_balance_check/execution_time_ms` |
-| View PTO Requests | `database/pto_requests_list/execution_time_ms` |
-| Admin View PTO | `database/admin_pto_requests/execution_time_ms` |
-| View HR Tickets | `database/hr_tickets_user_list/execution_time_ms` |
-| Ticket Details | `database/hr_ticket_detail/execution_time_ms` |
-| Admin Ticket Queue | `database/admin_hr_ticket_queue/execution_time_ms` |
-| Ticket Stats | `database/hr_ticket_stats/execution_time_ms` |
-| Rows Affected | `database/*/rows_affected` |
+![Website Agent](images/agent_eval_Website.png)
+*Figure 2.7: Website extraction agent metrics.*
 
----
+### 2.4 Core Model Evaluation
+We also track the underlying LLM's performance.
+*   **Hallucination Rate**: We use a custom "groundedness" score to estimate how much of the answer is supported by the retrieved context.
+*   **Sentiment Analysis**: Monitoring the sentiment of user queries (frustrated users?) vs. agent responses (polite agent?).
 
-## 7. Code-Based Alerts (Real-time) ✅
+![Core Eval 1](images/core_eval_1.png)
+*Figure 2.8: Core model evaluation metrics (Part 1).*
 
-The `ProductionMonitor` class implements immediate checking against defined thresholds.
-
-| Threshold | Limit | Action |
-|-----------|-------|--------|
-| **Request Latency** | > 3000ms | Log Warning + W&B Alert |
-| **Error Rate** | > 5% | Log Warning + W&B Alert |
-| **Agent Success Rate** | < 90% | Log Warning + W&B Alert |
-| **Database Query** | > 1000ms | Log Warning + W&B Alert |
-| **Agent Execution** | > 5000ms | Log Warning + W&B Alert |
+![Core Eval 2](images/core_eval_2.png)
+*Figure 2.9: Core model evaluation metrics (Part 2).*
 
 ---
 
-## Summary
+## 3. Cloud Infrastructure Monitoring (GCP)
 
-| Component | Count | Status |
-|-----------|-------|--------|
-| **GCP Infrastructure Metrics** | 6 | ✅ Deployed |
-| **GCP Alerts** | 3 | ✅ Deployed |
-| **WANDB Request Metrics** | 8 | ✅ Coded |
-| **WANDB Agent Metrics** | 12+ | ✅ Coded |
-| **WANDB Business Metrics** | 11 | ✅ Coded |
-| **WANDB Database Metrics** | 7+ | ✅ Coded |
-| **Code-Based Alerts** | 5 | ✅ Coded |
-| **TOTAL METRICS** | **52+** | **✅** |
+Google Cloud Monitoring gives us visibility into the operational state of our containers and databases. This is the "Engine Room" view.
+
+### 3.1 Cloud Run (Compute)
+We monitor our containerized application running on Cloud Run.
+*   **Request Count**: Total incoming requests per second. Used to determine when to scale up.
+*   **Container Instance Count**: Verifies auto-scaling. If we see request count go up but instance count stay flat, we have a scaling configuration issue.
+*   **CPU & Memory Utilization**:
+    *   **CPU**: High usage (>80%) triggers auto-scaling.
+    *   **Memory**: High usage might indicate a memory leak in our Python application (e.g., pandas dataframes not being cleared).
+*   **Startup Latency**: Time it takes for a new container to spin up (Cold Start). We optimize this to keep user wait times low.
+
+![Cloud Run Metrics 1](images/cloud_run_monitoring_1.png)
+*Figure 3.1: Request counts and container instance scaling.*
+
+![Cloud Run Metrics 2](images/cloud_run_monitoring_2.png)
+*Figure 3.2: CPU utilization metrics for Cloud Run services.*
+
+![Cloud Run Metrics 3](images/cloud_run_monitoring_3.png)
+*Figure 3.3: Memory utilization and network I/O.*
+
+### 3.2 Cloud SQL (Database)
+Monitoring the health of our PostgreSQL database is critical.
+*   **CPU Utilization**: Database CPU spikes usually indicate unoptimized queries (missing indexes).
+*   **Storage Usage**: Alerts set at 80% capacity to prevent database freeze.
+*   **Active Connections**: We monitor this against our `max_connections` limit. If this spikes, our connection pooling (SQLAlchemy) might be misconfigured.
+*   **Transaction/Query Latency**: Which specific queries are slow? (e.g., `SELECT * FROM embeddings` is expensive).
+
+![Cloud SQL Overview](images/cloud_monitoring_sql.png)
+*Figure 3.4: General Cloud SQL instance health.*
+
+![Postgres Metrics](images/cloud_monitoring_postgres.png)
+*Figure 3.5: Detailed PostgreSQL metrics including active connections and transaction rates.*
+
+### 3.3 Production Overview & Logs
+A unified view of the production environment within GCP.
+*   **Log Explorer**: Aggregates `stdout` and `stderr` from all containers. We use structured logging (JSON) to easily filter logs by `severity="ERROR"` or `component="backend"`.
+*   **Error Reporting**: Groups similar stack traces together so we know if 1000 errors are actually just 1 unique bug happening 1000 times.
+
+![Cloud Production](images/cloud_monitoring_prod.png)
+*Figure 3.6: Production environment overview in GCP.*
+
+![Cloud Logs](images/cloud_monitoring_logs.png)
+*Figure 3.7: Log Explorer view for tracing errors and system events.*
+
+---
+
+## 4. Admin & Multi-Tenancy Monitoring
+
+To support our multi-tenant B2B Architecture, we provide specific monitoring views for both our internal Super Admins and the Company-level Admins.
+
+### 4.1 Super Admin Dashboard
+This high-level view allows our internal support team to monitor the health of all tenant companies simultaneously.
+*   **Tenant Health**: Quickly identify if a specific company is experiencing API errors while others are fine.
+*   **Global Usage Stats**: Track total API consumption across the platform to forecast costs.
+*   **System Alerts**: Centralized view of all critical alerts (e.g., Database down) that affect multiple tenants.
+
+![Super Admin Dashboard](images/super_admin.png)
+*Figure 4.1: Internal Super Admin dashboard for global oversight.*
+
+### 4.2 Company Admin Dashboard
+Each customer (e.g., TechCorp) gets a tailored view of their own usage.
+*   **Usage Quotas**: Admins can see if they are approaching their monthly request limits.
+*   **User Activity**: Identifying who are the "Power Users" within their organization.
+*   **Feature Usage**: Understanding which agents (PTO, HR) are providing the most value to their employees.
+
+![Company Admin Dashboard](images/sample_company_admin.png)
+*Figure 4.2: Tenant-specific dashboard for company administrators.*
+
+---
+
+## 5. Summary & Improvements
+
+### Summary
+We have successfully implemented a robust "Full Stack" observability pipeline:
+1.  **Infrastructure Level**: GCP Metrics ensure our servers stay up, scale with demand, and our database remains responsive. We rely on P99 latency and error rate alerts here.
+2.  **Application Level**: W&B Traces ensure our code runs without errors and we can debug specific user sessions.
+3.  **Semantic Level**: W&B Evaluations ensure our Agents are meaningful, accurate, and not hallucinating. This is the most critical layer for an AI application.
+4.  **Business Level**: Admin dashboards provide transparency to our stakeholders and customers.
+
+### Future Improvements
+1.  **Unified Dashboard**: Currently, we have two separate places for metrics (GCP & W&B). We aim to export crucial GCP metrics into W&B for a "Single Pane of Glass" view.
+2.  **Cost Monitoring**: Add specific dashboards for tracking the cost per query/agent execution to optimize API spending.
+3.  **Automated Retraining Triggers**: Link W&B "Low Confidence" alerts directly to a dataset collection pipeline for future model fine-tuning.
+4.  **Canary Deployments**: Use monitoring metrics to automatically roll back deployments if error rates spike in the first 5 minutes.

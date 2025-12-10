@@ -1,5 +1,7 @@
 # FrontShiftAI
 
+![FrontShiftAI App](docs/images/frontend.png)
+
 **AI Concierge for the Deskless Workforce**
 
 ![Python](https://img.shields.io/badge/Python-3.12+-blue) ![React](https://img.shields.io/badge/React-18.2-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-0.104-green) ![Docker](https://img.shields.io/badge/Docker-Enabled-blue) ![GCP](https://img.shields.io/badge/GCP-Cloud%20Run-orange)
@@ -12,7 +14,7 @@
 
 *(Video submission link to be added here. Please insert YouTube or Loom link.)*
 
-[![Watch the Demo](https://img.youtube.com/vi/PLACEHOLDER/0.jpg)](https://www.youtube.com/watch?v=PLACEHOLDER)
+[![Watch the Demo](https://img.youtube.com/vi/PLACEHOLDER/0.jpg)](https://drive.google.com/drive/folders/1-BDy_7jMf0nWLNDfPSK6pi_NX8RqyYpC?usp=sharing)
 
 ---
 
@@ -143,7 +145,7 @@ For a detailed breakdown of all resources, see the [Deployment Guide](./deployme
 | **Backups** | **Automated** | Daily backups of SQL data (3 AM UTC); Immutable artifact versioning for Vector DBs. |
 
 ### System Diagram
-![System Architecture Diagram](./system_diagram.png)
+![System Architecture Diagram](./docs/images/system_diagram.png)
 
 ---
 
@@ -195,6 +197,26 @@ We utilize a dual-layer strategy to ensure reliability:
 - **Unit Tests**: `pytest` suite ensuring agent logic validity (`backend/tests`).
 - **Integration Tests**: Dockerized flows verifying SQL and Vector DB connectivity.
 - **Bias Analysis**: Automated scripts in `data_pipeline` measuring response handling across different demographic terminologies.
+
+---
+
+## ⚖️ Fairness & Bias Mitigation
+
+We actively monitor for **Representation Bias** to ensure equitable performance across all 19+ tenant organizations, regardless of their size or industry.
+
+### 1. Data Bias Analysis
+- **Metric**: Gini Coefficient of Handbook Volume.
+- **Current Score**: **0.250** (Low Imbalance).
+- **Finding**: While some companies have larger handbooks (e.g., *Buchheit Logistics* with ~13% of total data), the distribution remains healthy. No company suffers from "data poverty" (<10 chunks).
+
+### 2. Performance Proxies & Mitigation strategies
+| Risk Type | Indicator | Mitigation Strategy |
+| :--- | :--- | :--- |
+| **Retrieval Confusion** | Large Handbooks (>80 chunks) | **Adaptive Retrieval**: Increased `top_k` (6-8) to filter "distractor" chunks. |
+| **Hallucination** | Sparse Handbooks (<20 chunks) | **Confidence Thresholds**: Strict gating; Agent returns "I don't know" rather than inventing policy. |
+| **Term Frequency** | "Harassment" tag dominance (151x) | **Tag Enrichment**: Fine-tuning extraction agents to recognize niche policy categories. |
+
+*For a detailed report, see [Company Bias Analysis](./docs/company_bias_analysis.md).*
 
 ---
 
