@@ -57,9 +57,9 @@ To ensure 99.9% uptime and low latency, we employ a robust fallback strategy acr
 
 | Component | Main LLM | Backup Chain (in order) |
 | :--- | :--- | :--- |
-| **LLM Decider** (Routing) | **Groq**<br>(Llama 3.1 8B Instant) | 1. Mercury<br>2. OpenAI (GPT-4o-mini)<br>3. Local (Ollama/Llama 3) |
-| **Agentic Flow** (PTO/HR) | **Groq**<br>(Llama 3.1 8B Instant) | 1. Mercury<br>2. OpenAI (GPT-4o-mini)<br>3. Local (Ollama/Llama 3) |
-| **RAG Model** (Generator) | **Mercury**<br>(Custom Model) | 1. Groq<br>2. OpenAI (GPT-4o-mini)<br>3. Local (Llama 3.2 3B GGUF) |
+| **LLM Decider** (Routing) | **Groq**<br>(Llama 3.1 8B Instant) | 1. Mercury<br>2. OpenAI (GPT-4o-mini)|
+| **Agentic Flow** (PTO/HR) | **Groq**<br>(Llama 3.1 8B Instant) | 1. Mercury<br>2. OpenAI (GPT-4o-mini)|
+| **RAG Model** (Generator) | **Mercury**<br>(Custom Model) | 1. Groq<br>2. OpenAI (GPT-4o-mini)|
 
 ### 🏢 2. Multi-Tenant Architecture
 
