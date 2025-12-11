@@ -1,0 +1,162 @@
+name: Chat Pipeline - core eval Mac Self-Hosted Check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  mac-self-hosted:
+    runs-on: [self-hosted, macos]
+    timeout-minutes: 120
+
+    env:
+      LLAMA_MODEL_PATH: /Users/sriks/Documents/Projects/FrontShiftAI/models/Llama-3.2-3B-Instruct-Q4_K_M.gguf
+      GENERATION_BACKEND: local
+      TOKENIZERS_PARALLELISM: false
+      CHAT_PIPELINE_ALLOW_HEAVY_FALLBACKS: 1
+      CHAT_PIPELINE_EXECUTION_MODE: local
+
+      # 🔥 Fully disable Ray + multiprocessing everywhere
+      CHAT_PIPELINE_DISABLE_RAY: 1
+      RAY_DISABLE_AUTO_INIT: 1
+      RAY_USAGE_STATS_ENABLED: 0
+      RAY_memory_monitor_refresh_ms: 0
+      OMP_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      NUMEXPR_NUM_THREADS: 1
+
+    steps:
+      # -------------------------------
+      # Checkout Code
+      # -------------------------------
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      # -------------------------------
+      # Python Setup
+      # -------------------------------
+      - name: Validate Python
+        run: |
+          echo "Using system Python:"
+          which python3
+          python3 --version
+
+      - name: Install Dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install -r chat_pipeline/requirements.txt || true
+          pip3 install llama-cpp-python
+          pip3 install pyyaml
+
+      - name: Export PYTHONPATH
+        run: |
+          echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
+
+      # -------------------------------
+      # GCP Authentication
+      # -------------------------------
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      # -------------------------------
+      # Sync Vector DB (single-threaded)
+      # -------------------------------
+      - name: Sync vector DB from GCS (single-threaded)
+        run: |
+          mkdir -p chat_pipeline/data_pipeline/data/vector_db
+
+          gsutil \
+            -o "GSUtil:parallel_process_count=1" \
+            -o "GSUtil:parallel_thread_count=1" \
+            rsync -r \
+            gs://frontshiftai-data/data/vector_db \
+            chat_pipeline/data_pipeline/data/vector_db
+
+          echo "CHROMA_DIR=chat_pipeline/data_pipeline/data/vector_db" >> $GITHUB_ENV
+
+      # -------------------------------
+      # W&B Setup
+      # -------------------------------
+      - name: Set W&B Environment Variables
+        run: |
+          echo "WANDB_ENTITY=group9mlops-northeastern-university" >> $GITHUB_ENV
+          echo "WANDB_PROJECT=FrontShiftAI_Latest" >> $GITHUB_ENV
+
+      # -------------------------------
+      # CORE EVAL - FULL MODE
+      # -------------------------------
+      - name: Run Core Evaluation (Generate + Judge)
+        env:
+          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+        continue-on-error: true
+        run: |
+          python3 -m chat_pipeline.cli \
+            --config chat_pipeline/configs/experiments/core_eval_self_hosted.yaml \
+            --mode full \
+            --parallelism 1 \
+            --debug
+
+      # -------------------------------
+      # VERIFY GENERATION OUTPUTS
+      # -------------------------------
+      - name: Verify Generation Outputs
+        continue-on-error: true
+        run: |
+          echo "🔍 Listing evaluation results:"
+          ls -R chat_pipeline/results || true
+
+          MAIN_EXAMPLES="chat_pipeline/results/core_eval_main/examples.jsonl"
+          SLICES_EXAMPLES="chat_pipeline/results/core_eval_slices/examples.jsonl"
+
+          if [ -f "$MAIN_EXAMPLES" ]; then
+              echo "✅ Main examples generated: $MAIN_EXAMPLES"
+              echo "📊 Generated $(wc -l < $MAIN_EXAMPLES) examples"
+          else
+              echo "⚠️  Main examples not found (check logs above)"
+          fi
+
+          if [ -f "$SLICES_EXAMPLES" ]; then
+              echo "✅ Slices examples generated: $SLICES_EXAMPLES"
+              echo "📊 Generated $(wc -l < $SLICES_EXAMPLES) examples"
+          else
+              echo "⚠️  Slices examples not found (may be expected)"
+          fi
+
+      # -------------------------------
+      # Upload Artifacts
+      # -------------------------------
+      - name: Upload Evaluation Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-eval-results
+          path: |
+            chat_pipeline/results/
+            models/
+          retention-days: 30
+
+      # -------------------------------
+      # Summary
+      # -------------------------------
+      - name: Print Summary
+        if: always()
+        run: |
+          echo "================================"
+          echo "📋 Evaluation Run Summary"
+          echo "================================"
+          echo "Mode: Full (Generate + Judge)"
+          echo "Parallelism: Sequential (--parallelism 1)"
+          echo "Model: Local Llama-3.2-3B"
+          echo "W&B Project: FrontShiftAI_Latest"
+          echo "Results: chat_pipeline/results/"
+          echo "================================"
+          echo ""
+          echo "✅ Results pushed to W&B"
+          echo "⚠️  Judge may have failed (local model limitations)"
+          echo "Check W&B at:"
+          echo "https://wandb.ai/group9mlops-northeastern-university/FrontShiftAI_Latest"

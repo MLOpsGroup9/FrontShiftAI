@@ -1,0 +1,376 @@
+# Standalone deployment workflow
+# Can be called from other workflows or triggered manually
+# Useful for deploying specific model versions or testing deployment process
+
+name: Deployment Pipeline - Model Deploy - Registry
+
+on:
+  workflow_call:
+    inputs:
+      model_path:
+        description: Path to model file (optional)
+        required: false
+        type: string
+        default: ""
+      model_name:
+        description: Logical model name to use inside the registry
+        required: false
+        type: string
+        default: frontshift-rag
+      evaluation_artifact_name:
+        description: Artifact containing chat_pipeline/results and models
+        required: false
+        type: string
+        default: core-eval-results
+      quality_gate_status:
+        description: Quality gate status
+        required: false
+        type: string
+        default: AUTO
+    outputs:
+      deploy_status:
+        description: "Result of the deploy-to-registry job"
+        value: ${{ jobs.deploy-to-registry.outputs.status }}
+      deploy_error:
+        description: "Error output when deployment fails"
+        value: ${{ jobs.deploy-to-registry.outputs.error }}
+  workflow_dispatch:
+    inputs:
+      model_path:
+        description: Path to model file (optional)
+        required: false
+        type: string
+        default: ""
+      model_name:
+        description: Logical model name to use inside the registry
+        required: false
+        type: string
+        default: frontshift-rag
+      evaluation_artifact_name:
+        description: Artifact containing chat_pipeline/results and models
+        required: false
+        type: string
+        default: core-eval-results
+      quality_gate_status:
+        description: Quality gate status
+        required: false
+        type: string
+        default: AUTO
+
+jobs:
+  pre-deployment-validation:
+    name: Pre-deployment Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y libasound2-dev
+          python -m pip install --upgrade pip --no-cache-dir
+          pip install -r chat_pipeline/requirements.txt --no-cache-dir
+
+      - name: Set Environment Variables
+        run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Download Evaluation + Model Artifacts (optional)
+        if: ${{ inputs.evaluation_artifact_name != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.evaluation_artifact_name }}
+          path: .
+        continue-on-error: true
+
+      - name: Verify Model File Integrity
+        if: ${{ inputs.model_path != '' }}
+        run: |
+          MODEL_PATH="${{ inputs.model_path }}"
+          if [ ! -f "$MODEL_PATH" ]; then
+            echo "❌ Model file not found: $MODEL_PATH"
+            exit 1
+          fi
+          SIZE_MB=$(du -m "$MODEL_PATH" | cut -f1)
+          echo "✅ Model file validated: $MODEL_PATH ($SIZE_MB MB)"
+          echo "model_path=$MODEL_PATH" >> $GITHUB_ENV
+
+      - name: Test Model Loading (if applicable)
+        if: ${{ inputs.model_path != '' }}
+        run: |
+          echo "⚠️ Model inference test skipped (requires model-specific implementation)"
+          # Placeholder for real smoke inference
+        continue-on-error: true
+
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    needs: pre-deployment-validation
+    timeout-minutes: 10
+    outputs:
+      status: ${{ steps.quality_gate_result.outputs.status }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y libasound2-dev
+          python -m pip install --upgrade pip --no-cache-dir
+          pip install -r requirements.txt --no-cache-dir
+
+      - name: Set Environment Variables
+        run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Download Evaluation Artifacts (if available)
+        if: ${{ inputs.evaluation_artifact_name != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.evaluation_artifact_name }}
+          path: .
+        continue-on-error: true
+
+      - name: Compute Quality Gate
+        id: compute_quality_gate
+        if: ${{ inputs.quality_gate_status == 'AUTO' }}
+        run: |
+          python -m chat_pipeline.tracking.compute_quality_gate
+          if [ -f chat_pipeline/results/quality_gate.txt ]; then
+            cat chat_pipeline/results/quality_gate.txt # Debug output
+          fi
+          STATUS=$(cat chat_pipeline/results/quality_gate.txt)
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+
+      - name: Finalize Quality Gate Status
+        id: quality_gate_result
+        run: |
+          STATUS="${{ steps.compute_quality_gate.outputs.status }}"
+          INPUT_STATUS="${{ inputs.quality_gate_status }}"
+          if [ "$INPUT_STATUS" != "AUTO" ] && [ -n "$INPUT_STATUS" ]; then
+            STATUS="$INPUT_STATUS"
+          fi
+          STATUS=$(echo "$STATUS" | tr '[:lower:]' '[:upper:]')
+          if [ -z "$STATUS" ]; then
+            echo "Quality gate status could not be determined."
+            exit 1
+          fi
+          echo "Resolved quality gate status: $STATUS"
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+
+  deploy-to-registry:
+    name: Deploy to Registry
+    runs-on: ubuntu-latest
+    needs:
+      - pre-deployment-validation
+      - quality-gate
+    timeout-minutes: 10
+    outputs:
+      status: ${{ steps.deploy.outputs.status }}
+      error: ${{ steps.deploy.outputs.error }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y libasound2-dev
+          python -m pip install --upgrade pip --no-cache-dir
+          pip install -r requirements.txt --no-cache-dir
+
+      - name: Set Environment Variables
+        run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud SDK (gsutil)
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Download Evaluation Artifacts (if available)
+        if: ${{ inputs.evaluation_artifact_name != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.evaluation_artifact_name }}
+          path: .
+        continue-on-error: true
+
+      - name: Deploy Model to Registry
+        id: deploy
+        env:
+          QUALITY_GATE_STATUS: ${{ needs.quality-gate.outputs.status }}
+        shell: bash
+        run: |
+          set -o pipefail
+          LOG_FILE=$(mktemp)
+
+          MODEL_PATH="${{ inputs.model_path }}"
+          echo "Deploying model '${{ inputs.model_name }}' with quality gate status ${QUALITY_GATE_STATUS}"
+
+          ARGS=(
+            -m chat_pipeline.tracking.deploy_model
+            --model-name "${{ inputs.model_name }}"
+            --quality-gate-status "$QUALITY_GATE_STATUS"
+            --metadata-output "models_registry/metadata_last_push.json"
+            --registry-dir "gs://frontshiftai-model-registry"
+          )
+
+          if [ -n "$MODEL_PATH" ]; then
+            ARGS+=(--model-path "$MODEL_PATH")
+          fi
+
+          python "${ARGS[@]}" 2>&1 | tee "$LOG_FILE"
+          EXIT_CODE=${PIPESTATUS[0]}
+
+          if [ "$EXIT_CODE" -eq 0 ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+            echo "error=" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+            {
+              echo "error<<'EOF'"
+              tail -n 200 "$LOG_FILE"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+            exit "$EXIT_CODE"
+          fi
+
+      - name: Upload Model Registry
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-registry
+          path: models_registry/
+          retention-days: 90
+
+  post-deployment-smoke-test:
+    name: Post-deployment Smoke Test
+    runs-on: ubuntu-latest
+    needs: deploy-to-registry
+    timeout-minutes: 5
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y libasound2-dev
+          python -m pip install --upgrade pip --no-cache-dir
+          pip install -r requirements.txt --no-cache-dir
+
+      - name: Set Environment Variables
+        run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Download Model Registry
+        uses: actions/download-artifact@v4
+        with:
+          name: model-registry
+          path: models_registry/
+
+      - name: Verify Deployed Model
+        run: |
+          python3 <<'EOF'
+          import json
+          from pathlib import Path
+
+          registry_dir = Path("models_registry")
+          latest_path = registry_dir / "latest"
+
+          if latest_path.exists():
+              if latest_path.is_symlink():
+                  version_dir = latest_path.resolve()
+              elif latest_path.is_dir():
+                   # Artifact download often dereferences symlinks into directories
+                  version_dir = latest_path
+              else:
+                  # It's a pointer file (fallback)
+                  with open(latest_path, 'r') as f:
+                      version_dir = Path(f.read().strip())
+
+              metadata_path = version_dir / "metadata.json"
+              if metadata_path.exists():
+                  with open(metadata_path, 'r') as f:
+                      metadata = json.load(f)
+                  print(f"✅ Deployed model verified:")
+                  print(f"   Version: {metadata.get('version')}")
+                  print(f"   Model: {metadata.get('model_name')}")
+                  print(f"   Metrics: {metadata.get('evaluation', {})}")
+              else:
+                  print("⚠️ Metadata not found in version dir")
+          else:
+              print("⚠️ Latest symlink/directory not found")
+          EOF
+
+      - name: Run Sample Queries (if RAG available)
+        run: |
+          echo "⚠️ Sample query test skipped (requires ChromaDB in CI)"
+          # In a real scenario, run smoke queries against the deployed model
+        continue-on-error: true

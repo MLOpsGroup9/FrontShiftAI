@@ -1,0 +1,103 @@
+{
+  "timestamp": "2025-12-01T17:35:03.620384",
+  "duration_seconds": 160.52193999290466,
+  "metrics": {
+    "intent_classification": {
+      "accuracy": 0.8333333333333334,
+      "correct": 25,
+      "total": 30,
+      "class_metrics": {
+        "pto": {
+          "precision": 0.8,
+          "recall": 1.0,
+          "f1": 0.888888888888889
+        },
+        "hr_ticket": {
+          "precision": 0.8571428571428571,
+          "recall": 0.75,
+          "f1": 0.7999999999999999
+        },
+        "rag": {
+          "precision": 0.6666666666666666,
+          "recall": 0.5714285714285714,
+          "f1": 0.6153846153846153
+        },
+        "website_extraction": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        }
+      }
+    },
+    "pto_agent": {
+      "latency": {
+        "avg_ms": 395.04215240478516,
+        "p50_ms": 231.13203048706055,
+        "p95_ms": 740.3805732727049,
+        "p99_ms": 2697.468023300166,
+        "min_ms": 150.9699821472168,
+        "max_ms": 3309.612035751343
+      },
+      "success": {
+        "success_rate": 0.32,
+        "failure_rate": 0.68,
+        "total": 25,
+        "successes": 8,
+        "failures": 17
+      },
+      "quality": {
+        "avg_completeness": 0.36666666666666664,
+        "min_completeness": 0.0,
+        "max_completeness": 1.0
+      },
+      "total_tests": 25
+    },
+    "hr_ticket_agent": {
+      "latency": {
+        "avg_ms": 4316.662321090698,
+        "p50_ms": 4342.801809310913,
+        "p95_ms": 4514.878845214844,
+        "p99_ms": 4574.047479629517,
+        "min_ms": 3375.2739429473877,
+        "max_ms": 4583.8000774383545
+      },
+      "success": {
+        "success_rate": 0.76,
+        "failure_rate": 0.24,
+        "total": 25,
+        "successes": 19,
+        "failures": 6
+      },
+      "quality": {
+        "avg_completeness": 0.9,
+        "min_completeness": 0.5,
+        "max_completeness": 1.0
+      },
+      "total_tests": 25
+    },
+    "website_extraction_agent": {
+      "latency": {
+        "avg_ms": 1793.9630508422852,
+        "p50_ms": 1730.0975322723389,
+        "p95_ms": 1942.6686048507697,
+        "p99_ms": 2603.3122396469107,
+        "min_ms": 1638.455867767334,
+        "max_ms": 2768.4731483459473
+      },
+      "success": {
+        "success_rate": 0.7,
+        "failure_rate": 0.3,
+        "total": 20,
+        "successes": 14,
+        "failures": 6
+      },
+      "quality": {
+        "avg_completeness": 0.8,
+        "min_completeness": 0.0,
+        "max_completeness": 1.0
+      },
+      "total_tests": 20
+    }
+  },
+  "summary": "============================================================\nAGENT EVALUATION SUMMARY\n============================================================\n\nINTENT CLASSIFICATION:\n  Accuracy: 83.3% (25/30)\n\n  Per-Agent Metrics:\n    pto:\n      Precision: 80.0%\n      Recall: 100.0%\n      F1: 88.9%\n    hr_ticket:\n      Precision: 85.7%\n      Recall: 75.0%\n      F1: 80.0%\n    rag:\n      Precision: 66.7%\n      Recall: 57.1%\n      F1: 61.5%\n    website_extraction:\n      Precision: 100.0%\n      Recall: 100.0%\n      F1: 100.0%\n\nPTO AGENT:\n  Tests Run: 25\n  Success Rate: 32.0%\n  Avg Latency: 395ms\n  P95 Latency: 740ms\n  Response Quality: 36.7%\n\nHR TICKET AGENT:\n  Tests Run: 25\n  Success Rate: 76.0%\n  Avg Latency: 4317ms\n  P95 Latency: 4515ms\n  Response Quality: 90.0%\n\nWEBSITE EXTRACTION AGENT:\n  Tests Run: 20\n  Success Rate: 70.0%\n  Avg Latency: 1794ms\n  P95 Latency: 1943ms\n  Response Quality: 80.0%\n\nPERFORMANCE TARGETS:\n  Intent Accuracy \u2265 85%: \u2717 FAIL (83.3%)\n  Pto Agent P95 < 5s: \u2713 PASS (740ms)\n  Hr Ticket Agent P95 < 5s: \u2713 PASS (4515ms)\n  Website Extraction Agent P95 < 5s: \u2713 PASS (1943ms)\n\n============================================================"
+}

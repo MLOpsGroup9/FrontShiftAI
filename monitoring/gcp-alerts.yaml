@@ -1,0 +1,40 @@
+displayName: "FrontShiftAI Critical Alerts"
+combiner: OR
+conditions:
+  - displayName: "High Error Rate (5xx)"
+    conditionThreshold:
+      filter: 'resource.type="cloud_run_revision" AND resource.labels.service_name="frontshiftai-backend" AND metric.type="run.googleapis.com/request_count" AND metric.labels.response_code_class="5xx"'
+      comparison: COMPARISON_GT
+      thresholdValue: 10
+      duration: 300s
+      aggregations:
+        - alignmentPeriod: 60s
+          perSeriesAligner: ALIGN_RATE
+    
+  - displayName: "High Response Latency"
+    conditionThreshold:
+      filter: 'resource.type="cloud_run_revision" AND resource.labels.service_name="frontshiftai-backend" AND metric.type="run.googleapis.com/request_latencies"'
+      comparison: COMPARISON_GT
+      thresholdValue: 3000
+      duration: 300s
+      aggregations:
+        - alignmentPeriod: 60s
+          perSeriesAligner: ALIGN_DELTA
+          crossSeriesReducer: REDUCE_PERCENTILE_95
+    
+  - displayName: "High CPU Usage"
+    conditionThreshold:
+      filter: 'resource.type="cloud_run_revision" AND resource.labels.service_name="frontshiftai-backend" AND metric.type="run.googleapis.com/container/cpu/utilizations"'
+      comparison: COMPARISON_GT
+      thresholdValue: 0.8
+      duration: 300s
+      aggregations:
+        - alignmentPeriod: 60s
+          perSeriesAligner: ALIGN_DELTA
+          crossSeriesReducer: REDUCE_PERCENTILE_95
+
+notificationChannels:
+  - projects/frontshiftai/notificationChannels/4024549182504711839
+
+alertStrategy:
+  autoClose: 1800s

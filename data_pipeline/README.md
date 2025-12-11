@@ -1,16 +1,13 @@
-# FrontShiftAI Data Pipeline
+# FrontShiftAI Data Pipeline (The "Librarian")
 
 > End-to-end ingestion, OCR, cleansing, validation, and embedding of organisational policy documents, packaged for both local development and containerised deployment.
 
-This README is the authoritative guide for cloning the project on a new machine, setting up all prerequisites, and running the pipeline without errors. It covers:
+This is the system responsible for reading thousands of PDF pages, organizing them, and "indexing" them so the Chat Agents can find answers instantly.
 
-1. **Architecture overview** of the pipeline stages and services.
-2. **Repository layout** so you can locate code, configs, and data.
-3. **Prerequisites** (system packages, Python, Docker) for macOS, Linux, and Windows.
-4. **Docker-first quickstart** – the recommended way to run the pipeline consistently.
-5. **Local-only workflow** for development outside of Docker.
-6. **Testing & validation** steps.
-7. **Troubleshooting** common issues (ports, OCR, permissions).
+This README covers:
+1.  **Architecture overview**
+2.  **Prerequisites** (Docker recommended)
+3.  **Quickstart**
 
 ---
 
@@ -21,36 +18,30 @@ The pipeline processes PDF handbooks into a searchable vector store in seven sta
 | Stage | Script | Purpose |
 |-------|--------|---------|
 | Download | `scripts/download_data.py` | Fetch PDFs from `data/url.json` into `data/raw/`. |
-| OCR Parsing | `scripts/pdf_parser.py` | Extract text/tables with PyMuPDF + pdfplumber, fallback to Tesseract OCR. |
-| Preprocess | `scripts/preprocess.py` | Normalize markdown, detect sections, emit cleaned JSON in `data/cleaned/`. |
-| Chunking | `scripts/chunker.py` | Token-based segmentation, produce JSONL chunks in `data/chunked/`. |
-| Validation | `scripts/validate_data.py` | Schema/quality checks, build reports in `data/validated/`. |
-| Bias Analysis | `scripts/data_bias.py` | Optional analytics artefacts. |
-| Vector Store | `scripts/store_in_chromadb.py` | Persist embeddings in `data/vector_db/`. |
+| OCR Parsing | `scripts/pdf_parser.py` | Extract text/tables (Tesseract + PyMuPDF). |
+| Preprocess | `scripts/preprocess.py` | Clean and normalize text. |
+| Chunking | `scripts/chunker.py` | Break text into "bite-sized" pieces for the AI. |
+| Validation | `scripts/validate_data.py` | Quality checks (remove junk). |
+| Bias Analysis | `scripts/data_bias.py` | Ensure fairness in the data. |
+| Vector Store | `scripts/store_in_chromadb.py` | Save to ChromaDB (the "Library"). |
 
 Two orchestration layers ship with the repo:
-
-- **`scripts/pipeline_runner.py`** runs every stage sequentially (ideal for local dev or ad-hoc runs).
-- **Airflow DAGs** (`dags/data_pipeline_dag.py` and `dags/data_pipeline_VM_dag.py`) wrap each stage as a task and can be scheduled via Docker Compose.
+- **`scripts/pipeline_runner.py`** runs every stage sequentially (ideal for local dev).
+- **Airflow DAGs** (`dags/data_pipeline_dag.py`) for production scheduling.
 
 ---
 
 ## 2. Repository Layout
 
+See the [Root README](../README.md) for the high-level project structure.
+
 ```bash
-FrontShiftAI/
-├── data_pipeline/
-│   ├── dags/
-│   │   ├── data_pipeline_dag.py
-│   │   └── dvc_repro_manual_dag.py
-│   ├── data/
-│   │   ├── bias_analysis/
-│   │   ├── chunked/
-│   │   ├── cleaned/
-│   │   ├── parsed/
-│   │   ├── raw/
-│   │   ├── validated/
-│   │   └── vector_db/
+data_pipeline/
+├── dags/                  # Airflow scheduling logic
+├── data/
+│   ├── raw/              # Original PDFs
+│   ├── validated/        # Cleaned chunks
+│   └── vector_db/        # The final "database" used by the Chat bot
 │   ├── logs/
 │   │   ├── bias_analysis/
 │   │   ├── download_data_log/
