@@ -1,0 +1,28 @@
+backend:
+  url: "https://frontshiftai-backend-vvukpmzsxa-uc.a.run.app/"
+  token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBncm91cDkuY29tIiwiY29tcGFueSI6IkZyb250U2hpZnRBSSIsInJvbGUiOiJzdXBlcl9hZG1pbiIsImV4cCI6MTc5NjYwMzc4OX0.jx2ENerr9YQArLah_rXBT8XtGBpQz846ws2ZR0mhnmI"
+
+livekit:
+  stt:
+    primary:
+      provider: "deepgram"
+      model: "nova-2-general"
+    fallbacks:
+      - provider: "assemblyai"
+        model: "default"
+        kwargs: {}
+  llm:
+    primary:
+      provider: "openai"
+      model: "gpt-4o-mini"
+    fallbacks: []
+  tts:
+    primary:
+      provider: "deepgram"
+      model: "aura-2-thalia-en"
+    fallbacks: 
+     - provider: "cartesia"
+       model: "sonic-2"
+  vad:
+    provider: "silero"
+    kwargs: {}
