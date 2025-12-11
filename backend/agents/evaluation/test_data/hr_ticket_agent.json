@@ -1,0 +1,306 @@
+{
+  "test_cases": [
+    {
+      "id": "hr_001",
+      "description": "Basic benefits question",
+      "input": "I have a question about dental insurance",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["ticket", "created", "dental"],
+        "category": "benefits"
+      }
+    },
+    {
+      "id": "hr_002",
+      "description": "Meeting request",
+      "input": "I need to schedule a meeting with HR",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["meeting", "scheduled", "ticket"],
+        "meeting_requested": true
+      }
+    },
+    {
+      "id": "hr_003",
+      "description": "Urgent payroll issue",
+      "input": "URGENT: There's an error in my paycheck",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["urgent", "payroll", "ticket"],
+        "urgency": "urgent",
+        "category": "payroll"
+      }
+    },
+    {
+      "id": "hr_004",
+      "description": "401k enrollment question",
+      "input": "How do I enroll in the 401k plan?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["401k", "ticket"],
+        "category": "benefits"
+      }
+    },
+    {
+      "id": "hr_005",
+      "description": "Workplace issue",
+      "input": "I need to discuss a workplace concern with HR",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["workplace", "ticket"],
+        "category": "workplace_issue"
+      }
+    },
+    {
+      "id": "hr_006",
+      "description": "Preferred meeting time - morning",
+      "input": "Can I meet with HR in the morning this week?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["morning", "ticket"],
+        "preferred_time": "morning"
+      }
+    },
+    {
+      "id": "hr_007",
+      "description": "Online meeting preference",
+      "input": "I'd like an online meeting with HR about benefits",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["online", "benefits", "ticket"],
+        "meeting_type": "online"
+      }
+    },
+    {
+      "id": "hr_008",
+      "description": "Onboarding question",
+      "input": "I have questions about my onboarding process",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["onboarding", "ticket"],
+        "category": "onboarding"
+      }
+    },
+    {
+      "id": "hr_009",
+      "description": "Performance review inquiry",
+      "input": "When is my next performance review?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["performance", "review", "ticket"],
+        "category": "general_inquiry"
+      }
+    },
+    {
+      "id": "hr_010",
+      "description": "Policy clarification",
+      "input": "I need clarification on the remote work policy",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["remote work", "policy", "ticket"],
+        "category": "policy_question"
+      }
+    },
+    {
+      "id": "hr_011",
+      "description": "Contact update request",
+      "input": "I need to update my emergency contact information",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["contact", "update", "ticket"],
+        "category": "general_inquiry"
+      }
+    },
+    {
+      "id": "hr_012",
+      "description": "Training request",
+      "input": "Is there training available for new software?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["training", "ticket"],
+        "category": "training"
+      }
+    },
+    {
+      "id": "hr_013",
+      "description": "Health insurance question",
+      "input": "What health insurance options are available?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["health insurance", "ticket"],
+        "category": "benefits"
+      }
+    },
+    {
+      "id": "hr_014",
+      "description": "In-person meeting preference",
+      "input": "I'd prefer to meet in person about this",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["in person", "ticket"],
+        "meeting_type": "in_person"
+      }
+    },
+    {
+      "id": "hr_015",
+      "description": "Afternoon meeting preference",
+      "input": "Can we schedule for the afternoon?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["afternoon", "ticket"],
+        "preferred_time": "afternoon"
+      }
+    },
+    {
+      "id": "hr_016",
+      "description": "Specific date preference",
+      "input": "I'd like to meet on December 15th",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["December 15", "ticket"],
+        "date_specified": true
+      }
+    },
+    {
+      "id": "hr_017",
+      "description": "Compensation inquiry",
+      "input": "I have questions about my compensation package",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["compensation", "ticket"],
+        "category": "payroll"
+      }
+    },
+    {
+      "id": "hr_018",
+      "description": "Career development",
+      "input": "I want to discuss career growth opportunities",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["career", "ticket"],
+        "category": "general_inquiry"
+      }
+    },
+    {
+      "id": "hr_019",
+      "description": "Documentation request",
+      "input": "I need a copy of my employment verification letter",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["employment", "verification", "ticket"],
+        "category": "general_inquiry"
+      }
+    },
+    {
+      "id": "hr_020",
+      "description": "Exit interview",
+      "input": "I'm leaving the company and need an exit interview",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["exit", "ticket"],
+        "category": "general_inquiry"
+      }
+    },
+    {
+      "id": "hr_021",
+      "description": "Parking permit",
+      "input": "How do I get a parking permit?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["parking", "ticket"],
+        "category": "general_inquiry"
+      }
+    },
+    {
+      "id": "hr_022",
+      "description": "Name change",
+      "input": "I need to update my name in the system",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["name", "update", "ticket"],
+        "category": "general_inquiry"
+      }
+    },
+    {
+      "id": "hr_023",
+      "description": "Maternity leave",
+      "input": "I have questions about maternity leave policy",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["maternity", "leave", "ticket"],
+        "category": "policy_question"
+      }
+    },
+    {
+      "id": "hr_024",
+      "description": "Harassment complaint",
+      "input": "I need to report a harassment issue",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["harassment", "ticket"],
+        "category": "workplace_issue",
+        "urgency": "urgent"
+      }
+    },
+    {
+      "id": "hr_025",
+      "description": "General HR question",
+      "input": "I have a general HR question",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "ticket_created": true,
+        "response_contains": ["ticket", "HR"],
+        "category": "general_inquiry"
+      }
+    }
+  ]
+}

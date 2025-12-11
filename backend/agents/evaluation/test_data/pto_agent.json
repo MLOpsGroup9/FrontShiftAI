@@ -1,0 +1,289 @@
+{
+  "test_cases": [
+    {
+      "id": "pto_001",
+      "description": "Basic PTO request with sufficient balance",
+      "input": "I need 3 days off starting December 10",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "request_created": true,
+        "response_contains": ["3 days", "December 10", "request"],
+        "balance_checked": true
+      }
+    },
+    {
+      "id": "pto_002",
+      "description": "Balance check query",
+      "input": "How many PTO days do I have?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "request_created": false,
+        "response_contains": ["15", "days", "balance"],
+        "balance_info_present": true
+      }
+    },
+    {
+      "id": "pto_003",
+      "description": "PTO request with date range",
+      "input": "Can I take vacation from December 24 to December 26?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "response_contains": ["December 24", "December 26"],
+        "dates_parsed": true
+      }
+    },
+    {
+      "id": "pto_004",
+      "description": "Request with reason",
+      "input": "I need 5 days off for a family vacation starting next Monday",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "response_contains": ["5 days"],
+        "reason_captured": true
+      }
+    },
+    {
+      "id": "pto_005",
+      "description": "Single day request",
+      "input": "I need tomorrow off",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "response_contains": ["1 day", "tomorrow"],
+        "single_day": true
+      }
+    },
+    {
+      "id": "pto_006",
+      "description": "Request exceeding balance",
+      "input": "I need 20 days off next month",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "request_created": false,
+        "response_contains": ["insufficient", "balance", "15"],
+        "error_type": "insufficient_balance"
+      }
+    },
+    {
+      "id": "pto_007",
+      "description": "Past date request (should fail)",
+      "input": "I need last week off",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "request_created": false,
+        "response_contains": ["past", "cannot"],
+        "error_type": "past_dates"
+      }
+    },
+    {
+      "id": "pto_008",
+      "description": "Weekend-only request",
+      "input": "I need Saturday and Sunday off",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "request_created": false,
+        "response_contains": ["weekend", "business days"],
+        "error_type": "weekend_only"
+      }
+    },
+    {
+      "id": "pto_009",
+      "description": "Request during holiday period",
+      "input": "I need December 24-26 off",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "response_contains": ["Christmas", "holiday"],
+        "holiday_excluded": true
+      }
+    },
+    {
+      "id": "pto_010",
+      "description": "Relative date - next week",
+      "input": "I need next week off",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "response_contains": ["next week"],
+        "relative_date_parsed": true
+      }
+    },
+    {
+      "id": "pto_011",
+      "description": "Remaining balance query",
+      "input": "How many days do I have left?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "request_created": false,
+        "response_contains": ["15", "remaining"],
+        "balance_info_present": true
+      }
+    },
+    {
+      "id": "pto_012",
+      "description": "Specific date format MM/DD",
+      "input": "I need 12/15 through 12/20 off",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "dates_parsed": true,
+        "response_contains": ["December"]
+      }
+    },
+    {
+      "id": "pto_013",
+      "description": "Multi-week request",
+      "input": "I need 2 weeks off in January",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "response_contains": ["10", "days", "January"],
+        "multi_week": true
+      }
+    },
+    {
+      "id": "pto_014",
+      "description": "Emergency leave request",
+      "input": "Family emergency - need immediate time off",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "response_contains": ["emergency"],
+        "urgency_detected": true
+      }
+    },
+    {
+      "id": "pto_015",
+      "description": "Check used days",
+      "input": "How many PTO days have I used?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "request_created": false,
+        "response_contains": ["used", "0"],
+        "balance_info_present": true
+      }
+    },
+    {
+      "id": "pto_016",
+      "description": "Request with specific reason",
+      "input": "I need 3 days off for a medical appointment",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "response_contains": ["3 days", "medical"],
+        "reason_captured": true
+      }
+    },
+    {
+      "id": "pto_017",
+      "description": "Check pending requests",
+      "input": "Do I have any pending PTO requests?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "request_created": false,
+        "response_contains": ["pending"],
+        "query_type": "view_requests"
+      }
+    },
+    {
+      "id": "pto_018",
+      "description": "Half day request",
+      "input": "I need a half day tomorrow",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "response_contains": ["0.5", "half"],
+        "half_day": true
+      }
+    },
+    {
+      "id": "pto_019",
+      "description": "Request starting today",
+      "input": "I need to take today and tomorrow off",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "response_contains": ["2 days", "today"],
+        "includes_today": true
+      }
+    },
+    {
+      "id": "pto_020",
+      "description": "Long vacation request",
+      "input": "I want to take 10 days off for vacation",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "response_contains": ["10 days"],
+        "long_vacation": true
+      }
+    },
+    {
+      "id": "pto_021",
+      "description": "Year-end request",
+      "input": "Can I take the last week of December off?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "response_contains": ["December"],
+        "year_end": true
+      }
+    },
+    {
+      "id": "pto_022",
+      "description": "Request with flexible dates",
+      "input": "I need 5 days off sometime in January",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "response_contains": ["5 days", "January"],
+        "flexible_dates": true
+      }
+    },
+    {
+      "id": "pto_023",
+      "description": "Balance after pending",
+      "input": "What's my available balance?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "request_created": false,
+        "response_contains": ["balance", "available"],
+        "balance_info_present": true
+      }
+    },
+    {
+      "id": "pto_024",
+      "description": "Request around holiday",
+      "input": "I want to extend Christmas break by a few days",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "response_contains": ["Christmas"],
+        "holiday_context": true
+      }
+    },
+    {
+      "id": "pto_025",
+      "description": "General PTO inquiry",
+      "input": "Tell me about my PTO",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "request_created": false,
+        "response_contains": ["balance", "days"],
+        "query_type": "general_inquiry"
+      }
+    }
+  ]
+}

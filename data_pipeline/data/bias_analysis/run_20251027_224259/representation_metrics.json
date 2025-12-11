@@ -1,0 +1,59 @@
+{
+  "industry": {
+    "unique": 9,
+    "gini": 0.1971509971464474,
+    "entropy": 3.0794412249176952,
+    "ratio_imbalance": 3.5263157892880885,
+    "top_5": {
+      "Logistics": 67,
+      "Finance": 59,
+      "Construction": 54,
+      "Retail": 49,
+      "Manufacturing": 47
+    }
+  },
+  "org": {
+    "unique": 1,
+    "gini": 0.0,
+    "entropy": -0.0,
+    "ratio_imbalance": 0.9999999999974359,
+    "top_5": {
+      "General Business": 390
+    }
+  },
+  "doc_type": {
+    "unique": 1,
+    "gini": 0.0,
+    "entropy": -0.0,
+    "ratio_imbalance": 0.9999999999974359,
+    "top_5": {
+      "handbook": 390
+    }
+  },
+  "company": {
+    "unique": 18,
+    "gini": 0.24900284899135658,
+    "entropy": 4.026909516134527,
+    "ratio_imbalance": 5.874999999265625,
+    "top_5": {
+      "Buchheit Logistics": 47,
+      "Tnt Construction": 35,
+      "Old National Bank": 34,
+      "B G Foods": 29,
+      "Lunds Byerlys": 27
+    }
+  },
+  "policy_tags": {
+    "unique": 117,
+    "gini": 0.5920227918451848,
+    "entropy": 5.5960294740488585,
+    "ratio_imbalance": 57.999999941999995,
+    "top_5": {
+      "": 58,
+      "REST": 47,
+      "HARASSMENT": 27,
+      "HARASSMENT|REST": 18,
+      "FMLA": 12
+    }
+  }
+}

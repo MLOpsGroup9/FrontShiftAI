@@ -1,0 +1,109 @@
+name: Agent Pipeline - Agent Evaluation 
+
+on:
+  workflow_dispatch:  # Allow manual trigger
+  push:
+    branches: [ "main" ]
+  # pull_request:
+  #   branches: [ '**' ]
+
+jobs:
+  evaluate-agents:
+    name: Run Agent Evaluation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov python-dotenv wandb
+      
+      - name: Create .env file
+        run: |
+          cd backend
+          echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" >> .env
+          echo "BRAVE_API_KEY=${{ secrets.BRAVE_API_KEY }}" >> .env
+          echo "WANDB_API_KEY=${{ secrets.WANDB_API_KEY }}" >> .env
+      
+      - name: Run Agent Evaluation
+        run: |
+          cd backend
+          python -m agents.evaluation.run_evaluation
+        continue-on-error: false
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          BRAVE_API_KEY: ${{ secrets.BRAVE_API_KEY }}
+          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+          WANDB_PROJECT: FrontShiftAI_Agents
+          WANDB_ENTITY: ${{ secrets.WANDB_ENTITY }}
+          RUN_NAME: eval-${{ github.sha }}-${{ github.ref_name }}
+      
+      - name: Generate evaluation report
+        if: always()
+        run: |
+          cd backend
+          echo "## 📊 Agent Evaluation Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Run ID:** ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "View detailed metrics in [Weights & Biases](https://wandb.ai/${{ secrets.WANDB_ENTITY }}/FrontShiftAI_Agents)" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Upload evaluation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-results-${{ github.sha }}
+          path: |
+            backend/agents/evaluation/results/
+            backend/agents/evaluation/logs/
+          retention-days: 30
+      
+      - name: Evaluation success summary
+        if: success()
+        run: |
+          echo "✅ Agent evaluation completed successfully!"
+          echo ""
+          echo "🎯 All agents evaluated:"
+          echo "  - PTO Agent: ✓"
+          echo "  - HR Ticket Agent: ✓"
+          echo "  - RAG Agent: ✓"
+          echo "  - Website Extraction Agent: ✓"
+          echo "  - Routing System: ✓"
+          echo ""
+          echo "📊 Metrics logged to Weights & Biases"
+          echo "🔗 View dashboard: https://wandb.ai/${{ secrets.WANDB_ENTITY }}/FrontShiftAI_Agents"
+      
+      - name: Evaluation failure summary
+        if: failure()
+        run: |
+          echo "❌ Agent evaluation failed!"
+          echo ""
+          echo "Check the logs above for details"
+          echo "Common issues:"
+          echo "  - API key configuration"
+          echo "  - Evaluation dataset issues"
+          echo "  - Agent runtime errors"
+          echo ""
+          echo "Review artifacts and W&B logs for debugging"
+
+  
