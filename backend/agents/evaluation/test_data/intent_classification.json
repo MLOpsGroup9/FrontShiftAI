@@ -1,0 +1,185 @@
+{
+  "test_cases": [
+    {
+      "id": "intent_001",
+      "input": "I need 3 days off next week",
+      "expected_agent": "pto",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_002",
+      "input": "How many PTO days do I have left?",
+      "expected_agent": "pto",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_003",
+      "input": "Can I request time off for December 20-22?",
+      "expected_agent": "pto",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_004",
+      "input": "I want to take leave starting Monday",
+      "expected_agent": "pto",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_005",
+      "input": "Check my PTO balance please",
+      "expected_agent": "pto",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_006",
+      "input": "I need to schedule a meeting with HR",
+      "expected_agent": "hr_ticket",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_007",
+      "input": "I have a question about dental benefits",
+      "expected_agent": "hr_ticket",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_008",
+      "input": "Can I meet with HR about my paycheck?",
+      "expected_agent": "hr_ticket",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_009",
+      "input": "URGENT: Payroll issue needs immediate attention",
+      "expected_agent": "hr_ticket",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_010",
+      "input": "I need help with my insurance enrollment",
+      "expected_agent": "hr_ticket",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_011",
+      "input": "What are your business hours?",
+      "expected_agent": "website_extraction",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_012",
+      "input": "How can I contact your office?",
+      "expected_agent": "website_extraction",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_013",
+      "input": "What services do you offer?",
+      "expected_agent": "website_extraction",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_014",
+      "input": "Where are you located?",
+      "expected_agent": "website_extraction",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_015",
+      "input": "Do you have a phone number I can call?",
+      "expected_agent": "website_extraction",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_016",
+      "input": "What is the remote work policy?",
+      "expected_agent": "rag",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_017",
+      "input": "Tell me about the vacation policy",
+      "expected_agent": "rag",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_018",
+      "input": "What are the company holidays?",
+      "expected_agent": "rag",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_019",
+      "input": "How does the performance review process work?",
+      "expected_agent": "rag",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_020",
+      "input": "What is the dress code policy?",
+      "expected_agent": "rag",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_021",
+      "input": "Request 5 days vacation in January",
+      "expected_agent": "pto",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_022",
+      "input": "I need to take leave for a family emergency",
+      "expected_agent": "pto",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_023",
+      "input": "Book PTO from Dec 15-20",
+      "expected_agent": "pto",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_024",
+      "input": "Create an HR ticket about 401k enrollment",
+      "expected_agent": "hr_ticket",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_025",
+      "input": "I'd like to discuss career development with HR",
+      "expected_agent": "hr_ticket",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_026",
+      "input": "What's your email address?",
+      "expected_agent": "website_extraction",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_027",
+      "input": "Do you offer telemedicine services?",
+      "expected_agent": "website_extraction",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_028",
+      "input": "Explain the sick leave policy",
+      "expected_agent": "rag",
+      "confidence": "high"
+    },
+    {
+      "id": "intent_029",
+      "input": "What benefits are available to employees?",
+      "expected_agent": "rag",
+      "confidence": "medium"
+    },
+    {
+      "id": "intent_030",
+      "input": "I have a benefits question",
+      "expected_agent": "hr_ticket",
+      "confidence": "medium",
+      "note": "Ambiguous - could be asking or needing help"
+    }
+  ]
+}

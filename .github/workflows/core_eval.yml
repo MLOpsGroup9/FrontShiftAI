@@ -1,0 +1,205 @@
+name: Chat Pipeline - Core Evaluation
+
+on:
+  workflow_dispatch:
+
+jobs:
+  core_eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90  # Increased for conservative rate limiting
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y libasound2-dev
+          python -m pip install --upgrade pip --no-cache-dir
+          pip install -r chat_pipeline/requirements.txt --no-cache-dir
+          pip install pyyaml --no-cache-dir
+
+      - name: Set Environment Variables
+        run: |
+          echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
+          echo "TOKENIZERS_PARALLELISM=false" >> $GITHUB_ENV
+          
+          # Hybrid Configuration:
+          # Generator = OpenAI
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> $GITHUB_ENV
+          echo "GENERATION_BACKEND=openai" >> $GITHUB_ENV
+          
+          # Judge = Mercury (Inception)
+          echo "JUDGE_BACKEND=mercury" >> $GITHUB_ENV
+          echo "INCEPTION_API_KEY=${{ secrets.INCEPTION_API_KEY }}" >> $GITHUB_ENV
+          
+          # Rate limits for Mercury
+          echo "CHAT_PIPELINE_REMOTE_REQUEST_DELAY=1.0" >> $GITHUB_ENV
+          echo "CHAT_PIPELINE_REMOTE_MAX_ATTEMPTS=3" >> $GITHUB_ENV
+          # Gentle exponential backoff for retries
+          # echo "CHAT_PIPELINE_REMOTE_RETRY_BACKOFF=2.0" >> $GITHUB_ENV
+          
+          # Start retry delay at 45 seconds
+          # echo "CHAT_PIPELINE_REMOTE_RETRY_INITIAL_DELAY=45.0" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud SDK (gsutil)
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Sync vector DB from GCS
+        run: |
+          mkdir -p chat_pipeline/data_pipeline/data/vector_db
+          gsutil -m rsync -r gs://frontshiftai-data/data/vector_db/ chat_pipeline/data_pipeline/data/vector_db
+          echo "CHROMA_DIR=chat_pipeline/data_pipeline/data/vector_db" >> $GITHUB_ENV
+        shell: bash
+        
+      - name: "Set W&B Environment Variables"
+        run: |
+          echo "WANDB_API_KEY=${{ secrets.WANDB_API_KEY }}" >> $GITHUB_ENV
+          echo "WANDB_ENTITY=group9mlops-northeastern-university" >> $GITHUB_ENV
+          echo "WANDB_PROJECT=FrontShiftAI" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Run Smoke Tests
+        env:
+          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+          WANDB_ENTITY: group9mlops-northeastern-university
+          WANDB_PROJECT: FrontShiftAI
+        run: python -m chat_pipeline.cli --config chat_pipeline/configs/experiments/quick_smoke.yaml
+
+      - name: Run Core Evaluation
+        env:
+          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+          WANDB_ENTITY: group9mlops-northeastern-university
+          WANDB_PROJECT: FrontShiftAI
+        run: python -m chat_pipeline.cli --config chat_pipeline/configs/experiments/core_eval.yaml
+
+      - name: Verify Core Evaluation Results
+        run: |
+          if [ ! -f "chat_pipeline/results/core_experiment_summary.json" ]; then
+            echo "❌ chat_pipeline/results/core_experiment_summary.json not found"
+            exit 1
+          fi
+          if [ ! -f "chat_pipeline/results/core_eval_main/summary.json" ]; then
+            echo "❌ chat_pipeline/results/core_eval_main/summary.json not found"
+            exit 1
+          fi
+          echo "✅ Core evaluation results generated successfully"
+
+      - name: Upload Core Evaluation Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-eval-results
+          path: |
+            chat_pipeline/results/
+            models/
+          retention-days: 30
+
+      - name: Output Metrics
+        id: metrics
+        continue-on-error: true
+        run: |
+          python3 <<'EOF'
+          import json
+          from pathlib import Path
+
+          summary_path = Path("chat_pipeline/results/core_eval_main/summary.json")
+          if summary_path.exists():
+              data = json.loads(summary_path.read_text(encoding="utf-8"))
+              precision = data.get("precision", "na")
+              recall = data.get("recall", "na")
+              groundedness = data.get("groundedness", "na")
+          else:
+              precision = recall = groundedness = "na"
+
+          print(f"precision={precision}")
+          print(f"recall={recall}")
+          print(f"groundedness={groundedness}")
+          EOF
+
+  deploy_model:
+    needs: core_eval
+    if: ${{ needs.core_eval.result == 'success' }}
+    uses: ./.github/workflows/model_deploy.yml
+    with:
+      model_name: frontshift-rag
+      evaluation_artifact_name: core-eval-results
+    secrets: inherit
+
+  notify:
+    needs:
+      - core_eval
+      - deploy_model
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compose Email Body
+        id: compose_email
+        run: |
+          CORE_STATUS="${{ needs.core_eval.result }}"
+          DEPLOY_JOB_STATUS="${{ needs.deploy_model.result }}"
+          DEPLOY_STATUS="${{ needs.deploy_model.outputs.deploy_status }}"
+          DEPLOY_ERROR="${{ needs.deploy_model.outputs.deploy_error }}"
+
+          SUMMARY_FILE=email_body.txt
+          {
+            echo "Repository: ${{ github.repository }}"
+            echo "Workflow: ${{ github.workflow }}"
+            echo "Run: ${{ github.run_id }}"
+            echo "Core Eval Job Status: ${CORE_STATUS}"
+          } > "$SUMMARY_FILE"
+
+          if [ -z "$DEPLOY_JOB_STATUS" ]; then
+            echo "Model Deploy Job: not-run" >> "$SUMMARY_FILE"
+          else
+            echo "Model Deploy Job Status: ${DEPLOY_JOB_STATUS}" >> "$SUMMARY_FILE"
+            if [ "${DEPLOY_STATUS}" = "failure" ]; then
+              echo "" >> "$SUMMARY_FILE"
+              echo "Model deploy failed. Last error output:" >> "$SUMMARY_FILE"
+              if [ -n "$DEPLOY_ERROR" ]; then
+                echo "$DEPLOY_ERROR" >> "$SUMMARY_FILE"
+              else
+                echo "No additional error details were captured. Check workflow logs." >> "$SUMMARY_FILE"
+              fi
+            elif [ "${DEPLOY_JOB_STATUS}" = "success" ] && [ "${DEPLOY_STATUS}" = "success" ]; then
+              echo "Model deployment succeeded." >> "$SUMMARY_FILE"
+            fi
+          fi
+
+          {
+            echo "body<<EOF"
+            cat "$SUMMARY_FILE"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Send Email Notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_SENDER }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          to: ${{ secrets.EMAIL_RECEIVER }}
+          from: ${{ secrets.EMAIL_SENDER }}
+          subject: "Core Eval ${{ needs.core_eval.result }} - ${{ github.workflow }}"
+          body: ${{ steps.compose_email.outputs.body }}

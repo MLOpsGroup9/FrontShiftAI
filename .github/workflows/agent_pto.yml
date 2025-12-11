@@ -1,0 +1,114 @@
+name: Agent Pipeline - Agent Tests PTO - Agent
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "backend/agents/pto/**"
+  # pull_request:
+  #   branches: [ "main" ]
+  #   paths:
+  #     - "backend/agents/pto/**"
+
+jobs:
+  test-pto-agent:
+    name: Test PTO Agent
+    runs-on: ubuntu-latest
+    env:
+      JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+      
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov python-dotenv
+      
+      - name: Test PTO Agent Tools
+        run: |
+          cd backend
+          pytest agents/test_agents/test_pto_tools.py -v --cov=agents/pto/tools --cov-report=term
+        continue-on-error: true
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      
+      - name: Test PTO Agent Nodes
+        run: |
+          cd backend
+          pytest agents/test_agents/test_pto_nodes.py -v --cov=agents/pto/nodes --cov-report=term
+        continue-on-error: true
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      
+      - name: Test PTO Agent State
+        run: |
+          cd backend
+          pytest agents/test_agents/ -k "state" -v --cov=agents/pto/state --cov-report=term
+        continue-on-error: true
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      
+      - name: Test PTO Agent Workflow
+        run: |
+          cd backend
+          pytest agents/test_agents/ -k "agent" -v --cov=agents/pto/agent --cov-report=term
+        continue-on-error: true
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      
+      - name: Run all PTO agent tests with coverage
+        run: |
+          cd backend
+          pytest agents/test_agents/test_pto*.py -v --cov=agents/pto --cov-report=term --cov-report=xml --cov-report=html
+        continue-on-error: false
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./backend/coverage.xml
+          flags: pto-agent
+          name: pto-agent-coverage
+        continue-on-error: true
+      
+      - name: Upload HTML coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: pto-agent-coverage-html-${{ github.run_id }}
+          path: backend/htmlcov/
+          retention-days: 7
+      
+      - name: PTO Agent summary
+        if: success()
+        run: |
+          echo "✅ PTO Agent tests passed on branch ${{ github.run_id }}"
+          echo "📊 Coverage reports generated"
+          echo ""
+          echo "Test Breakdown:"
+          echo "  - Tools: ✓"
+          echo "  - Nodes: ✓"
+          echo "  - State: ✓"
+          echo "  - Workflow: ✓"
+      
+      - name: PTO Agent failure
+        if: failure()
+        run: |
+          echo "❌ PTO Agent tests failed on branch ${{ github.run_id }}"
+          echo "Check the logs above for details"

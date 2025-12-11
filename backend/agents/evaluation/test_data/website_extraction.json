@@ -1,0 +1,234 @@
+{
+  "test_cases": [
+    {
+      "id": "web_001",
+      "description": "Business hours query",
+      "input": "What are your business hours?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "found_answer": true,
+        "response_contains": ["hours", "business"],
+        "search_successful": true
+      }
+    },
+    {
+      "id": "web_002",
+      "description": "Contact information",
+      "input": "How can I contact you?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "found_answer": true,
+        "response_contains": ["contact"],
+        "info_type": "contact"
+      }
+    },
+    {
+      "id": "web_003",
+      "description": "Phone number request",
+      "input": "What's your phone number?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "found_answer": true,
+        "response_contains": ["phone"],
+        "info_type": "contact"
+      }
+    },
+    {
+      "id": "web_004",
+      "description": "Email address request",
+      "input": "What's your email address?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "found_answer": true,
+        "response_contains": ["email"],
+        "info_type": "contact"
+      }
+    },
+    {
+      "id": "web_005",
+      "description": "Location query",
+      "input": "Where are you located?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "found_answer": true,
+        "response_contains": ["location", "address"],
+        "info_type": "locations"
+      }
+    },
+    {
+      "id": "web_006",
+      "description": "Services offered",
+      "input": "What services do you provide?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "found_answer": true,
+        "response_contains": ["services"],
+        "info_type": "services"
+      }
+    },
+    {
+      "id": "web_007",
+      "description": "Appointment scheduling",
+      "input": "How do I schedule an appointment?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "found_answer": true,
+        "response_contains": ["appointment", "schedule"],
+        "info_type": "services"
+      }
+    },
+    {
+      "id": "web_008",
+      "description": "Office location",
+      "input": "What's your office address?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "found_answer": true,
+        "response_contains": ["address", "office"],
+        "info_type": "locations"
+      }
+    },
+    {
+      "id": "web_009",
+      "description": "Parking information",
+      "input": "Is parking available?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "search_successful": true,
+        "response_contains": ["parking"]
+      }
+    },
+    {
+      "id": "web_010",
+      "description": "Insurance accepted",
+      "input": "What insurance do you accept?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "search_successful": true,
+        "response_contains": ["insurance"]
+      }
+    },
+    {
+      "id": "web_011",
+      "description": "Telemedicine availability",
+      "input": "Do you offer telemedicine?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "search_successful": true,
+        "response_contains": ["telemedicine"]
+      }
+    },
+    {
+      "id": "web_012",
+      "description": "Payment methods",
+      "input": "What payment methods do you accept?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "search_successful": true,
+        "response_contains": ["payment"]
+      }
+    },
+    {
+      "id": "web_013",
+      "description": "New patient information",
+      "input": "How do I register as a new patient?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "search_successful": true,
+        "response_contains": ["patient", "register"]
+      }
+    },
+    {
+      "id": "web_014",
+      "description": "Doctor specialties",
+      "input": "What specialties do your doctors have?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "search_successful": true,
+        "response_contains": ["doctor", "specialist"]
+      }
+    },
+    {
+      "id": "web_015",
+      "description": "Emergency contact",
+      "input": "What's the emergency contact number?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "search_successful": true,
+        "response_contains": ["emergency", "contact"],
+        "info_type": "contact"
+      }
+    },
+    {
+      "id": "web_016",
+      "description": "Fax number",
+      "input": "Do you have a fax number?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "search_successful": true,
+        "response_contains": ["fax"],
+        "info_type": "contact"
+      }
+    },
+    {
+      "id": "web_017",
+      "description": "Lab services",
+      "input": "Do you have lab services on-site?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "search_successful": true,
+        "response_contains": ["lab"]
+      }
+    },
+    {
+      "id": "web_018",
+      "description": "Portal access",
+      "input": "How do I access the patient portal?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "search_successful": true,
+        "response_contains": ["portal"]
+      }
+    },
+    {
+      "id": "web_019",
+      "description": "Walk-in availability",
+      "input": "Do you accept walk-ins?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "search_successful": true,
+        "response_contains": ["walk"]
+      }
+    },
+    {
+      "id": "web_020",
+      "description": "Prescription refills",
+      "input": "How do I request a prescription refill?",
+      "user_email": "test@testcompany.com",
+      "company": "Test Company",
+      "expected": {
+        "search_successful": true,
+        "response_contains": ["prescription", "refill"]
+      }
+    }
+  ]
+}
