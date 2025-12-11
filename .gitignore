@@ -70,7 +70,6 @@ secrets.yaml
 
 # W&B files (already in gitignore, but verify)
 wandb/
-voice_pipeline 
 
 #GCP
 frontshiftai-c98c983486fd.json
