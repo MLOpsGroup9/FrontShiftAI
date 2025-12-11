@@ -81,6 +81,12 @@ To ensure 99.9% uptime and low latency, we employ a robust fallback strategy acr
 *   **Monitoring**: Real-time dashboards (Weights & Biases) track token usage, latency, and user feedback (thumbs up/down).
 *   **CI/CD**: Automated GitHub Actions for testing backend/frontend and retraining RAG models.
 
+### 5. Real-Time Voice Interface
+
+*   **Hands-Free Interaction**: Enables nurses and field technicians to query policy and request PTO via natural conversation while working.
+*   **Low Latency**: Optimized <500ms response time using a best-in-class pipeline (Deepgram STT/TTS + Groq/OpenAI LLM).
+*   **Secure Authentication**: Voice sessions are fully authenticated, allowing the agent to perform actions (e.g., "Book my vacation") on the user's specific behalf.
+
 ---
 
 ## Documentation
@@ -89,11 +95,12 @@ Detailed guides for every subsystem are available in their respective directorie
 
 | Documentation | Description | Link |
 |---------------|-------------|------|
-| **Cloud Deployment** | Infrastructure setup, CI/CD, Secrets, and Cost Analysis | [Deployment README](./deployment/README.md) |
-| **Backend Architecture** | API internals, LangGraph agents, and Services | [Backend README](./backend/README.md) |
-| **Frontend Architecture** | Component hierarchy, Design System, UX flows | [Frontend README](./frontend/README.md) |
 | **Data Pipeline** | Ingestion logic, OCR, Embedding generation | [Data Pipeline README](./data_pipeline/README.md) |
 | **ML Pipeline** | RAG evaluation, DeepEval framework | [Chat Pipeline README](./chat_pipeline/README.md) |
+| **Voice Pipeline** | Real-time voice orchestration, LiveKit integration, and Modal deployment | [Voice Pipeline README](./voice_pipeline/README.md) |
+| **Backend Architecture** | API internals, LangGraph agents, and Services | [Backend README](./backend/README.md) |
+| **Frontend Architecture** | Component hierarchy, Design System, UX flows | [Frontend README](./frontend/README.md) |
+| **Cloud Deployment** | Infrastructure setup, CI/CD, Secrets, and Cost Analysis | [Deployment README](./deployment/README.md) |
 | **Monitoring** | W&B tracking, Cloud Logging, and Alerts | [Monitoring README](./monitoring/README.md) |
 
 ---
@@ -166,7 +173,14 @@ FrontShiftAI/
 ├── deployment/                     # ☁️ Infrastructure as Code
 │   ├── README.md                   # 📖 Deployment Guide & Specs
 │   ├── Dockerfile.backend          # Multi-stage Python Build
-│   └── Dockerfile.frontend         # Nginx Static Build
+│   ├── Dockerfile.frontend         # Nginx Static Build
+│
+├── voice_pipeline/                 # 🎙️ Real-Time Voice Agent
+│   ├── scripts/                    # 🏁 Main Logic & Entrypoints
+│   │   └── main.py                 #    - Voice Worker Entrypoint
+│   ├── utils/                      # 🛠️ Helpers (Metrics, Logging)
+│   ├── configs/                    # 📝 Provider Chains (YAML)
+│   └── modal_deploy.py             # 🚀 Serverless Deployment Def
 │
 ├── docker-compose.yml              # 🐳 Local Development Orchestration
 └── system_diagram.png              # 📐 Architecture Visualization
@@ -212,6 +226,13 @@ For a detailed breakdown of all resources, see the [Deployment Guide](./deployme
   - **Inception/Mercury**: Primary Generation
   - **Groq (Llama 3)**: Fallback & Reasoning
 - **Evaluation**: DeepEval, Weights & Biases
+
+### Voice Pipeline
+- **Orchestration**: LiveKit (WebRTC)
+- **Compute**: Modal (Serverless Python)
+- **STT**: Deepgram Nova 2 (Fallback: AssemblyAI)
+- **TTS**: Deepgram Aura (Fallback: Cartesia)
+- **VAD**: Silero VAD
 
 ### DevOps & Infrastructure
 - **Containerization**: Docker (Multi-stage builds)
