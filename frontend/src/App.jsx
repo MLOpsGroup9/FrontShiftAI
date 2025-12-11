@@ -330,17 +330,15 @@ function App() {
     } catch (error) {
       console.error('❌ Error sending message:', error);
 
-      let errorMsg = 'Sorry, I encountered an error.';
-      if (error.response?.status === 401 || error.message === 'Not authenticated') {
+      if (axios.isCancel(error)) {
+        errorMsg = 'Generation stopped by user.';
+      } else if (error.response?.status === 401 || error.message === 'Not authenticated') {
         errorMsg = '🔒 Session expired. Please log in again.';
         setTimeout(() => handleLogout(), 2000);
       } else if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
         errorMsg = '🔌 Cannot connect to backend. Please ensure the backend server is running on port 8000.';
       } else if (error.response?.data?.detail) {
         errorMsg = `Backend error: ${error.response.data.detail}`;
-      } else if (error.name === 'Canceled') {
-        // Request was aborted by user
-        return;
       }
 
       const errorMessage = {

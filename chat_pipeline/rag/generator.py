@@ -39,8 +39,10 @@ except ImportError:  # pragma: no cover - optional dependency
 
 try:  # Requests is only required when hitting the remote Mercury API.
     import requests
+    import httpx
 except ImportError:  # pragma: no cover - optional dependency
     requests = None  # type: ignore
+    httpx = None # type: ignore
 
 try:
     from openai import OpenAI
@@ -275,12 +277,14 @@ def _call_mercury_api(prompt: str, params: Dict[str, Any]) -> str:
         try:
             if REMOTE_MIN_DELAY > 0 and attempt > 1:
                 time.sleep(REMOTE_MIN_DELAY)
-            response = requests.post(
-                f"{INCEPTION_API_BASE}/chat/completions",
-                json=payload,
-                headers=headers,
-                timeout=REMOTE_TIMEOUT,
-            )
+            
+            # Using httpx for better stability in Cloud Run (avoids potential requests/urllib3 SIGABRT)
+            with httpx.Client(timeout=REMOTE_TIMEOUT) as client:
+                response = client.post(
+                    f"{INCEPTION_API_BASE}/chat/completions",
+                    json=payload,
+                    headers=headers,
+                )
             response.raise_for_status()
             data = response.json()
             if "choices" in data and data["choices"]:
